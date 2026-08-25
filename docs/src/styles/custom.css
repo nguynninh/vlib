@@ -1,0 +1,35 @@
+@import './header.css';
+@import './code_block.css';
+@import './code_block_mermaid.css';
+@import './table.css';
+@import './media_file.css';
+
+:root {
+	/* Giảm khoảng trống bên phải của toàn trang */
+	--sl-content-width: 100%;
+}
+
+/* Cuộn mượt khi click vào mục lục (Trên trang này) */
+html {
+	scroll-behavior: smooth;
+}
+
+/* Đẩy sát mép phải phần TOC */
+.right-sidebar {
+	padding-right: 0 !important;
+	margin-right: 0 !important;
+}
+
+.right-sidebar-panel {
+	padding-right: 1rem; /* chỉnh nhỏ lại nếu vẫn còn dư */
+}
+
+/* Bỏ đường kẻ giữa panel title và panel nội dung */
+.content-panel + .content-panel {
+	border-top: none !important;
+	padding-top: 0 !important;
+}
+
+.content-panel:has(+ .content-panel) {
+	padding-bottom: 0 !important;
+}

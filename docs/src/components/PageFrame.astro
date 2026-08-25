@@ -1,0 +1,856 @@
+---
+import DefaultPageFrame from '@astrojs/starlight/components/PageFrame.astro';
+import TableOfContentsList from './TableOfContentsList.astro';
+
+const { toc } = Astro.locals.starlightRoute;
+const lang = Astro.currentLocale ?? 'vi';
+const labels = {
+	vi: { toc: 'Nội dung trang', top: 'Cuộn lên' },
+	en: { toc: 'On this page', top: 'Scroll to top' },
+	zh: { toc: '页面内容', top: '返回顶部' },
+	ja: { toc: 'ページ内容', top: '上へ戻る' },
+};
+const t = labels[lang] ?? labels.vi;
+---
+
+{toc && (
+	<aside id="compact-toc" class="compact-toc print:hidden" aria-label={t.toc}>
+		<button
+			id="compact-toc-rail"
+			class="compact-toc-rail"
+			type="button"
+			aria-expanded="false"
+			aria-controls="compact-toc-panel"
+		>
+			<span>{t.toc}</span>
+		</button>
+		<div id="compact-toc-panel" class="compact-toc-panel">
+			<h2 class="compact-toc-title">
+				<span class="compact-toc-icon" aria-hidden="true"></span>
+				<span>{t.toc}</span>
+			</h2>
+			<div class="compact-toc-body">
+				<TableOfContentsList toc={toc.items} />
+			</div>
+		</div>
+	</aside>
+)}
+
+<button id="scroll-top-button" class="scroll-top-button" type="button" aria-label={t.top} title={t.top}>
+	<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+		<path d="m18 15-6-6-6 6" />
+	</svg>
+</button>
+
+<DefaultPageFrame>
+	<slot name="header" slot="header" />
+	<slot name="sidebar" slot="sidebar" />
+	<slot />
+</DefaultPageFrame>
+
+<script>
+	const topButton = document.getElementById('scroll-top-button');
+	const compactToc = document.getElementById('compact-toc');
+	const compactTocRail = document.getElementById('compact-toc-rail');
+	const sidebarPane = document.getElementById('starlight__sidebar');
+	const menuButton = document.querySelector('starlight-menu-button');
+
+	document.querySelectorAll('starlight-tabs').forEach((tabs) => {
+		const tablistWrapper = tabs.querySelector(':scope > .tablist-wrapper');
+		const tablist = tablistWrapper?.querySelector('[role="tablist"]');
+		const panels = Array.from(tabs.querySelectorAll(':scope > [role="tabpanel"]'));
+		if (!tablist || panels.length < 2 || !panels.every((panel) => panel.querySelector('.expressive-code .frame .header'))) return;
+
+		tabs.classList.add('code-tabs');
+		const tabItems = Array.from(tablist.querySelectorAll('[role="tab"]'));
+
+		tabItems.forEach((tab, index) => {
+			const frame = panels[index]?.querySelector('.expressive-code .frame');
+			const title = frame?.querySelector('.header .title')?.textContent?.trim();
+			const label = tab.textContent?.trim();
+			const language = frame?.querySelector('pre')?.dataset.language;
+			tab.textContent = title || label || language || '';
+		});
+
+		const mountTablist = () => {
+			const selectedIndex = Math.max(0, tabItems.findIndex((tab) => tab.getAttribute('aria-selected') === 'true'));
+			const header = panels[selectedIndex]?.querySelector('.expressive-code .frame .header');
+			header?.prepend(tablistWrapper ?? tablist);
+		};
+
+		tablist.addEventListener('click', () => requestAnimationFrame(mountTablist));
+		mountTablist();
+	});
+
+	document.querySelectorAll('.expressive-code .frame:not(.has-title)').forEach((frame) => {
+		if (frame.closest('starlight-tabs.code-tabs')) return;
+
+		const language = frame.querySelector('pre')?.dataset.language;
+		const header = frame.querySelector('.header');
+		if (!language || !header || header.textContent?.trim()) return;
+
+		const title = document.createElement('span');
+		title.className = 'title';
+		title.textContent = language;
+		header.append(title);
+		frame.classList.add('has-title');
+	});
+
+	const renderMermaidBlocks = async () => {
+		const blocks = Array.from(document.querySelectorAll('.expressive-code pre[data-language="mermaid"]'));
+		if (!blocks.length) return;
+
+		const { default: mermaid } = await import('mermaid');
+		const { default: zenuml } = await import('@mermaid-js/mermaid-zenuml');
+		await mermaid.registerExternalDiagrams([zenuml]);
+		mermaid.initialize({
+			startOnLoad: false,
+			securityLevel: 'loose',
+			theme: 'base',
+			themeVariables: {
+				primaryColor: '#dbeafe',
+				primaryTextColor: '#2563eb',
+				primaryBorderColor: '#93c5fd',
+				lineColor: '#9aa3b2',
+				fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+			},
+		});
+
+		const icons = {
+			zoomOut:
+				'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M8 11h6"/></svg>',
+			zoomIn:
+				'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6"/><path d="M8 11h6"/></svg>',
+			move:
+				'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2v20"/><path d="m15 19-3 3-3-3"/><path d="m19 9 3 3-3 3"/><path d="m5 9-3 3 3 3"/><path d="m9 5 3-3 3 3"/></svg>',
+			reset:
+				'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 3v6h6"/></svg>',
+			close:
+				'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+		};
+		const openMermaidViewer = (title, svg, source) => {
+			let scale = 1;
+			let translateX = 0;
+			let translateY = 0;
+			let dragStart = null;
+			const overlay = document.createElement('div');
+			const titleElement = document.createElement('span');
+			const codeElement = document.createElement('pre');
+			overlay.className = 'mermaid-viewer';
+			overlay.innerHTML = `
+				<div class="mermaid-viewer-header">
+					<div class="mermaid-viewer-title"></div>
+					<div class="mermaid-viewer-toolbar">
+						<div class="mermaid-viewer-zoom">
+							<button type="button" data-action="zoom-out" aria-label="Zoom out">${icons.zoomOut}</button>
+							<span data-zoom>100%</span>
+							<button type="button" data-action="zoom-in" aria-label="Zoom in">${icons.zoomIn}</button>
+						</div>
+						<button type="button" data-action="pan" aria-label="Drag to pan">${icons.move}</button>
+						<button type="button" data-action="reset" aria-label="Reset">${icons.reset}</button>
+						<button type="button" data-action="close" aria-label="Close">${icons.close}</button>
+					</div>
+				</div>
+				<div class="mermaid-viewer-stage">
+					<div class="mermaid-viewer-canvas">
+						<div class="mermaid-viewer-diagram">${svg}</div>
+					</div>
+				</div>
+				<div class="mermaid-viewer-hints">
+					<span><kbd>Drag</kbd> Pan</span>
+					<span><kbd>+</kbd><kbd>-</kbd> Zoom</span>
+					<span><kbd>0</kbd> Reset</span>
+					<span><kbd>C</kbd> Code</span>
+					<span><kbd>Esc</kbd> Close</span>
+				</div>
+			`;
+			titleElement.className = 'mermaid-viewer-title-text';
+			titleElement.textContent = title;
+			overlay.querySelector('.mermaid-viewer-title').append(titleElement);
+			codeElement.className = 'mermaid-viewer-code';
+			codeElement.textContent = source;
+			overlay.querySelector('.mermaid-viewer-canvas').append(codeElement);
+			const diagram = overlay.querySelector('.mermaid-viewer-diagram');
+			const zoomLabel = overlay.querySelector('[data-zoom]');
+			const updateTransform = () => {
+				diagram.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+				zoomLabel.textContent = `${Math.round(scale * 100)}%`;
+			};
+			const close = () => {
+				document.removeEventListener('keydown', onKeydown);
+				document.removeEventListener('keyup', onKeyup);
+				overlay.remove();
+			};
+			const reset = () => {
+				scale = 1;
+				translateX = 0;
+				translateY = 0;
+				updateTransform();
+			};
+			const zoom = (step) => {
+				scale = Math.min(10, Math.max(0.4, scale + step));
+				updateTransform();
+			};
+			const onKeydown = (event) => {
+				if (event.key === 'Escape') close();
+				if (event.key === '0') reset();
+				if (event.key === '+' || event.key === '=') zoom(0.25);
+				if (event.key === '-') zoom(-0.25);
+				if (event.key.toLowerCase() === 'c') overlay.classList.add('is-showing-code');
+			};
+			const onKeyup = (event) => {
+				if (event.key.toLowerCase() === 'c') overlay.classList.remove('is-showing-code');
+			};
+
+			overlay.addEventListener('click', (event) => {
+				const action = event.target.closest('button')?.dataset.action;
+				if (action === 'close') close();
+				if (action === 'reset') reset();
+				if (action === 'zoom-in') zoom(0.25);
+				if (action === 'zoom-out') zoom(-0.25);
+			});
+			overlay.querySelector('.mermaid-viewer-stage').addEventListener('pointerdown', (event) => {
+				dragStart = { x: event.clientX - translateX, y: event.clientY - translateY };
+				overlay.setPointerCapture?.(event.pointerId);
+			});
+			overlay.addEventListener('pointermove', (event) => {
+				if (!dragStart) return;
+				translateX = event.clientX - dragStart.x;
+				translateY = event.clientY - dragStart.y;
+				updateTransform();
+			});
+			overlay.addEventListener('pointerup', () => {
+				dragStart = null;
+			});
+			document.addEventListener('keydown', onKeydown);
+			document.addEventListener('keyup', onKeyup);
+			document.body.append(overlay);
+			const canvasRect = overlay.querySelector('.mermaid-viewer-canvas').getBoundingClientRect();
+			const svgRect = diagram.querySelector('svg')?.getBoundingClientRect();
+			if (svgRect?.width && svgRect?.height) {
+				scale = Math.min(3, Math.max(1, Math.min((canvasRect.width * 0.86) / svgRect.width, (canvasRect.height * 0.78) / svgRect.height)));
+			}
+			updateTransform();
+		};
+		const findMermaidTitle = (element, fallback) => {
+			let current = element?.previousElementSibling;
+			while (current) {
+				const codeTitle = current.querySelector?.('.expressive-code .frame.has-title .header .title')?.textContent?.trim();
+				if (codeTitle && codeTitle !== 'mermaid') return codeTitle;
+
+				if (/^H[2-4]$/.test(current.tagName)) {
+					const text = current.textContent?.replace('#', '').trim();
+					if (text && !['Code', 'Demo', 'Mã nguồn', 'Thử nghiệm', 'コード', 'デモ', '代码', '演示'].includes(text)) return text;
+				}
+				current = current.previousElementSibling;
+			}
+			return fallback;
+		};
+
+		for (const [index, pre] of blocks.entries()) {
+			const frame = pre.closest('.frame');
+			const expressiveCode = pre.closest('.expressive-code');
+			const rawSource = frame?.querySelector('.copy button')?.getAttribute('data-code')?.replaceAll('\u007f', '\n') ?? pre.textContent ?? '';
+			const titleMatch = rawSource.match(/^\s*%%\s*title:\s*(.+)\s*$/m);
+			const source = rawSource.replace(/^\s*%%\s*title:\s*.+\s*\n?/m, '');
+			const frameTitle = frame?.querySelector('.header .title')?.textContent?.trim() || 'Mermaid';
+			const title = titleMatch?.[1]?.trim() || findMermaidTitle(expressiveCode, frameTitle);
+			const diagramId = `mermaid-diagram-${index}-${Math.random().toString(36).slice(2)}`;
+			const wrapper = document.createElement('figure');
+			const header = document.createElement('figcaption');
+			const titleElement = document.createElement('span');
+			const fullscreenButton = document.createElement('button');
+			const body = document.createElement('div');
+			const diagram = document.createElement('div');
+
+			wrapper.className = 'mermaid-frame not-content';
+			header.className = 'mermaid-frame-header';
+			titleElement.className = 'mermaid-frame-title';
+			titleElement.textContent = title;
+			fullscreenButton.className = 'mermaid-fullscreen-button';
+			fullscreenButton.type = 'button';
+			fullscreenButton.ariaLabel = 'Fullscreen';
+			fullscreenButton.title = 'Fullscreen';
+			fullscreenButton.innerHTML = `
+				<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+					<path d="M15 3h6v6" />
+					<path d="M21 3l-7 7" />
+					<path d="M9 21H3v-6" />
+					<path d="M3 21l7-7" />
+				</svg>
+				<span>Fullscreen</span>
+			`;
+			body.className = 'mermaid-frame-body';
+			diagram.className = 'mermaid-diagram';
+			diagram.setAttribute('aria-label', title);
+			header.append(titleElement, fullscreenButton);
+			body.append(diagram);
+			wrapper.append(header, body);
+
+			try {
+				const { svg } = await mermaid.render(diagramId, source);
+				if (/class="[^"]*error-(?:text|icon)[^"]*"/.test(svg)) {
+					throw new Error('Mermaid render returned an error SVG');
+				}
+				diagram.innerHTML = svg;
+				const svgElement = diagram.querySelector('svg');
+				const viewBox = svgElement?.viewBox?.baseVal;
+				if (viewBox && viewBox.width / Math.max(1, viewBox.height) > 4) {
+					diagram.classList.add('is-wide');
+				}
+			} catch (error) {
+				diagram.innerHTML = '<span>Không render được Mermaid diagram.</span>';
+				fullscreenButton.disabled = true;
+				wrapper.classList.add('has-error');
+			} finally {
+				document.getElementById(`d${diagramId}`)?.remove();
+			}
+
+			fullscreenButton.addEventListener('click', () => {
+				if (fullscreenButton.disabled) return;
+				openMermaidViewer(title, diagram.innerHTML, source);
+			});
+			expressiveCode?.replaceWith(wrapper);
+		}
+	};
+
+	renderMermaidBlocks();
+
+	const initMediaPreviewLightbox = () => {
+		const enhanceMarkdownImages = () => {
+			const alignAliases = new Map([
+				['left', 'left'],
+				['center', 'center'],
+				['right', 'right'],
+			]);
+
+			const parseMediaTitle = (title) => {
+				const result = { caption: '', width: '', height: '', align: '', captionAlign: '', frame: '', download: false };
+				if (!title) return result;
+
+				const applyToken = (part) => {
+					const option = part.match(/^(caption|width|height|align|caption-align|frame)\s*=\s*(.+)$/);
+					if (option) {
+						const value = option[2].trim();
+						if (option[1] === 'caption') result.caption = value;
+						else if (option[1] === 'caption-align') result.captionAlign = value;
+						else result[option[1]] = value;
+						return true;
+					}
+
+					const normalized = part.toLowerCase();
+					const captionAlign = normalized.match(/^caption[-\s:]+(.+)$/);
+					if (captionAlign && alignAliases.has(captionAlign[1])) {
+						result.captionAlign = alignAliases.get(captionAlign[1]);
+						return true;
+					}
+					if (alignAliases.has(normalized)) {
+						result.align = alignAliases.get(normalized);
+						return true;
+					}
+					if (normalized === '720p' || normalized === 'autop') {
+						result.frame = normalized;
+						return true;
+					}
+					if (normalized === 'download') {
+						result.download = true;
+						return true;
+					}
+					if (normalizeDimension(part)) {
+						result.width = part;
+						return true;
+					}
+					return false;
+				};
+
+				for (const rawPart of title.split('|')) {
+					const part = rawPart.trim();
+					if (!part) continue;
+					if (part.split(/\s+/).every(applyToken)) continue;
+					if (applyToken(part)) continue;
+					result.caption = [result.caption, part].filter(Boolean).join(' | ');
+				}
+
+				return result;
+			};
+
+			const normalizeDimension = (value) => {
+				if (!/^\d+(?:\.\d+)?(?:px|rem|em|%|vw|vh)?$/.test(value)) return '';
+				return /^\d+(?:\.\d+)?$/.test(value) ? `${value}px` : value;
+			};
+
+			const getVideoType = (src) => {
+				const path = new URL(src, window.location.href).pathname.toLowerCase();
+				if (path.endsWith('.mp4')) return 'video/mp4';
+				if (path.endsWith('.webm')) return 'video/webm';
+				if (path.endsWith('.ogv')) return 'video/ogg';
+				if (path.endsWith('.mov')) return 'video/quicktime';
+				return '';
+			};
+
+			const getAudioType = (src) => {
+				const path = new URL(src, window.location.href).pathname.toLowerCase();
+				if (path.endsWith('.mp3')) return 'audio/mpeg';
+				if (path.endsWith('.wav')) return 'audio/wav';
+				if (path.endsWith('.ogg')) return 'audio/ogg';
+				if (path.endsWith('.m4a')) return 'audio/mp4';
+				return '';
+			};
+
+			const isPdf = (src) => {
+				return new URL(src, window.location.href).pathname.toLowerCase().endsWith('.pdf');
+			};
+
+			const parseMediaSrc = (src) => {
+				const result = { src, download: false };
+				const match = src.match(/(?:\s|%20)+download$/i);
+				if (!match) return result;
+				result.src = src.slice(0, match.index);
+				result.download = true;
+				return result;
+			};
+
+			const rewriteLooseDownloadImages = () => {
+				const pattern = /^!\[([^\]]*)\]\((\S+\.pdf)\s+download\)$/i;
+				document.querySelectorAll('.sl-markdown-content p').forEach((paragraph) => {
+					if (paragraph.closest('.media-preview, .expressive-code')) return;
+
+					const match = paragraph.textContent?.trim().match(pattern);
+					if (!match) return;
+
+					const image = document.createElement('img');
+					image.alt = match[1];
+					image.src = match[2];
+					image.title = 'download';
+					paragraph.replaceChildren(image);
+				});
+			};
+
+			rewriteLooseDownloadImages();
+
+			const images = Array.from(document.querySelectorAll('.sl-markdown-content img')).filter((image) => {
+				return !image.closest('.media-preview, .media-viewer, .expressive-code') && !image.closest('a');
+			});
+
+			images.forEach((image) => {
+				const figure = document.createElement('figure');
+				const link = document.createElement('a');
+				const parent = image.parentNode;
+				const parsedSrc = parseMediaSrc(image.getAttribute('src') || image.currentSrc || image.src);
+				const mediaSrc = new URL(parsedSrc.src, window.location.href).href;
+				const videoType = getVideoType(mediaSrc);
+				const audioType = getAudioType(mediaSrc);
+				const pdf = isPdf(mediaSrc);
+				const isStandaloneParagraph =
+					parent?.tagName === 'P' &&
+					Array.from(parent.childNodes).every((node) => node === image || (node.textContent || '').trim() === '');
+				const options = parseMediaTitle(image.title);
+				const caption = options.caption || image.alt;
+				const align = options.align;
+				const captionAlign = options.captionAlign || align;
+				const width = normalizeDimension(options.width);
+				const height = normalizeDimension(options.height);
+				const frame = options.frame.toLowerCase();
+				const showDownload = options.download || parsedSrc.download;
+
+				figure.className = 'media-preview';
+				if (['left', 'center', 'right'].includes(align)) figure.classList.add(`is-${align}`);
+				if (['left', 'right'].includes(captionAlign)) figure.classList.add(`caption-${captionAlign}`);
+				if (videoType && frame === '720p') figure.classList.add('frame-720p');
+				if (audioType) figure.classList.add('is-audio');
+				if (pdf) figure.classList.add('is-pdf');
+				if (width) figure.style.maxWidth = width;
+				if (height) image.style.maxHeight = height;
+
+				image.removeAttribute('title');
+				if (isStandaloneParagraph) {
+					parent.replaceWith(figure);
+				} else {
+					parent.insertBefore(figure, image);
+				}
+
+				if (videoType) {
+					const video = document.createElement('video');
+					const source = document.createElement('source');
+
+					video.controls = true;
+					video.preload = 'metadata';
+					if (height) video.style.maxHeight = height;
+					source.src = mediaSrc;
+					source.type = videoType;
+					video.append(source);
+					video.append(document.createTextNode('Trình duyệt của bạn không hỗ trợ video HTML5.'));
+					image.remove();
+					figure.append(video);
+				} else if (audioType) {
+					const audio = document.createElement('audio');
+					const source = document.createElement('source');
+
+					audio.controls = true;
+					audio.preload = 'metadata';
+					source.src = mediaSrc;
+					source.type = audioType;
+					audio.append(source);
+					audio.append(document.createTextNode('Trình duyệt của bạn không hỗ trợ audio HTML5.'));
+					image.remove();
+					figure.append(audio);
+				} else if (pdf) {
+					const openLink = document.createElement('a');
+					const downloadLink = document.createElement('a');
+					const fileName = decodeURIComponent(new URL(mediaSrc, window.location.href).pathname.split('/').pop() || 'PDF');
+					const label = caption || fileName;
+					const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(mediaSrc)}&embedded=true`;
+
+					openLink.href = mediaSrc;
+					openLink.dataset.pdfViewerUrl = viewerUrl;
+					openLink.textContent = label;
+					openLink.className = 'media-pdf-link';
+					image.remove();
+					figure.append(openLink);
+					if (showDownload) {
+						downloadLink.href = mediaSrc;
+						downloadLink.download = fileName;
+						downloadLink.textContent = 'Tải về';
+						downloadLink.className = 'media-pdf-download';
+						figure.append(downloadLink);
+					}
+				} else {
+					link.href = mediaSrc;
+					link.target = '_blank';
+					link.rel = 'noreferrer';
+					link.append(image);
+					figure.append(link);
+				}
+
+				if (caption && !pdf) {
+					const figcaption = document.createElement('figcaption');
+					figcaption.textContent = caption;
+					figure.append(figcaption);
+				}
+			});
+		};
+
+		enhanceMarkdownImages();
+
+		const previews = Array.from(document.querySelectorAll('.media-preview a')).filter((link) => link.querySelector('img'));
+		const pdfLinks = Array.from(document.querySelectorAll('.media-pdf-link'));
+		if (!previews.length && !pdfLinks.length) return;
+
+		const icons = {
+			zoomOut:
+				'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M8 11h6"/></svg>',
+			zoomIn:
+				'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6"/><path d="M8 11h6"/></svg>',
+			move:
+				'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2v20"/><path d="m15 19-3 3-3-3"/><path d="m19 9 3 3-3 3"/><path d="m5 9-3 3 3 3"/><path d="m9 5 3-3 3 3"/></svg>',
+			reset:
+				'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 3v6h6"/></svg>',
+			close:
+				'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+			image:
+				'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>',
+		};
+
+		const openViewer = (link) => {
+			const image = link.querySelector('img');
+			const caption = link.closest('.media-preview')?.querySelector('figcaption')?.textContent?.trim() || image.alt || 'Ảnh';
+			let scale = 1;
+			let translateX = 0;
+			let translateY = 0;
+			let dragStart = null;
+			const overlay = document.createElement('div');
+
+			overlay.className = 'media-viewer';
+			overlay.innerHTML = `
+				<div class="media-viewer-header">
+					<div class="media-viewer-title">${icons.image}<span></span></div>
+					<div class="media-viewer-toolbar">
+						<div class="media-viewer-zoom">
+							<button type="button" data-action="zoom-out" aria-label="Thu nhỏ">${icons.zoomOut}</button>
+							<span data-zoom>100%</span>
+							<button type="button" data-action="zoom-in" aria-label="Phóng to">${icons.zoomIn}</button>
+						</div>
+						<button type="button" data-action="pan" aria-label="Kéo ảnh">${icons.move}</button>
+						<button type="button" data-action="reset" aria-label="Đặt lại">${icons.reset}</button>
+						<button type="button" data-action="close" aria-label="Đóng">${icons.close}</button>
+					</div>
+				</div>
+				<div class="media-viewer-stage">
+					<img src="${link.href}" alt="" draggable="false" />
+				</div>
+				<div class="media-viewer-caption"></div>
+				<div class="media-viewer-hints">
+					<span><kbd>Drag</kbd> Pan</span>
+					<span><kbd>+</kbd><kbd>-</kbd> Zoom</span>
+					<span><kbd>0</kbd> Reset</span>
+					<span><kbd>Esc</kbd> Close</span>
+				</div>
+			`;
+
+			const viewerImage = overlay.querySelector('.media-viewer-stage img');
+			const zoomLabel = overlay.querySelector('[data-zoom]');
+			overlay.querySelector('.media-viewer-title span').textContent = caption;
+			overlay.querySelector('.media-viewer-caption').textContent = caption;
+
+			const updateTransform = () => {
+				viewerImage.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+				zoomLabel.textContent = `${Math.round(scale * 100)}%`;
+			};
+			const close = () => {
+				document.body.classList.remove('media-viewer-open');
+				document.removeEventListener('keydown', onKeydown);
+				overlay.remove();
+			};
+			const reset = () => {
+				scale = 1;
+				translateX = 0;
+				translateY = 0;
+				updateTransform();
+			};
+			const zoom = (step) => {
+				scale = Math.min(6, Math.max(0.4, scale + step));
+				updateTransform();
+			};
+			const onKeydown = (event) => {
+				if (event.key === 'Escape') close();
+				if (event.key === '0') reset();
+				if (event.key === '+' || event.key === '=') zoom(0.25);
+				if (event.key === '-') zoom(-0.25);
+			};
+
+			overlay.addEventListener('click', (event) => {
+				const action = event.target.closest('button')?.dataset.action;
+				if (action === 'close') close();
+				if (action === 'reset') reset();
+				if (action === 'zoom-in') zoom(0.25);
+				if (action === 'zoom-out') zoom(-0.25);
+			});
+			overlay.querySelector('.media-viewer-stage').addEventListener('pointerdown', (event) => {
+				dragStart = { x: event.clientX - translateX, y: event.clientY - translateY };
+			});
+			overlay.addEventListener('pointermove', (event) => {
+				if (!dragStart) return;
+				translateX = event.clientX - dragStart.x;
+				translateY = event.clientY - dragStart.y;
+				updateTransform();
+			});
+			overlay.addEventListener('pointerup', () => {
+				dragStart = null;
+			});
+			overlay.addEventListener('pointercancel', () => {
+				dragStart = null;
+			});
+
+			document.addEventListener('keydown', onKeydown);
+			document.body.classList.add('media-viewer-open');
+			document.body.append(overlay);
+			overlay.querySelector('[data-action="close"]').focus();
+		};
+
+		previews.forEach((link) => {
+			link.addEventListener('click', (event) => {
+				event.preventDefault();
+				openViewer(link);
+			});
+		});
+
+		const openPdfViewer = (link) => {
+			const caption = link.closest('.media-preview')?.querySelector('figcaption')?.textContent?.trim() || link.textContent.trim() || 'PDF';
+			const overlay = document.createElement('div');
+
+			overlay.className = 'media-viewer media-viewer-pdf';
+			overlay.innerHTML = `
+				<div class="media-viewer-header">
+					<div class="media-viewer-title">${icons.image}<span></span></div>
+					<div class="media-viewer-toolbar">
+						<button type="button" data-action="close" aria-label="Đóng">${icons.close}</button>
+					</div>
+				</div>
+				<div class="media-viewer-stage">
+					<iframe src="${link.dataset.pdfViewerUrl}" title="${caption}" loading="lazy"></iframe>
+				</div>
+			`;
+
+			overlay.querySelector('.media-viewer-title span').textContent = caption;
+
+			const close = () => {
+				document.body.classList.remove('media-viewer-open');
+				document.removeEventListener('keydown', onKeydown);
+				overlay.remove();
+			};
+			const onKeydown = (event) => {
+				if (event.key === 'Escape') close();
+			};
+
+			overlay.addEventListener('click', (event) => {
+				if (event.target.closest('button')?.dataset.action === 'close') close();
+			});
+
+			document.addEventListener('keydown', onKeydown);
+			document.body.classList.add('media-viewer-open');
+			document.body.append(overlay);
+			overlay.querySelector('[data-action="close"]').focus();
+		};
+
+		pdfLinks.forEach((link) => {
+			link.addEventListener('click', (event) => {
+				event.preventDefault();
+				openPdfViewer(link);
+			});
+		});
+	};
+
+	initMediaPreviewLightbox();
+
+	const setCompactTocOpen = (open) => {
+		compactToc?.toggleAttribute('data-open', open);
+		compactTocRail?.setAttribute('aria-expanded', String(open));
+	};
+
+	const updateTopButton = () => {
+		topButton?.classList.toggle('is-visible', window.scrollY > 240);
+	};
+
+	compactTocRail?.addEventListener('click', (event) => {
+		event.stopPropagation();
+		setCompactTocOpen(!compactToc?.hasAttribute('data-open'));
+	});
+	compactToc?.querySelectorAll('a').forEach((link) => {
+		link.addEventListener('click', () => setCompactTocOpen(false));
+	});
+	document.addEventListener('click', (event) => {
+		if (!compactToc?.contains(event.target)) setCompactTocOpen(false);
+	});
+	document.addEventListener('keydown', (event) => {
+		if (event.key === 'Escape') setCompactTocOpen(false);
+	});
+	sidebarPane?.addEventListener('click', (event) => {
+		if (event.target === sidebarPane) menuButton?.setExpanded?.(false);
+	});
+
+	topButton?.addEventListener('click', () => {
+		window.scrollTo({ top: 0, behavior: 'smooth' });
+	});
+	window.addEventListener('scroll', updateTopButton, { passive: true });
+	updateTopButton();
+</script>
+
+<style>
+	.compact-toc {
+		position: fixed;
+		inset-block: calc(var(--sl-nav-height) + 0.75rem) 0.75rem;
+		inset-inline-end: 0;
+		z-index: calc(var(--sl-z-index-toc) + 1);
+		width: min(20rem, calc(100vw - 3rem));
+		pointer-events: none;
+		transform: translateX(100%);
+		transition: transform 0.22s ease;
+	}
+
+	.compact-toc[data-open],
+	.compact-toc:hover,
+	.compact-toc:focus-within {
+		pointer-events: auto;
+		transform: translateX(0);
+	}
+
+	.compact-toc-panel {
+		height: 100%;
+		padding: 1rem;
+		border: 1px solid var(--sl-color-hairline);
+		border-inline-end: 0;
+		border-radius: 12px 0 0 12px;
+		background: var(--sl-color-bg);
+		box-shadow: -10px 0 28px rgba(0, 0, 0, 0.12);
+		overflow-y: auto;
+	}
+
+	.compact-toc-rail {
+		position: absolute;
+		inset-inline-start: 0;
+		top: 45%;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-height: 7rem;
+		border: 0;
+		border-radius: 0 10px 10px 0;
+		padding: 0.65rem 0.45rem;
+		background: var(--sl-color-accent);
+		color: white;
+		box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+		font-size: 0.75rem;
+		font-weight: 700;
+		writing-mode: vertical-rl;
+		transform: translate(-100%, -50%) rotate(180deg);
+		cursor: pointer;
+		pointer-events: auto;
+	}
+
+	.compact-toc-title {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin: 0 0 1rem;
+		color: var(--sl-color-accent);
+		font-size: var(--sl-text-h5);
+		font-weight: 700;
+		line-height: var(--sl-line-height-headings);
+	}
+
+	.compact-toc-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 1.5rem;
+		height: 1.5rem;
+		border-radius: 6px;
+		background: color-mix(in srgb, var(--sl-color-accent) 12%, transparent);
+	}
+
+	.compact-toc-icon::before {
+		content: '';
+		width: 1rem;
+		height: 1rem;
+		background: currentColor;
+		-webkit-mask: url('/svgs/ic_menu.svg') center / contain no-repeat;
+		mask: url('/svgs/ic_menu.svg') center / contain no-repeat;
+	}
+
+	.scroll-top-button {
+		position: fixed;
+		z-index: calc(var(--sl-z-index-toc) + 1);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border: 0;
+		background: var(--sl-color-accent);
+		color: white;
+		box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+		cursor: pointer;
+	}
+
+	.scroll-top-button {
+		inset-inline-end: 1.1rem;
+		bottom: 1rem;
+		width: 2.6rem;
+		height: 2.6rem;
+		border-radius: 999px;
+		opacity: 0;
+		pointer-events: none;
+		transform: translateY(0.5rem);
+		transition: opacity 0.18s ease, transform 0.18s ease;
+	}
+
+	.scroll-top-button.is-visible {
+		opacity: 1;
+		pointer-events: auto;
+		transform: translateY(0);
+	}
+
+	@media (min-width: 72rem) {
+		.compact-toc {
+			display: none;
+		}
+	}
+</style>

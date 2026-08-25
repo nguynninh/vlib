@@ -1,0 +1,493 @@
+---
+title: "媒体与文件"
+description: "介绍如何在 MDX 中通过 GitHub Releases 的链接插入图片、视频、音频和附件,而不是直接将文件导入项目。"
+---
+
+Media & Files(媒体与文件)是让技术文档更直观的组成部分,而不是只依靠文字。
+
+不过,与 source code 不同,媒体文件(图片、视频、音频、附件)**不能直接导入项目**。所有媒体文件都必须上传到 `vlib-storage` 仓库的 [GitHub Releases](https://github.com/nguynninh/vlib-storage/releases),然后获取该 asset 的链接,在文档中使用。
+
+:::danger[不要将媒体文件提交到项目中]
+不要把图片、视频、音频或附件放在 `src/assets` 或项目的任何目录下并直接提交到 Git。媒体文件的体积通常比 source code 大得多,而 Git 会保留每一个被提交过的文件的完整历史——即使该文件在之后的 commit 中被删除。这会让仓库体积永久膨胀,拖慢 clone、CI/CD,也会拖慢在新机器上打开项目的速度。
+:::
+
+正确的流程应当是:
+
+1. 将媒体文件上传到 GitHub 上的一个 **Release**。
+2. 复制刚上传的 asset 的下载链接(`browser_download_url`)。
+3. 在 MDX 中使用该链接,而不是本地文件路径。
+
+---
+
+## 1. 为什么用 GitHub Releases 存储媒体文件
+
+GitHub Releases 允许将二进制文件(**Assets**)附加到某个 tag 上,与 source code 的 commit 历史完全分离。
+
+| 存储方式                    | 对仓库的影响                                  |
+| ---------------------------- | ------------------------------------------------ |
+| 直接提交到 `src/`             | 仓库体积永久膨胀,clone 变慢                     |
+| 使用 Git LFS                  | 需要额外配置,仍会计入 LFS 容量限额               |
+| 上传到 GitHub Releases        | 不影响 commit 历史,并按 tag 进行版本管理         |
+
+因此,本项目选择 GitHub Releases 作为文档中所有媒体文件的官方存储位置。
+
+:::note
+存储媒体文件的仓库可以是一个专门用于 storage 的独立仓库(例如 `vlib-storage`),与存放文档网站 source code 的仓库分开。创建新 Release 之前,请先确认项目当前的约定。
+:::
+
+---
+
+## 2. 上传文件到 GitHub Releases
+
+在仓库的 **Releases** 页面,创建或打开一个 Release,然后将文件拖放到 **Assets** 区域。
+
+例如,一个包含文档所需 asset 的 Release:
+
+| Asset             | 体积 | 用途                     |
+| ------------------ | ---------: | ------------------------------ |
+| `photo_demo.jpg`   |    2.73 MB | UI 页面的示意图片      |
+| `video_demo.mp4`   |   56.2 MB  | 功能演示视频           |
+
+上传完成后,每个 asset 都会有一个固定格式的下载链接:
+
+```text
+https://github.com/<owner>/<repo>/releases/download/<tag>/<file-name>
+```
+
+例如:
+
+```text
+https://github.com/nguynninh/vlib-storage/releases/download/v1.0.0/photo_demo.jpg
+```
+
+:::tip
+在 **Assets** 中右键点击文件名并选择 **Copy link address**,以获取准确的下载链接,避免手动输入导致路径出错。
+:::
+
+### 使用 `BASE_STORAGE` 变量代替完整链接
+
+与其在每个 MDX 文件中粘贴下载链接的域名部分,项目使用环境变量 `BASE_STORAGE`(在 `.env`、`.env.development`、`.env.production` 中声明)作为前缀。编写文档时,只需写:
+
+```md
+BASE_STORAGE/<tag>/<file-name>
+```
+
+构建时,一个 remark 插件会自动将 `BASE_STORAGE` 替换为环境变量中的真实值,例如:
+
+```bash title=".env.production"
+BASE_STORAGE=https://github.com/nguynninh/vlib-storage/releases/download
+```
+
+:::tip
+这种方式可以在不修改整个文档中每个链接的情况下,更换媒体存储位置(例如切换到其他 CDN,或者在开发/生产环境使用不同的存储仓库)。
+:::
+
+---
+
+## 3. 图片、视频、音频的通用语法
+
+图片、视频和音频都使用**同一套 Markdown image 语法**,不要手写 HTML 的 `<figure>`、`<a>`、`<img>`、`<video>` 或 `<audio>`。网站会自动根据链接中的文件扩展名,决定渲染成图片、视频播放器还是音频播放器。
+
+**代码**
+
+```mdx showLineNumbers title="通过 GitHub Releases 链接插入媒体"
+![Dashboard 界面,包含 sidebar、header 和主内容区](BASE_STORAGE/v1.0.0/photo_demo.jpg)
+```
+
+**效果**
+
+![Dashboard 界面,包含 sidebar、header 和主内容区](BASE_STORAGE/v1.0.0/photo_demo.jpg)
+
+结构分为三个部分:
+
+1. `!` 表示这是需要直接展示的媒体,而不是普通链接。
+2. `[描述]` 是 alt text(图片)或 caption/内容说明(视频、音频),用于无障碍访问。
+3. `(Release 链接)` 是已上传 asset 的下载链接,而不是项目内的文件路径。
+
+对于普通媒体,作者**不需要自己编写 HTML**——网站会自动把图片包装成可放大的预览框,把视频转换成 `<video controls preload="metadata">`,把音频转换成 `<audio controls>`。
+
+caption 默认直接取自 `[]` 中的描述。如果需要不同的 caption,可以在链接后的 title 部分用引号写出。
+
+### title 中的通用选项
+
+放在 title(链接后引号内)的一些简短选项,对三种媒体类型通用:
+
+| 想要实现的效果 | 写法 |
+| ----------- | ---- |
+| 左对齐 | `"left"` |
+| 居中 | 留空或 `"center"` |
+| 右对齐 | `"right"` |
+| 限制宽度(px) | `"600"` |
+| 右对齐并限制宽度 | `"right 600"` |
+| 使用与默认描述不同的 caption | `"想要显示的 caption"` |
+| caption 右对齐 | `"right caption-right"` |
+
+**代码**
+
+```mdx showLineNumbers title="基础媒体"
+![内容描述](BASE_STORAGE/<tag>/<file-name>)
+```
+
+```mdx showLineNumbers title="右对齐媒体"
+![内容描述](BASE_STORAGE/<tag>/<file-name> "right")
+```
+
+```mdx showLineNumbers title="带显示选项的媒体"
+![内容描述](BASE_STORAGE/<tag>/<file-name> "right 600")
+```
+
+```mdx showLineNumbers title="带 caption 的媒体"
+![内容描述](BASE_STORAGE/<tag>/<file-name> "说明 1. 更详细的描述。")
+```
+
+视频还有两个额外选项用于固定 16:9 画面比例,请参阅下方的 **视频** 章节。
+
+### Alt text / 描述不是可选项
+
+`[]` 中的说明用于向屏幕阅读器描述媒体内容,并且只在媒体加载失败时显示;它**不是显示在媒体下方的标题**。
+
+不应该这样写:
+
+```md
+![](BASE_STORAGE/v1.0.0/photo_demo.jpg)
+```
+
+应该这样写:
+
+```md
+![Dashboard 界面,包含 sidebar、header 和主内容区](BASE_STORAGE/v1.0.0/photo_demo.jpg)
+```
+
+:::caution[警告]
+空白或过于笼统的 alt text/描述(例如 `image`、`video`、`pic`)会让使用屏幕阅读器的用户无法理解内容,同时也会降低页面的 SEO 质量。
+:::
+
+### 上传前的文件命名
+
+由于文件会被上传到 Release 并通过链接引用,文件名越清晰越重要——因为一旦有多个文档页面引用了旧链接,之后再改名会非常困难。
+
+| 应该                       | 不应该           |
+| -------------------------- | -------------------- |
+| `login-flow.png`           | `Screenshot 2026-01-01 at 10.23.45.png` |
+| `checkout-payment-demo.mp4` | `video_final_final.mp4` |
+| `order-notification-sound.mp3` | `Recording 2026-01-01.wav` |
+
+:::caution[警告]
+在发布后重命名或删除 Release 中的 asset,会破坏所有引用该 asset 的文档页面中的链接,因为 `browser_download_url` 与文件名和 tag 直接绑定。请在上传之前就正确命名,不要事后再改。
+:::
+
+### 标注框中的媒体
+
+图片、视频或音频都可以放在标注框(callout)中,用于同时表达警告/说明并配合可视化展示,依然按常规方式使用 Release 链接。
+
+**代码**
+
+```mdx showLineNumbers title="标注框中的媒体"
+:::caution[新版本中界面已变更]
+"保存"按钮已从右上角移动到底部工具栏:
+
+![新的"保存"按钮位于屏幕底部工具栏](BASE_STORAGE/v1.0.0/video_demo2.jpg)
+:::
+```
+
+**效果**
+
+:::caution[新版本中界面已变更]
+"保存"按钮已从右上角移动到底部工具栏:
+
+![新的"保存"按钮位于屏幕底部工具栏](BASE_STORAGE/v1.0.0/video_demo2.jpg "新的\"保存\"按钮位于屏幕底部工具栏")
+:::
+
+---
+
+## 4. 图片
+
+### 支持使用的图片扩展名
+
+只对以下常见图片扩展名的文件使用 Markdown 媒体语法:
+
+| 扩展名 | 适用场景 |
+| --------- | ------------ |
+| `.png` | UI 截图、含透明区域的图片 |
+| `.jpg`、`.jpeg` | 实拍照片、色彩丰富的图片 |
+| `.webp` | 需要小体积但仍保持画质的图片 |
+| `.gif` | 无声音的极短动画 |
+| `.svg` | 图标、logo、简单的矢量示意图 |
+
+不要在 web 文档中使用 `.bmp`、`.tiff`、`.heic`,因为体积过大或浏览器支持不稳定。
+
+### 图片尺寸
+
+需要控制显示尺寸时,只需在图片的 title 部分写上数字(参见第 3 节的 **title 中的通用选项**)。不要手写 `<img>` 标签。
+
+:::caution[警告]
+不要仅为了"看起来合适"而用 `width` 强行压缩一张大图。如果原图分辨率过高,应在上传到 Release 之前先进行 resize 和压缩,避免不必要地增加页面加载时间。
+:::
+
+### 图片和 caption 的显示位置
+
+图片默认居中显示。想要改变位置,只需在引号中添加 `left`、`center` 或 `right`。
+
+**代码**
+
+```mdx showLineNumbers title="对齐图片和 caption"
+![Dashboard 界面,包含 sidebar、header 和主内容区](BASE_STORAGE/v1.0.0/photo_demo.jpg "left caption-left")
+
+![新的"保存"按钮位于屏幕底部工具栏](BASE_STORAGE/v1.0.0/video_demo2.jpg "right caption-right")
+```
+
+**效果**
+
+![Dashboard 界面,包含 sidebar、header 和主内容区](BASE_STORAGE/v1.0.0/photo_demo.jpg "left caption-left")
+
+![新的"保存"按钮位于屏幕底部工具栏](BASE_STORAGE/v1.0.0/video_demo2.jpg "right caption-right")
+
+### 前后对比图
+
+**代码**
+
+```mdx showLineNumbers title="前后对比"
+| 之前 | 之后 |
+| --- | --- |
+| ![旧界面](BASE_STORAGE/v1.0.0/photo_demo.jpg) | ![新界面](BASE_STORAGE/v1.0.0/video_demo2.jpg) |
+```
+
+**效果**
+
+| 之前 | 之后 |
+| --- | --- |
+| ![旧界面](BASE_STORAGE/v1.0.0/photo_demo.jpg "旧界面") | ![新界面](BASE_STORAGE/v1.0.0/video_demo2.jpg "新界面") |
+
+把图片放进 table 中,能让读者直接对比,而不需要来回滚动。
+
+---
+
+## 5. 视频
+
+视频的体积通常很大,因此**必须**上传到 Release,绝对不能把视频文件提交到项目中。插入语法与图片完全相同(参见第 3 节)——网站会自动识别文件扩展名(`.mp4`、`.webm`、`.mov`、`.ogg`),渲染成带 `controls` 的视频播放器。
+
+### 视频专属选项
+
+除了第 3 节的通用选项外,视频还有两个额外选项用于固定 16:9 画面:
+
+| 想要实现的效果 | 写法 |
+| ----------- | ---- |
+| 720p、16:9 画面 | `"720p"` |
+| 1080p、16:9 画面 | `"1080p"` |
+| 保持文件原始画面比例 | 留空或 `"auto"` |
+
+```mdx showLineNumbers title="720p 画面的视频"
+![视频内容描述](BASE_STORAGE/<tag>/<file-name>.mp4 "720p")
+```
+
+```mdx showLineNumbers title="1080p 画面的视频"
+![视频内容描述](BASE_STORAGE/<tag>/<file-name>.mp4 "1080p")
+```
+
+视频播放器始终带有 `controls`,方便读者暂停、快进或调整音量。网站也会自动使用 `preload="metadata"`,让页面打开时不会立即加载整个视频。
+
+:::caution[警告]
+不要在文档中使用带声音的自动播放视频。如果确实需要自动播放,请手写 HTML,并且只应用于已经 `muted` 的视频。
+:::
+
+### 视频尺寸
+
+如果文档中只以 640-720px 左右的宽度展示,就不应该上传 4K 视频。上传前请先 resize 并重新编码,以减少页面加载时间。
+
+### 来自外部平台的视频
+
+如果视频已经存在于外部平台(YouTube、Vimeo),可以直接用 `<iframe>` 嵌入,而不需要重新上传到 Release:
+
+```mdx showLineNumbers title="嵌入 YouTube 视频"
+<iframe
+    width="720"
+    height="405"
+    src="https://www.youtube.com/embed/VIDEO_ID"
+    title="项目安装指南"
+    allowfullscreen
+></iframe>
+```
+
+## 6. 音频
+
+与图片和视频一样,音频也必须先上传到 Release,不能直接提交到项目中。插入语法与图片、视频完全相同(参见第 3 节)——网站会自动识别文件扩展名(`.mp3`、`.wav`、`.ogg`),渲染成带 `controls` 的音频播放器。音频只会显示可直接收听的播放器,没有像图片那样的放大功能,也不支持像视频那样固定画面比例的选项。
+
+音频播放器始终带有 `controls`,由读者主动点击收听,不会自动播放。
+
+:::caution[警告]
+不要在文档中使用自动播放(`autoplay`)的音频。读者可能同时打开多个页面,自动播放的音频会打断使用体验,也难以及时关闭。
+:::
+
+## 7. 用于交互演示的 GIF
+
+GIF 的显示方式与图片相同,适合展示无声音的短暂操作。
+
+**代码**
+
+```mdx showLineNumbers title="演示用 GIF"
+![文档中操作演示的 GIF](BASE_STORAGE/v1.0.0/gif_demo.gif)
+```
+
+**效果**
+
+![文档中操作演示的 GIF](BASE_STORAGE/v1.0.0/gif_demo.gif)
+
+:::caution[警告]
+GIF 文件的体积通常比正确编码的视频大得多,因为 GIF 的压缩效率较低。对于持续几秒以上的演示,带 `controls` 的 MP4 视频通常是比 GIF 更好的选择,同样应该像其他视频一样上传到 Release。
+:::
+
+## 8. PDF
+
+PDF 使用与图片、视频、音频相同的 Markdown image 语法。网站会自动识别 `.pdf` 扩展名,渲染成带 PDF 图标和打开链接的文件卡片。
+
+**代码**
+
+```mdx showLineNumbers title="直接显示 PDF"
+![SDK Integration Documentation For Android.pdf](BASE_STORAGE/v1.0.0/pdf_demo.pdf)
+```
+
+```mdx showLineNumbers title="带下载按钮的 PDF"
+![SDK Integration Documentation For Android.pdf](BASE_STORAGE/v1.0.0/pdf_demo.pdf download)
+```
+
+**效果**
+
+![SDK Integration Documentation For Android.pdf](BASE_STORAGE/v1.0.0/pdf_demo.pdf download)
+
+链接文字取自 `[]` 中的描述。PDF 以简洁的文件卡片形式展示;点击文件名即可打开 PDF 预览。如果需要显示额外的**下载**按钮,在 PDF 链接后加上 `download`。
+
+## 9. 其他媒体文件
+
+`.zip`、`.xlsx`、`.docx` 等格式,以及设计文件或模板,不应内嵌显示。应放置下载链接,并明确说明读者需要下载后用合适的软件自行打开。
+
+那些 web 无法良好显示的文件,例如 `.zip`、`.xlsx`、`.docx`、`.psd`、`.fig` 或内部模板,只应以下载链接的形式出现。
+
+**代码**
+
+```mdx showLineNumbers title="需要下载的文件"
+![下载报告模板 (.xlsx)](BASE_STORAGE/v1.0.0/report-template.xlsx)
+
+![下载设计资源包 (.zip)](BASE_STORAGE/v1.0.0/design-assets.zip)
+```
+
+应在链接文字中明确标注文件格式,例如 `(.xlsx)` 或 `(.zip)`,让读者在点击前就能知道。
+
+## 10. 管理与优化
+
+### 通过 Release tag 管理媒体版本
+
+由于每个 asset 都绑定在特定的 Release tag 上,媒体文件的版本管理方式可以与 source code 的版本管理方式保持一致。
+
+| Release tag | 变更内容                     |
+| ------------ | --------------------------------------- |
+| `v1.0.0`     | 最初的一批演示图片和视频           |
+| `v1.1.0`     | 根据新界面更新截图 |
+
+当产品界面发生变化、需要更新截图时,应创建带新 tag 的新 Release,而不是替换旧 Release 中的文件,以避免破坏旧版本文档页面中正在引用的链接。
+
+:::note
+如果旧文档(例如 `v1.0.0` 版本的 docs)仍需要显示旧界面,请为该页面保留 `v1.0.0` Release 的 asset 链接,只在新内容中使用 `v1.1.0` Release 的 asset。
+:::
+
+### 推荐使用的文件格式
+
+| 格式 | 适用场景                          |
+| --------- | -------------------------------------- |
+| `.png`    | 截图、含透明区域的图片、UI |
+| `.jpg`    | 实拍照片、色彩丰富的图片 |
+| `.svg`    | 图标、logo、简单的矢量示意图     |
+| `.webp`   | 需要小体积但仍保持画质的图片 |
+| `.gif`    | 无声音的短动画      |
+| `.mp4`    | 演示视频、交互指南        |
+
+不建议使用 `.bmp` 或 `.tiff`,因为体积大且浏览器支持不佳。
+
+### 上传前优化文件
+
+由于每次读者打开页面时,文件都会通过链接从 GitHub Releases 加载,文件体积会直接影响文档的加载速度。
+
+上传前应遵循以下几点原则:
+
+* 将图片 resize 到实际需要显示的尺寸,不要保留来自 Retina/4K 屏幕的原始截图。
+* 上传前先压缩图片。
+* 对不需要透明度的图片优先使用 `.webp`。
+* 对于演示视频,建议时长控制在 1-2 分钟以内,并以合理的码率进行编码。
+
+### 示意图片应配有周边上下文
+
+无论图片来自 Release 还是其他地方,都不应该单独放置而没有引导语或说明。
+
+不好的做法:
+
+```md
+![](BASE_STORAGE/v1.0.0/error-screen.png)
+```
+
+应该这样:
+
+```md
+当请求因 token 过期而失败时,应用会显示以下错误界面:
+
+![显示"Session expired"和重新登录按钮的错误界面](BASE_STORAGE/v1.0.0/error-screen.png)
+
+用户需要点击**重新登录**以获取新的 token。
+```
+
+### 不要仅以图片形式嵌入重要文字
+
+如果一段文字(URL、命令、配置值)只存在于图片中,读者将无法复制,文档内的搜索也无法找到该内容。
+
+推荐做法——同时保留图片和真实文字:
+
+````md
+运行以下命令安装依赖:
+
+```bash
+npm install
+```
+
+![npm install 执行成功后的终端界面](BASE_STORAGE/v1.0.0/install-command.png)
+````
+
+:::caution[警告]
+图片中包含重要命令或配置,却没有配套的文字,是快速把截图粘贴进文档时常见的错误。读者被迫手动重新输入,容易出错。
+:::
+
+### 插入媒体或文件前的检查清单
+
+在添加图片、视频、音频或附件之前,请自问:
+
+* 文件是否已上传到 GitHub Releases,而不是留在项目中?
+* 是否已复制正确的 `browser_download_url`,而不是手动输入路径?
+* 上传前文件名是否已足够清晰?因为发布后很难再改名。
+* alt text 是否准确描述了图片内容?
+* 上传前文件是否已经过合理的 resize/压缩?
+* 图片前后是否有引导性文字说明?
+* 如果图片中包含命令或配置,是否配有相应的代码块文字?
+* 视频是否带有 `controls`,并避免了带声音的 `autoplay`?
+* 如果界面/内容发生变化,是否创建了新的 Release tag,而不是修改旧的 asset?
+
+---
+
+## 总结
+
+Media & Files 能让技术文档更直观、更易于理解,但必须被正确管理,才不会给项目带来负担。
+
+图片的基本结构:
+
+```mdx showLineNumbers title="基础媒体"
+![清晰描述内容的 Alt text](BASE_STORAGE/<tag>/<file-name>)
+```
+
+最重要的原则:
+
+1. **不要把媒体文件提交到项目中**——所有图片、视频、音频、附件都必须先上传到 `vlib-storage` 仓库的 [GitHub Releases](https://github.com/nguynninh/vlib-storage/releases)。
+2. **在 MDX 中只使用 asset 链接(`browser_download_url`)**,不要使用本地文件路径。
+3. **上传前将文件命名清晰**,因为发布后改名会破坏正在被引用的链接。
+4. **始终撰写描述性的 alt text**,不要留空或使用笼统的词语。
+5. **在上传到 Release 前优化文件体积**。
+6. **不要仅以图片形式嵌入重要信息**——尽可能同时附上真实文字。
+7. **视频在带有声音时不应该 `autoplay`。**
+8. **当媒体内容发生变化时,创建新的 Release tag**,而不是替换旧 tag 的 asset。
+
+一个好的文档页面,不是拥有最多图片的那个,而是每一张图片、视频或附件都**有明确存在的理由,并被存放在正确的位置**。

@@ -1,0 +1,493 @@
+---
+title: "Media & Files"
+description: "Hướng dẫn chèn hình ảnh, video, audio và file đính kèm trong MDX bằng link từ GitHub Releases, thay vì import file trực tiếp vào project."
+---
+
+Media & Files là những thành phần giúp tài liệu kỹ thuật trực quan hơn thay vì chỉ dựa vào text.
+
+Tuy nhiên, khác với source code, file media (ảnh, video, audio, file đính kèm) **không được import trực tiếp vào project**. Toàn bộ file media phải được tải lên [GitHub Releases](https://github.com/nguynninh/vlib-storage/releases) của repository `vlib-storage`, sau đó lấy link của asset đó để sử dụng trong tài liệu.
+
+:::danger[Không commit file media vào project]
+Không đặt ảnh, video, audio hay file đính kèm trong `src/assets` hoặc bất kỳ thư mục nào của project và commit trực tiếp vào Git. File media thường có dung lượng lớn hơn source code rất nhiều lần, và Git lưu lại toàn bộ lịch sử của mọi file từng được commit — kể cả sau khi file đó bị xoá ở commit sau. Việc này khiến repository phình to vĩnh viễn, làm chậm clone, chậm CI/CD và chậm cả việc mở project trên máy mới.
+:::
+
+Thay vào đó, quy trình đúng là:
+
+1. Tải file media lên một **Release** trên GitHub.
+2. Copy link tải xuống (`browser_download_url`) của asset vừa upload.
+3. Dùng link đó trong MDX, thay cho đường dẫn file local.
+
+---
+
+## 1. Vì sao dùng GitHub Releases để lưu Media
+
+GitHub Releases cho phép đính kèm file nhị phân (**Assets**) vào một tag, tách biệt hoàn toàn khỏi lịch sử commit của source code.
+
+| Cách lưu file                  | Ảnh hưởng tới repository                  |
+| ------------------------------- | ------------------------------------------- |
+| Commit trực tiếp vào `src/`     | Repository phình to vĩnh viễn, clone chậm  |
+| Dùng Git LFS                    | Cần cấu hình thêm, vẫn tính vào giới hạn dung lượng LFS |
+| Tải lên GitHub Releases         | Không ảnh hưởng tới lịch sử commit, có version theo tag |
+
+Vì vậy, project này chọn GitHub Releases làm nơi lưu trữ chính thức cho mọi file media dùng trong tài liệu.
+
+:::note
+Repository lưu media có thể là một repository riêng dành cho storage (ví dụ `vlib-storage`), tách biệt khỏi repository chứa source code của website tài liệu. Hãy kiểm tra quy ước hiện tại của project trước khi tạo release mới.
+:::
+
+---
+
+## 2. Tải file lên GitHub Releases
+
+Trên trang **Releases** của repository, tạo hoặc mở một release, sau đó kéo-thả file vào phần **Assets**.
+
+Ví dụ một release chứa các asset dùng cho tài liệu:
+
+| Asset             | Dung lượng | Mục đích                     |
+| ------------------ | ---------: | ------------------------------ |
+| `photo_demo.jpg`   |    2.73 MB | Ảnh minh hoạ cho trang UI      |
+| `video_demo.mp4`   |   56.2 MB  | Video demo tính năng           |
+
+Sau khi upload xong, mỗi asset có một link tải xuống cố định dạng:
+
+```text
+https://github.com/<owner>/<repo>/releases/download/<tag>/<file-name>
+```
+
+Ví dụ:
+
+```text
+https://github.com/nguynninh/vlib-storage/releases/download/v1.0.0/photo_demo.jpg
+```
+
+:::tip
+Nhấn phải vào tên file trong phần **Assets** và chọn **Copy link address** để lấy chính xác link tải xuống, tránh gõ tay và gây sai đường dẫn.
+:::
+
+### Dùng biến `BASE_STORAGE` thay vì viết nguyên link
+
+Thay vì dán nguyên phần domain của link tải xuống vào từng file MDX, project dùng biến môi trường `BASE_STORAGE` (khai báo trong `.env`, `.env.development`, `.env.production`) làm tiền tố. Khi viết tài liệu, chỉ cần viết:
+
+```md
+BASE_STORAGE/<tag>/<file-name>
+```
+
+Lúc build, một remark plugin sẽ tự động thay `BASE_STORAGE` bằng giá trị thật lấy từ biến môi trường, ví dụ:
+
+```bash title=".env.production"
+BASE_STORAGE=https://github.com/nguynninh/vlib-storage/releases/download
+```
+
+:::tip
+Cách này giúp đổi nơi lưu trữ media (ví dụ chuyển sang CDN khác, hoặc dùng repository storage khác cho môi trường development/production) mà không cần sửa lại từng link trong toàn bộ tài liệu.
+:::
+
+---
+
+## 3. Cú pháp chung cho Ảnh, Video, Audio
+
+Ảnh, video và audio đều dùng **chung một cú pháp Markdown image**, không viết HTML `<figure>`, `<a>`, `<img>`, `<video>` hoặc `<audio>` thủ công. Website tự nhìn đuôi file trong link để quyết định render thành ảnh, trình phát video hay trình phát audio.
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="Chèn media bằng link GitHub Releases"
+![Màn hình Dashboard với sidebar, header và nội dung chính](BASE_STORAGE/v1.0.0/photo_demo.jpg)
+```
+
+**Xem trước**
+
+![Màn hình Dashboard với sidebar, header và nội dung chính](BASE_STORAGE/v1.0.0/photo_demo.jpg)
+
+Cấu trúc gồm ba phần:
+
+1. Dấu `!` xác định đây là media cần hiển thị trực tiếp, không phải link thường.
+2. `[Mô tả]` là alt text (ảnh) hoặc caption/mô tả nội dung (video, audio), dùng cho accessibility.
+3. `(link Release)` là link tải xuống của asset đã upload, không phải đường dẫn file trong project.
+
+Người viết **không cần tự viết HTML** cho media thông thường — website tự bọc ảnh thành khung preview có thể phóng to, đổi video thành `<video controls preload="metadata">`, và đổi audio thành `<audio controls>`.
+
+Caption mặc định lấy luôn từ mô tả trong dấu `[]`. Muốn caption khác, viết caption trong dấu ngoặc kép sau link, ở phần title.
+
+### Tuỳ chọn chung trong title
+
+Các tuỳ chọn ngắn đặt trong phần title (dấu ngoặc kép sau link), áp dụng chung cho cả ba loại:
+
+| Muốn làm gì | Viết |
+| ----------- | ---- |
+| Căn trái | `"left"` |
+| Căn giữa | bỏ trống hoặc `"center"` |
+| Căn phải | `"right"` |
+| Giới hạn chiều rộng (px) | `"600"` |
+| Căn phải và giới hạn rộng | `"right 600"` |
+| Caption khác mô tả mặc định | `"Caption muốn hiển thị"` |
+| Caption căn phải | `"right caption-right"` |
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="Media cơ bản"
+![Mô tả nội dung](BASE_STORAGE/<tag>/<file-name>)
+```
+
+```mdx showLineNumbers title="Media căn phải"
+![Mô tả nội dung](BASE_STORAGE/<tag>/<file-name> "right")
+```
+
+```mdx showLineNumbers title="Media có tuỳ chọn hiển thị"
+![Mô tả nội dung](BASE_STORAGE/<tag>/<file-name> "right 600")
+```
+
+```mdx showLineNumbers title="Media kèm caption"
+![Mô tả nội dung](BASE_STORAGE/<tag>/<file-name> "Chú thích 1. Mô tả chi tiết hơn.")
+```
+
+Video có thêm hai tuỳ chọn riêng để cố định khung hình 16:9, xem mục **Video** bên dưới.
+
+### Alt text / mô tả không phải tuỳ chọn
+
+Phần ghi chú nằm trong dấu `[]` mô tả nội dung media cho screen reader, và chỉ hiện khi media không tải được; nó **không phải tiêu đề hiển thị bên dưới media**.
+
+Không nên:
+
+```md
+![](BASE_STORAGE/v1.0.0/photo_demo.jpg)
+```
+
+Nên:
+
+```md
+![Màn hình Dashboard với sidebar, header và nội dung chính](BASE_STORAGE/v1.0.0/photo_demo.jpg)
+```
+
+:::caution[Cảnh báo]
+Alt text/mô tả rỗng hoặc chung chung như `image`, `video`, `pic` khiến người dùng screen reader không thể hiểu nội dung, đồng thời làm giảm chất lượng SEO của trang.
+:::
+
+### Đặt tên file trước khi upload
+
+Vì file sẽ được upload lên Release và dùng qua link, tên file càng cần rõ nghĩa — vì rất khó đổi tên sau khi đã có nhiều trang tài liệu tham chiếu tới link cũ.
+
+| Nên                       | Không nên           |
+| -------------------------- | -------------------- |
+| `login-flow.png`           | `Screenshot 2026-01-01 at 10.23.45.png` |
+| `checkout-payment-demo.mp4` | `video_final_final.mp4` |
+| `order-notification-sound.mp3` | `Recording 2026-01-01.wav` |
+
+:::caution[Cảnh báo]
+Đổi tên hoặc xoá asset trong Release sau khi đã publish sẽ làm hỏng link ở mọi trang tài liệu đang tham chiếu tới asset đó, vì `browser_download_url` gắn trực tiếp với tên file và tag. Hãy đặt tên đúng ngay từ đầu, trước khi upload.
+:::
+
+### Media trong Khung chú thích
+
+Ảnh, video hoặc audio đều có thể đặt trong callout khi cần vừa cảnh báo/ghi chú vừa minh hoạ trực quan, vẫn dùng link Release như bình thường.
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="Khung chú thích chứa media"
+:::caution[Giao diện đã thay đổi ở bản mới]
+Nút "Lưu" đã được chuyển từ góc trên phải xuống thanh dưới cùng:
+
+![Vị trí nút Lưu mới ở thanh dưới cùng màn hình](BASE_STORAGE/v1.0.0/video_demo2.jpg)
+:::
+```
+
+**Thử nghiệm**
+
+:::caution[Giao diện đã thay đổi ở bản mới]
+Nút "Lưu" đã được chuyển từ góc trên phải xuống thanh dưới cùng:
+
+![Vị trí nút Lưu mới ở thanh dưới cùng màn hình](BASE_STORAGE/v1.0.0/video_demo2.jpg "Vị trí nút Lưu mới ở thanh dưới cùng màn hình")
+:::
+
+---
+
+## 4. Ảnh
+
+### Đuôi file ảnh được dùng
+
+Chỉ dùng cú pháp media Markdown cho các file có đuôi ảnh phổ biến sau:
+
+| Đuôi file | Khi nên dùng |
+| --------- | ------------ |
+| `.png` | Screenshot UI, ảnh có vùng trong suốt |
+| `.jpg`, `.jpeg` | Ảnh chụp thực tế, ảnh có nhiều màu |
+| `.webp` | Ảnh cần dung lượng nhỏ nhưng vẫn giữ chất lượng |
+| `.gif` | Hoạt ảnh rất ngắn, không có âm thanh |
+| `.svg` | Icon, logo, sơ đồ vector đơn giản |
+
+Không dùng `.bmp`, `.tiff`, `.heic` cho tài liệu web vì dung lượng lớn hoặc trình duyệt hỗ trợ không ổn định.
+
+### Kích thước ảnh
+
+Khi cần kiểm soát kích thước hiển thị, chỉ cần viết số trong phần title của ảnh (xem **Tuỳ chọn chung trong title** ở mục 3). Không dùng thẻ `<img>` thủ công.
+
+:::caution[Cảnh báo]
+Không nên ép ảnh lớn co lại bằng `width` chỉ để "vừa mắt". Nếu ảnh gốc có độ phân giải quá cao, hãy resize và nén ảnh trước khi upload lên Release, tránh làm tăng thời gian tải trang không cần thiết.
+:::
+
+### Vị trí hiển thị ảnh và caption
+
+Ảnh mặc định được căn giữa. Muốn đổi vị trí, chỉ cần thêm `left`, `center` hoặc `right` trong dấu ngoặc kép.
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="Căn vị trí ảnh và caption"
+![Màn hình Dashboard với sidebar, header và nội dung chính](BASE_STORAGE/v1.0.0/photo_demo.jpg "left caption-left")
+
+![Vị trí nút Lưu mới ở thanh dưới cùng màn hình](BASE_STORAGE/v1.0.0/video_demo2.jpg "right caption-right")
+```
+
+**Thử nghiệm**
+
+![Màn hình Dashboard với sidebar, header và nội dung chính](BASE_STORAGE/v1.0.0/photo_demo.jpg "left caption-left")
+
+![Vị trí nút Lưu mới ở thanh dưới cùng màn hình](BASE_STORAGE/v1.0.0/video_demo2.jpg "right caption-right")
+
+### Ảnh so sánh trước / sau
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="So sánh trước và sau"
+| Trước | Sau |
+| --- | --- |
+| ![Giao diện cũ](BASE_STORAGE/v1.0.0/photo_demo.jpg) | ![Giao diện mới](BASE_STORAGE/v1.0.0/video_demo2.jpg) |
+```
+
+**Thử nghiệm**
+
+| Trước | Sau |
+| --- | --- |
+| ![Giao diện cũ](BASE_STORAGE/v1.0.0/photo_demo.jpg "Giao diện cũ") | ![Giao diện mới](BASE_STORAGE/v1.0.0/video_demo2.jpg "Giao diện mới") |
+
+Đặt ảnh trong table giúp người đọc so sánh trực tiếp mà không cần cuộn qua cuộn lại.
+
+---
+
+## 5. Video
+
+Video luôn có dung lượng lớn, nên **bắt buộc** phải upload lên Release, tuyệt đối không commit file video vào project. Cú pháp chèn giống hệt ảnh (xem mục 3) — website tự nhìn đuôi file (`.mp4`, `.webm`, `.mov`, `.ogg`) để render thành trình phát video có `controls`.
+
+### Tuỳ chọn riêng của video
+
+Ngoài các tuỳ chọn chung ở mục 3, video có thêm hai tuỳ chọn để cố định khung hình 16:9:
+
+| Muốn làm gì | Viết |
+| ----------- | ---- |
+| Khung video 720p, tỉ lệ 16:9 | `"720p"` |
+| Khung video 1080p, tỉ lệ 16:9 | `"1080p"` |
+| Giữ khung hình tự nhiên của file | bỏ trống hoặc `"auto"` |
+
+```mdx showLineNumbers title="Video khung 720p"
+![Mô tả nội dung video](BASE_STORAGE/<tag>/<file-name>.mp4 "720p")
+```
+
+```mdx showLineNumbers title="Video khung 1080p"
+![Mô tả nội dung video](BASE_STORAGE/<tag>/<file-name>.mp4 "1080p")
+```
+
+Trình phát video luôn có `controls` để người đọc có thể tạm dừng, tua hoặc chỉnh âm lượng theo nhu cầu. Website cũng tự dùng `preload="metadata"` để trang không tải toàn bộ video ngay khi mở.
+
+:::caution[Cảnh báo]
+Không dùng video tự phát có âm thanh trong tài liệu. Nếu cần video tự phát, hãy dùng HTML thủ công và chỉ áp dụng cho video đã `muted`.
+:::
+
+### Kích thước video
+
+Không nên upload video 4K nếu tài liệu chỉ hiển thị ở khoảng 640-720px. Hãy resize và encode lại trước khi upload để giảm thời gian tải trang.
+
+### Video từ nền tảng bên ngoài
+
+Nếu video đã có sẵn trên nền tảng bên ngoài (YouTube, Vimeo), có thể nhúng trực tiếp bằng `<iframe>` mà không cần upload lại lên Release:
+
+```mdx showLineNumbers title="Video nhúng từ YouTube"
+<iframe
+    width="720"
+    height="405"
+    src="https://www.youtube.com/embed/VIDEO_ID"
+    title="Hướng dẫn cài đặt project"
+    allowfullscreen
+></iframe>
+```
+
+## 6. Audio
+
+Audio, giống ảnh và video, cũng phải upload lên Release trước, không commit trực tiếp vào project. Cú pháp chèn giống hệt ảnh và video (xem mục 3) — website tự nhìn đuôi file (`.mp3`, `.wav`, `.ogg`) để render thành trình phát audio có `controls`. Audio chỉ hiển thị trình phát để nghe trực tiếp, không có phóng to như ảnh, và không hỗ trợ tuỳ chọn cố định khung hình như video.
+
+Trình phát audio luôn có `controls` để người đọc chủ động bấm nghe, không tự động phát.
+
+:::caution[Cảnh báo]
+Không dùng audio tự phát (`autoplay`) trong tài liệu. Người đọc có thể đang mở nhiều trang cùng lúc, audio tự phát gây gián đoạn trải nghiệm và khó tắt kịp.
+:::
+
+## 7. GIF minh hoạ tương tác
+
+GIF được hiển thị trực tiếp giống ảnh, phù hợp với thao tác ngắn, không có âm thanh.
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="GIF minh hoạ"
+![GIF demo thao tác trong tài liệu](BASE_STORAGE/v1.0.0/gif_demo.gif)
+```
+
+**Xem trước**
+
+![GIF demo thao tác trong tài liệu](BASE_STORAGE/v1.0.0/gif_demo.gif)
+
+:::caution[Cảnh báo]
+File GIF thường có dung lượng lớn hơn nhiều so với video được encode đúng cách, vì GIF không nén hiệu quả. Với đoạn demo dài hơn vài giây, video MP4 kèm `controls` thường là lựa chọn tốt hơn GIF, và cũng nên upload lên Release như mọi video khác.
+:::
+
+## 8. PDF
+
+PDF dùng cùng cú pháp Markdown image như ảnh, video và audio. Website sẽ tự nhìn đuôi `.pdf` để render thành thẻ file có icon PDF và link mở file.
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="PDF hiển thị trực tiếp"
+![SDK Integration Documentation For Android.pdf](BASE_STORAGE/v1.0.0/pdf_demo.pdf)
+```
+
+```mdx showLineNumbers title="PDF có nút tải về"
+![SDK Integration Documentation For Android.pdf](BASE_STORAGE/v1.0.0/pdf_demo.pdf download)
+```
+
+**Xem trước**
+
+![SDK Integration Documentation For Android.pdf](BASE_STORAGE/v1.0.0/pdf_demo.pdf download)
+
+Text link lấy từ phần mô tả trong dấu `[]`. PDF hiển thị dạng thẻ file gọn; bấm tên file để mở bản xem PDF. Muốn hiện thêm nút **Tải về**, thêm `download` sau link PDF.
+
+## 9. Media khác
+
+Các định dạng như `.zip`, `.xlsx`, `.docx`, file thiết kế hoặc template không nên nhúng inline. Hãy đặt link tải xuống và ghi rõ người đọc cần tải về để tự mở bằng phần mềm phù hợp.
+
+Những file không được web hỗ trợ hiển thị tốt như `.zip`, `.xlsx`, `.docx`, `.psd`, `.fig` hoặc template nội bộ chỉ nên để dưới dạng link tải xuống.
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="File cần tải về"
+![Tải template báo cáo (.xlsx)](BASE_STORAGE/v1.0.0/report-template.xlsx)
+
+![Tải bộ tài nguyên thiết kế (.zip)](BASE_STORAGE/v1.0.0/design-assets.zip)
+```
+
+Nên ghi rõ định dạng file trong text của link, ví dụ `(.xlsx)` hoặc `(.zip)`, để người đọc biết trước khi click.
+
+## 10. Quản lý & tối ưu
+
+### Quản lý version của Media theo Release tag
+
+Vì mỗi asset gắn liền với một tag Release cụ thể, việc versioning media có thể theo cùng cách versioning source code.
+
+| Tag Release | Nội dung thay đổi                     |
+| ------------ | --------------------------------------- |
+| `v1.0.0`     | Bộ ảnh và video demo ban đầu           |
+| `v1.1.0`     | Cập nhật screenshot theo giao diện mới |
+
+Khi giao diện sản phẩm thay đổi và cần cập nhật screenshot, nên tạo Release mới với tag mới thay vì thay thế file trong Release cũ, để tránh làm hỏng link đang được tham chiếu ở các trang tài liệu của version cũ.
+
+:::note
+Nếu tài liệu cũ (ví dụ bản `v1.0.0` của docs) vẫn cần hiển thị đúng giao diện cũ, giữ nguyên link asset của Release `v1.0.0` cho trang đó, và chỉ dùng asset của Release `v1.1.0` cho nội dung mới.
+:::
+
+### Định dạng file nên dùng
+
+| Định dạng | Phù hợp cho                          |
+| --------- | -------------------------------------- |
+| `.png`    | Screenshot, ảnh có vùng trong suốt, UI |
+| `.jpg`    | Ảnh chụp thực tế, ảnh có nhiều màu sắc |
+| `.svg`    | Icon, logo, sơ đồ vector đơn giản     |
+| `.webp`   | Ảnh cần dung lượng nhỏ nhưng vẫn giữ chất lượng |
+| `.gif`    | Hoạt ảnh ngắn, không có âm thanh      |
+| `.mp4`    | Video demo, hướng dẫn tương tác        |
+
+Không nên dùng `.bmp` hoặc `.tiff` vì dung lượng lớn và không được trình duyệt hỗ trợ tối ưu.
+
+### Tối ưu file trước khi upload
+
+Vì file được tải qua link từ GitHub Releases mỗi khi người đọc mở trang, dung lượng file ảnh hưởng trực tiếp đến tốc độ tải tài liệu.
+
+Một số nguyên tắc nên áp dụng trước khi upload:
+
+* Resize ảnh về kích thước thực tế cần hiển thị, không giữ nguyên ảnh chụp màn hình gốc từ màn hình Retina/4K.
+* Nén ảnh trước khi upload.
+* Ưu tiên `.webp` cho ảnh không cần trong suốt.
+* Với video demo, nên giới hạn thời lượng dưới 1-2 phút và encode ở bitrate hợp lý.
+
+### Ảnh minh hoạ nên có ngữ cảnh xung quanh
+
+Không nên đặt ảnh một mình mà không có câu dẫn hoặc giải thích, dù ảnh lấy từ Release hay từ đâu.
+
+Không tốt:
+
+```md
+![](BASE_STORAGE/v1.0.0/error-screen.png)
+```
+
+Nên:
+
+```md
+Khi request thất bại do hết hạn token, ứng dụng hiển thị màn hình lỗi sau:
+
+![Màn hình lỗi "Session expired" với nút Đăng nhập lại](BASE_STORAGE/v1.0.0/error-screen.png)
+
+Người dùng cần nhấn **Đăng nhập lại** để lấy token mới.
+```
+
+### Không nhúng text quan trọng chỉ dưới dạng ảnh
+
+Nếu một đoạn text (URL, command, giá trị cấu hình) chỉ tồn tại trong ảnh, người đọc không thể copy được, và search trong tài liệu cũng không tìm thấy nội dung đó.
+
+Nên — vừa có ảnh, vừa có text thật đi kèm:
+
+````md
+Chạy lệnh sau để cài đặt dependencies:
+
+```bash
+npm install
+```
+
+![Terminal sau khi chạy npm install thành công](BASE_STORAGE/v1.0.0/install-command.png)
+````
+
+:::caution[Cảnh báo]
+Ảnh chứa command hoặc config quan trọng mà không có text đi kèm là lỗi thường gặp khi copy nhanh screenshot vào tài liệu. Người đọc buộc phải gõ lại thủ công, dễ sai sót.
+:::
+
+### Checklist trước khi chèn Media hoặc File
+
+Trước khi thêm hình ảnh, video, audio hoặc file đính kèm, hãy tự hỏi:
+
+* File đã được upload lên GitHub Releases, chưa nằm trong project?
+* Đã copy đúng `browser_download_url` của asset, chưa gõ tay đường dẫn?
+* Tên file đã rõ nghĩa trước khi upload, vì rất khó đổi tên sau khi đã publish?
+* Alt text đã mô tả đúng nội dung ảnh chưa?
+* File đã được resize/nén hợp lý trước khi upload chưa?
+* Có đoạn text dẫn giải thích trước và sau ảnh không?
+* Nếu ảnh chứa command hoặc config, đã có code block text đi kèm chưa?
+* Video có `controls` và tránh `autoplay` có âm thanh không?
+* Nếu giao diện/nội dung thay đổi, đã tạo Release tag mới thay vì sửa asset cũ chưa?
+
+---
+
+## Tóm tắt
+
+Media & Files giúp tài liệu kỹ thuật trực quan và dễ theo dõi hơn, nhưng phải được quản lý đúng cách để không làm nặng project.
+
+Cấu trúc cơ bản của một hình ảnh:
+
+```mdx showLineNumbers title="Media cơ bản"
+![Alt text mô tả rõ nội dung](BASE_STORAGE/<tag>/<file-name>)
+```
+
+Nguyên tắc quan trọng nhất:
+
+1. **Không commit file media vào project** — mọi ảnh, video, audio, file đính kèm phải được upload lên [GitHub Releases](https://github.com/nguynninh/vlib-storage/releases) của repository `vlib-storage` trước.
+2. **Chỉ dùng link asset (`browser_download_url`)** trong MDX, không dùng đường dẫn file local.
+3. **Đặt tên file rõ nghĩa trước khi upload**, vì đổi tên sau khi publish sẽ làm hỏng link đang được tham chiếu.
+4. **Luôn viết alt text mô tả**, không để trống hoặc dùng từ chung chung.
+5. **Tối ưu dung lượng file** trước khi upload lên Release.
+6. **Không nhúng thông tin quan trọng chỉ dưới dạng ảnh** — luôn kèm text thật khi có thể.
+7. **Video không nên `autoplay` khi có âm thanh.**
+8. **Khi nội dung media thay đổi, tạo Release tag mới** thay vì thay thế asset của tag cũ.
+
+Một trang tài liệu tốt không phải là trang có nhiều hình ảnh nhất, mà là trang mà mỗi hình ảnh, video hay file đính kèm đều **có lý do rõ ràng để tồn tại và được lưu trữ đúng nơi**.

@@ -1,0 +1,269 @@
+---
+title: "Khối mã"
+description: "Cách viết khối mã trong MDX để ví dụ kỹ thuật dễ đọc, dễ copy và có đủ ngữ cảnh."
+---
+
+import {Tabs, TabItem} from '@astrojs/starlight/components';
+
+Khối mã là nơi người đọc dừng lại lâu nhất trong một trang tài liệu kỹ thuật. Một đoạn code tốt không chỉ đúng cú pháp, mà còn phải cho người đọc biết nó viết bằng ngôn ngữ gì, nằm ở file nào và dòng nào đang đáng chú ý.
+
+Trang này hướng dẫn cách viết khối mã trong MDX sao cho nhất quán với hệ thống Documentation hiện tại.
+
+{/* SCREENSHOT:
+Rendered code block showing file title, syntax highlighting, line numbers, highlighted lines, and copy button.
+Position: after the opening explanation.
+Purpose: help writers understand how MDX code fence options appear in the final documentation UI.
+*/}
+
+## Cú pháp cơ bản
+
+Một khối mã bắt đầu bằng ba dấu backtick, theo sau là language identifier. Khi tài liệu được render, hệ thống dùng identifier này để tô màu cú pháp.
+
+````mdx showLineNumbers
+```ts
+const message: string = "Xin chào";
+console.log(message);
+```
+````
+
+Kết quả là đoạn code được hiển thị như TypeScript.
+
+````typescript title="hello.ts"
+const message: string = "Xin chào";
+console.log(message);
+````
+
+Nếu bỏ `ts`, code vẫn hiện ra, nhưng người đọc mất syntax highlighting và trang tài liệu trông kém rõ ràng hơn.
+
+````
+const message: string = "Xin chào";
+console.log(message);
+````
+
+:::danger
+Khi nội dung code cần hiển thị một fenced code block khác lồng bên trong (như các ví dụ MDX trên trang này), số dấu backtick của khối bọc ngoài phải nhiều hơn số dấu backtick của khối bên trong — ví dụ dùng bốn dấu backtick ```` khi bên trong có ba dấu backtick ```. Nếu dùng cùng số lượng, MDX sẽ đóng code fence sai vị trí, làm hỏng toàn bộ phần còn lại của trang.
+:::
+
+## Chọn đúng ngôn ngữ
+
+Hãy khai báo ngôn ngữ theo đúng nội dung của đoạn code. Đây là chi tiết nhỏ, nhưng ảnh hưởng trực tiếp đến khả năng đọc, copy và debug của người dùng.
+
+<Tabs>
+    <TabItem label="TypeScript">
+        ````mdx showLineNumbers
+            ```ts title="src/main.ts"
+                const app = createApp();
+                app.start();
+            ```
+        ````
+    </TabItem>
+    <TabItem label="Java">
+
+        ````mdx showLineNumbers
+            ```java title="src/main/java/Main.java"
+                public class Main {
+                    public static void main(String[] args) {
+                        System.out.println("Xin chào");
+                    }
+                }
+            ```
+        ````
+
+    </TabItem>
+    <TabItem label="JSON">
+        ````mdx showLineNumbers
+            ```json title="package.json"
+                {
+                    "scripts": {
+                        "dev": "astro dev",
+                        "build": "astro build"
+                    }
+                }
+            ```
+        ````
+    </TabItem>
+</Tabs>
+
+Nên dùng identifier ngắn và phổ biến như `ts`, `tsx`, `js`, `java`, `kotlin`, `json`, `css`, `scss`, `bash`, `diff`, `mdx` hoặc `text`.
+
+:::caution[Cảnh báo]
+Có một identifier đặc biệt không nằm trong nhóm trên: `mermaid`. Nó vẫn là một fenced code block, nhưng nội dung bên trong là mô tả sơ đồ chứ không phải code để tô màu cú pháp, nên được tách thành tài liệu riêng — xem [Sơ đồ Mermaid](/vi/web-documentation/ui/code_block_mermaid).
+:::
+
+:::note
+Nếu đoạn code thuộc một ngôn ngữ cụ thể, hãy luôn khai báo language identifier. Chỉ dùng khối mã không ngôn ngữ cho nội dung thật sự là plain text.
+:::
+
+## Thêm tên file
+
+Khi ví dụ đại diện cho một file cụ thể, thêm `title="..."` để người đọc biết nên đặt đoạn code ở đâu.
+
+````mdx showLineNumbers
+```tsx title="src/components/Button.tsx"
+export function Button() {
+    return <button>Thanh toán</button>;
+}
+```
+````
+
+`title` đặc biệt hữu ích trong hướng dẫn cài đặt, cấu hình, migration hoặc bất kỳ ví dụ nào yêu cầu người đọc chỉnh đúng file.
+
+## Hiển thị số dòng
+
+Số dòng giúp việc giải thích chính xác hơn. Thay vì viết “đoạn cấu hình phía dưới”, bạn có thể nói “dòng 3 khai báo script build”.
+
+````mdx showLineNumbers
+```json title="package.json" showLineNumbers
+{
+    "scripts": {
+        "dev": "astro dev",
+        "build": "astro build"
+    }
+}
+```
+````
+
+Không cần bật `showLineNumbers` cho mọi đoạn code. Với ví dụ ngắn một hoặc hai dòng, số dòng thường không mang lại thêm giá trị.
+
+## Tô sáng dòng quan trọng
+
+Khi ví dụ có nhiều dòng nhưng chỉ một vài dòng cần chú ý, thêm số dòng trong `{}` sau phần meta của code fence. Cách này giúp người đọc nhìn ngay vào phần quan trọng.
+
+````mdx showLineNumbers
+```ts title="src/main.ts" showLineNumbers {3}
+const app = createApp();
+
+app.use(paymentPlugin);
+app.start();
+```
+````
+
+````ts title="src/main.ts" showLineNumbers {3}
+const app = createApp();
+
+app.use(paymentPlugin);
+app.start();
+````
+
+Nếu cần nhấn mạnh nhiều dòng liên tiếp, dùng khoảng dòng:
+
+````mdx showLineNumbers
+```ts title="src/main.ts" showLineNumbers {3-4}
+const app = createApp();
+
+app.use(paymentPlugin);
+app.start();
+```
+````
+
+````ts title="src/main.ts" showLineNumbers {3-4}
+const app = createApp();
+
+app.use(paymentPlugin);
+app.start();
+````
+
+Nếu các dòng cần chú ý không nằm cạnh nhau, tách bằng dấu phẩy:
+
+````mdx showLineNumbers
+```ts title="src/main.ts" showLineNumbers {1,4}
+const app = createApp();
+const config = loadConfig();
+
+app.start(config);
+```
+````
+
+````ts title="src/main.ts" showLineNumbers {1,4}
+const app = createApp();
+const config = loadConfig();
+
+app.start(config);
+````
+
+## Viết diff khi mô tả thay đổi
+
+Khi tài liệu hướng dẫn sửa code, `diff` thường dễ hiểu hơn việc đặt hai block “trước” và “sau” cạnh nhau.
+
+````mdx showLineNumbers
+```diff
+- const environment = "development";
++ const environment = import.meta.env.MODE;
+```
+````
+
+Diff phù hợp cho migration, bug fix, đổi cấu hình hoặc bất kỳ tình huống nào người đọc cần biết chính xác dòng nào bị thay đổi.
+
+## Dùng tabs cho nhiều implementation
+
+Khi cùng một ý tưởng có nhiều cách triển khai tương đương, đặt chúng trong tabs để trang không bị kéo dài. Người đọc có thể chọn đúng ngôn ngữ hoặc framework mình đang dùng mà vẫn giữ nguyên context.
+
+````mdx title="docs/src/content/docs/example.mdx" showLineNumbers
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+<Tabs>
+	<TabItem label="Java">
+
+```java
+public class Main {
+    public static void main(String[] args) {
+        System.out.println("Xin chào");
+    }
+}
+```
+
+	</TabItem>
+	<TabItem label="Kotlin">
+
+```kotlin
+fun main() {
+    println("Xin chào")
+}
+```
+
+	</TabItem>
+</Tabs>
+````
+
+Tabs nên dùng khi các phiên bản thật sự thay thế cho nhau. Nếu mỗi block giải thích một bước khác nhau trong cùng quy trình, hãy để chúng thành các section riêng.
+
+## Cách dùng khuyến nghị
+
+Một khối mã tốt thường có đủ ba lớp ngữ cảnh: ngôn ngữ, file và phần đáng chú ý.
+
+````mdx
+```ts title="src/main.ts" showLineNumbers {4}
+import { createApp } from "./app";
+import { paymentPlugin } from "./plugins/payment";
+
+const app = createApp();
+app.use(paymentPlugin);
+app.start();
+```
+````
+
+Cách viết này tốt hơn một block trần như sau:
+
+````mdx showLineNumbers
+```
+const app = createApp();
+app.start();
+```
+````
+
+Block thứ hai vẫn hiển thị được, nhưng thiếu ngữ cảnh: không biết ngôn ngữ, không biết file và không biết dòng nào quan trọng.
+
+## Checklist nhanh
+
+Trước khi hoàn tất một trang tài liệu, hãy kiểm tra khối mã theo các câu hỏi sau:
+
+* Khối mã đã khai báo đúng language identifier chưa?
+* Nếu code thuộc một file cụ thể, đã có `title` chưa?
+* `showLineNumbers` có thật sự giúp phần giải thích dễ theo dõi hơn không?
+* Có cần highlight dòng thay đổi hoặc dòng quan trọng không?
+* Nếu có nhiều implementation, tabs có làm trang dễ đọc hơn không?
+* Nếu đoạn code là hướng dẫn sửa đổi, `diff` có rõ hơn hai block riêng biệt không?
+
+## Tóm tắt
+
+Khối mã nên giúp người đọc hiểu nhanh và copy đúng. Hãy bắt đầu bằng language identifier, thêm `title` khi có file cụ thể, dùng `showLineNumbers` và highlight có chủ đích, rồi chọn `diff` hoặc tabs khi chúng làm ví dụ rõ hơn.

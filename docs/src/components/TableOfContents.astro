@@ -1,0 +1,209 @@
+---
+import TableOfContentsList from './TableOfContentsList.astro';
+
+const { toc } = Astro.locals.starlightRoute;
+---
+
+{
+	toc && (
+		<starlight-toc class="toc-drawer" data-min-h={toc.minHeadingLevel} data-max-h={toc.maxHeadingLevel}>
+			<button
+				id="toc-drawer-rail"
+				class="toc-drawer-rail"
+				type="button"
+				aria-expanded="false"
+				aria-controls="toc-drawer-body"
+			>
+				<span>{Astro.locals.t('tableOfContents.onThisPage')}</span>
+			</button>
+			<nav aria-labelledby="starlight__on-this-page">
+				<h2 id="starlight__on-this-page">
+					<button
+						id="toc-drawer-toggle"
+						class="toc-drawer-toggle"
+						type="button"
+						aria-expanded="false"
+						aria-controls="toc-drawer-body">
+						<span class="toc-drawer-icon" aria-hidden="true"></span>
+						<span>{Astro.locals.t('tableOfContents.onThisPage')}</span>
+					</button>
+				</h2>
+				<div id="toc-drawer-body" class="toc-drawer-body">
+					<TableOfContentsList toc={toc.items} />
+				</div>
+			</nav>
+		</starlight-toc>
+	)
+}
+
+<script>
+	class StarlightTOC extends HTMLElement {
+		constructor() {
+			super();
+			(window.requestIdleCallback || ((callback) => setTimeout(callback, 1)))(() => this.init());
+		}
+
+		set current(link: HTMLAnchorElement) {
+			if (link === this.current) return;
+			this.current?.removeAttribute('aria-current');
+			link.setAttribute('aria-current', 'true');
+			this.current = link;
+
+			const container = this.querySelector('.toc-drawer-body');
+			if (!container) return;
+			const containerRect = container.getBoundingClientRect();
+			const linkRect = link.getBoundingClientRect();
+			if (linkRect.top < containerRect.top || linkRect.bottom > containerRect.bottom) {
+				const offset = linkRect.top - containerRect.top - containerRect.height / 2 + linkRect.height / 2;
+				container.scrollBy({ top: offset, behavior: 'smooth' });
+			}
+		}
+
+		init() {
+			const minH = parseInt(this.dataset.minH || '2', 10);
+			const maxH = parseInt(this.dataset.maxH || '3', 10);
+			const headingSelector = `:where(${Array.from({ length: 1 + maxH - minH }, (_, index) => `h${minH + index}`).join()})[id]`;
+			const links = [...this.querySelectorAll('a')];
+			const headings = [...document.querySelectorAll(`main ${headingSelector}`)];
+			const observer = new IntersectionObserver((entries) => {
+				const current = entries.find((entry) => entry.isIntersecting)?.target;
+				const link = current && links.find((item) => item.hash === '#' + encodeURIComponent(current.id));
+				if (link) this.current = link;
+			}, { rootMargin: '-120px 0% -70%' });
+
+			headings.forEach((heading) => observer.observe(heading));
+		}
+	}
+
+	if (!customElements.get('starlight-toc')) customElements.define('starlight-toc', StarlightTOC);
+
+	const initTocDrawer = () => {
+		const toc = document.querySelector('.toc-drawer');
+		const toggle = document.getElementById('toc-drawer-toggle');
+		const rail = document.getElementById('toc-drawer-rail');
+		if (!toc || !toggle || !rail || toc.hasAttribute('data-ready')) return;
+
+		toc.setAttribute('data-ready', '');
+		const wideQuery = window.matchMedia('(min-width: 72rem)');
+
+		const setOpen = (open: boolean) => {
+			const nextOpen = wideQuery.matches || open;
+			toc.toggleAttribute('data-open', nextOpen);
+			toggle.setAttribute('aria-expanded', String(nextOpen));
+			rail.setAttribute('aria-expanded', String(nextOpen));
+		};
+
+		const toggleOpen = (event: { stopPropagation: () => void; }) => {
+			event.stopPropagation();
+			setOpen(!toc.hasAttribute('data-open'));
+		};
+
+		toggle.addEventListener('click', toggleOpen);
+		rail.addEventListener('click', toggleOpen);
+		rail.addEventListener('mouseenter', () => setOpen(true));
+
+		document.addEventListener('click', (event) => {
+			if (!toc.contains(event.target)) setOpen(false);
+		});
+
+		document.addEventListener('keydown', (event) => {
+			if (event.key === 'Escape') setOpen(false);
+		});
+
+		toc.querySelectorAll('a').forEach((link) => {
+			link.addEventListener('click', () => setOpen(false));
+		});
+
+		wideQuery.addEventListener('change', () => setOpen(false));
+		setOpen(false);
+	};
+
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', initTocDrawer, { once: true });
+	} else {
+		initTocDrawer();
+	}
+</script>
+
+<style>
+	.toc-drawer-toggle {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		width: 100%;
+		border: 0;
+		padding: 0;
+		background: transparent;
+		color: var(--sl-color-accent);
+		font: inherit;
+		font-weight: 700;
+		text-align: start;
+		cursor: pointer;
+	}
+
+	.toc-drawer-rail {
+		display: none;
+	}
+
+	.toc-drawer:hover .toc-drawer-rail,
+	.toc-drawer:focus-within .toc-drawer-rail,
+	.toc-drawer[data-open] .toc-drawer-rail {
+		opacity: 0;
+		pointer-events: none;
+		transform: translateY(-50%) rotate(180deg) translateY(-0.25rem);
+	}
+
+	.toc-drawer-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 1.5rem;
+		height: 1.5rem;
+		border-radius: 6px;
+		background: color-mix(in srgb, var(--sl-color-accent) 12%, transparent);
+		flex: 0 0 auto;
+	}
+
+	.toc-drawer-icon::before {
+		content: '';
+		width: 1rem;
+		height: 1rem;
+		background: currentColor;
+		-webkit-mask: url('/svgs/ic_menu.svg') center / contain no-repeat;
+		mask: url('/svgs/ic_menu.svg') center / contain no-repeat;
+	}
+
+	.toc-drawer-body {
+		max-height: 0;
+		opacity: 0;
+		overflow: hidden;
+		scroll-behavior: smooth;
+		transform: translateX(0.5rem);
+		transition:
+			max-height 0.22s ease,
+			opacity 0.16s ease,
+			transform 0.22s ease;
+	}
+
+	.toc-drawer:hover .toc-drawer-body,
+	.toc-drawer:focus-within .toc-drawer-body,
+	.toc-drawer[data-open] .toc-drawer-body {
+		max-height: calc(100vh - var(--sl-nav-height) - 5rem);
+		opacity: 1;
+		overflow-y: auto;
+		transform: translateX(0);
+	}
+
+	@media (min-width: 72rem) {
+		.toc-drawer-rail {
+			display: none;
+		}
+
+		.toc-drawer-body {
+			max-height: calc(100vh - var(--sl-nav-height) - 5rem);
+			opacity: 1;
+			overflow-y: auto;
+			transform: none;
+		}
+	}
+</style>

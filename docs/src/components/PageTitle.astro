@@ -1,0 +1,26 @@
+---
+import Breadcrumb from './Breadcrumb.astro';
+import DialogAi from './DialogAi.astro';
+
+const { entry } = Astro.locals.starlightRoute;
+const title = entry.data.title;
+const description = entry.data.description ?? '';
+---
+
+<Breadcrumb />
+<h1 id="_top">{title}</h1>
+<p id="_top">{description}</p>
+
+<DialogAi pageUrl={Astro.url.pathname} title={title} description={description} />
+
+<style>
+    @layer starlight.core {
+        h1 {
+            margin-top: 0.2rem;
+            font-size: var(--sl-text-h1);
+            line-height: var(--sl-line-height-headings);
+            font-weight: 600;
+            color: var(--sl-color-white);
+        }
+    }
+</style>
