@@ -1,0 +1,17 @@
+---
+title: "Changelog"
+---
+
+## 1.0.0
+
+### Added
+
+- [Typography](/en/web-documentation/ui/typography) page: a guide covering headings, paragraphs, bold, italic, strikethrough, inline code, lists (unordered, ordered, task), blockquotes, horizontal rules, links, images, line breaks, escaping special characters, and text presentation rules for technical documentation.
+
+### Updated
+
+- [Introduction](/en/web-documentation/overview/introduction): rewrote the entire content, moving away from leftover sample content (a payment gateway integration) to a proper introduction to the Web Documentation platform.
+- [Features](/en/web-documentation/overview/features): added detailed content for each feature (MDX, code blocks, Mermaid, callouts, enhanced tables, full-text search, multiple languages, light/dark theme, responsive layout, navigation, version control via Git).
+- [Tech Stack](/en/web-documentation/overview/tech-stack): added a technology table, custom Markdown plugins, i18n configuration, folder structure, and build & deployment instructions.
+- [Media & Files](/en/web-documentation/ui/media_file): replaced sample image/video/file links that pointed directly to GitHub Releases with the `BASE_STORAGE` variable, making the storage source easier to change.
+- Build configuration (`astro.config.mjs`, `remark-media-options.mjs`): reads the `PORT` variable to set the dev server port, and automatically replaces the `BASE_STORAGE` token in media links with the real value from `.env` at build time.

@@ -1,0 +1,10 @@
+# IDE
+.idea/
+*.iml
+.vscode/
+.claude/
+.DS_Store
+
+# Never commit
+AGENTS.md
+CLAUDE.md

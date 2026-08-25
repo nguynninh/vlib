@@ -1,0 +1,1168 @@
+---
+
+title: "Table"
+description: "How to use Table in MDX, from basic syntax to alignment, advanced content, Code, links, and table presentation conventions in technical documentation."
+---
+
+Table is one of the most important components when writing technical documentation.
+
+Instead of describing a lot of information that shares the same structure in long paragraphs, you can use a table to place it side by side and help the reader quickly compare it.
+
+For example, instead of writing:
+
+:::note
+TypeScript is used for the frontend. Java is used for Android. Swift is used for iOS.
+:::
+
+you could write:
+
+| Platform | Language   |
+| -------- | ---------- |
+| Web      | TypeScript |
+| Android  | Kotlin     |
+| iOS      | Swift      |
+
+This approach is especially useful when documentation needs to present:
+
+* Comparisons between multiple options.
+* Lists of properties.
+* API parameters.
+* Configuration options.
+* Environment variables.
+* HTTP status codes.
+* Supported platforms.
+* Feature comparison.
+* Version compatibility.
+* Database fields.
+* CLI commands.
+* Keyboard shortcuts.
+
+---
+
+## 1. Basic Table syntax
+
+A minimal Markdown Table consists of:
+
+1. A header row.
+2. A separator row.
+3. One or more data rows.
+
+**Code**
+
+```mdx showLineNumbers title="Basic Table"
+| Name | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | Unique identifier |
+| `name` | `string` | User name |
+| `email` | `string` | User email |
+```
+
+**Demo**
+
+| Name    | Type     | Description       |
+| ------- | -------- | ----------------- |
+| `id`    | `string` | Unique identifier |
+| `name`  | `string` | User name         |
+| `email` | `string` | User email        |
+
+The line:
+
+```md
+| --- | --- | --- |
+```
+
+is used to separate the header from the content.
+
+The number of `---` characters doesn't matter as long as the separator is valid.
+
+For example:
+
+```md
+| Name | Type |
+| - | - |
+| id | string |
+```
+
+can still be rendered as a table.
+
+However, using `---` makes the source code easier to read.
+
+---
+
+## 2. Table Header
+
+The header is the first row of the table and describes the meaning of each column.
+
+For example:
+
+**Code**
+
+```mdx showLineNumbers title="Table with Header"
+| Property | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | `string` | Yes | User identifier |
+| `name` | `string` | Yes | User name |
+| `avatar` | `string` | No | Avatar URL |
+```
+
+**Demo**
+
+| Property | Type     | Required | Description     |
+| -------- | -------- | -------- | --------------- |
+| `id`     | `string` | Yes      | User identifier |
+| `name`   | `string` | Yes      | User name       |
+| `avatar` | `string` | No       | Avatar URL      |
+
+Headers should be short and easy to understand.
+
+Avoid:
+
+| This is the property name of the object | This is the data type of the property | Is this property required? |
+| --------------------------------------- | ------------------------------------- | --------------------------- |
+
+Prefer:
+
+| Property | Type | Required |
+| -------- | ---- | -------- |
+
+The shorter the header, the easier the table is to scan.
+
+---
+
+## 3. Number of Columns
+
+Every row should have the same number of columns.
+
+**Code**
+
+```mdx showLineNumbers title="Column Count"
+| Name | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | Identifier |
+| `name` | `string` | User name |
+| `email` | `string` | Email |
+```
+
+**Demo**
+
+| Name    | Type     | Description |
+| ------- | -------- | ----------- |
+| `id`    | `string` | Identifier  |
+| `name`  | `string` | User name   |
+| `email` | `string` | Email       |
+
+Don't create a table with an inconsistent number of columns:
+
+```md
+| Name | Type | Description |
+| --- | --- | --- |
+| id | string |
+| name | string | User name | Extra |
+```
+
+Some Markdown renderers will try to auto-correct this structure, but the result can differ across parsers.
+
+So make sure every row has exactly the right number of columns.
+
+:::caution[Warning]
+Rows with missing or extra columns compared to the header are an easy mistake to make when copy-pasting or manually editing a table. Double-check the number of `|` characters on each row before committing.
+:::
+
+---
+
+## 4. Single-Column Table
+
+A Markdown Table can still be used with a single column.
+
+**Code**
+
+```mdx showLineNumbers title="Single Column"
+| Supported Format |
+| --- |
+| Markdown |
+| MDX |
+| HTML |
+```
+
+**Demo**
+
+| Supported Format |
+| ---------------- |
+| Markdown         |
+| MDX              |
+| HTML             |
+
+However, if you just need a simple list, a Markdown list is usually a better fit:
+
+```md
+- Markdown
+- MDX
+- HTML
+```
+
+A single-column table should only be used when the data genuinely has tabular meaning.
+
+---
+
+## 5. Multi-Column Table
+
+A table can have many columns.
+
+**Code**
+
+```mdx showLineNumbers title="Multiple Columns"
+| Platform | Language | Version | Framework | Framework Version | UI Toolkit | Package Manager | Build Tool | IDE | OS | Min OS | Target OS | Architecture | State Management | Networking | Database | Cache | Testing | Unit Test | UI Test | Linting | Formatting | Documentation | CI/CD | Repository | Branch | Environment | Deployment | Distribution | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Web | TypeScript | 5.x | React | 19.x | Tailwind CSS | npm | Vite | VS Code | macOS / Linux / Windows | Chrome 120+ | Modern Browsers | Feature-based | Zustand | Axios | PostgreSQL | Redis | Vitest | Jest | Playwright | ESLint | Prettier | MDX | GitHub Actions | GitHub | main | dev / staging / prod | Vercel | Web | Active |
+| Android | Kotlin | 2.1.x | Android SDK | API 36 | Jetpack Compose | Gradle | Gradle | Android Studio | macOS / Linux / Windows | Android 8 | Android 16 | Clean Architecture | ViewModel | Retrofit | Room | DataStore | JUnit | JUnit | Compose Test | ktlint | ktfmt | Dokka | GitHub Actions | GitHub | main | dev / staging / prod | Google Play | APK / AAB | Active |
+| iOS | Swift | 6.x | SwiftUI | iOS 18 | SwiftUI | Swift Package Manager | Xcode Build | Xcode | macOS | iOS 16 | iOS 18 | Clean Architecture | Observation | URLSession | SwiftData | NSCache | XCTest | XCTest | XCUITest | SwiftLint | SwiftFormat | DocC | GitHub Actions | GitHub | main | dev / staging / prod | App Store | IPA | Active |
+```
+
+**Demo**
+
+| Platform | Language | Version | Framework | Framework Version | UI Toolkit | Package Manager | Build Tool | IDE | OS | Min OS | Target OS | Architecture | State Management | Networking | Database | Cache | Testing | Unit Test | UI Test | Linting | Formatting | Documentation | CI/CD | Repository | Branch | Environment | Deployment | Distribution | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Web | TypeScript | 5.x | React | 19.x | Tailwind CSS | npm | Vite | VS Code | macOS / Linux / Windows | Chrome 120+ | Modern Browsers | Feature-based | Zustand | Axios | PostgreSQL | Redis | Vitest | Jest | Playwright | ESLint | Prettier | MDX | GitHub Actions | GitHub | main | dev / staging / prod | Vercel | Web | Active |
+| Android | Kotlin | 2.1.x | Android SDK | API 36 | Jetpack Compose | Gradle | Gradle | Android Studio | macOS / Linux / Windows | Android 8 | Android 16 | Clean Architecture | ViewModel | Retrofit | Room | DataStore | JUnit | JUnit | Compose Test | ktlint | ktfmt | Dokka | GitHub Actions | GitHub | main | dev / staging / prod | Google Play | APK / AAB | Active |
+| iOS | Swift | 6.x | SwiftUI | iOS 18 | SwiftUI | Swift Package Manager | Xcode Build | Xcode | macOS | iOS 16 | iOS 18 | Clean Architecture | Observation | URLSession | SwiftData | NSCache | XCTest | XCTest | XCUITest | SwiftLint | SwiftFormat | DocC | GitHub Actions | GitHub | main | dev / staging / prod | App Store | IPA | Active |
+
+Multi-column tables work well on documentation pages that need to compare platforms or technology stacks.
+
+However, if the number of columns gets too large, the table becomes hard to read on small screens.
+
+---
+
+## 6. Column Alignment
+
+A Markdown Table supports left, right, and center alignment using the `:` character.
+
+### Left alignment
+
+```md
+| Name | Type |
+| :--- | :--- |
+| id | string |
+```
+
+### Center alignment
+
+```md
+| Name | Type |
+| :---: | :---: |
+| id | string |
+```
+
+### Right alignment
+
+```md
+| Name | Type |
+| ---: | ---: |
+| Price | 100 |
+```
+
+All three can be combined.
+
+**Code**
+
+```mdx showLineNumbers title="Column Alignment"
+| Property | Type | Required | Default |
+| :--- | :---: | :---: | ---: |
+| `id` | `string` | Yes | - |
+| `limit` | `number` | No | 20 |
+| `enabled` | `boolean` | No | true |
+```
+
+**Demo**
+
+| Property  |    Type   | Required | Default |
+| :-------- | :-------: | :------: | ------: |
+| `id`      |  `string` |    Yes   |       - |
+| `limit`   |  `number` |    No    |      20 |
+| `enabled` | `boolean` |    No    |    true |
+
+### Column Width
+
+A standard Markdown Table **has no syntax for declaring a fixed width** for a column — even `:---` or `---:` only control alignment, not width.
+
+```md
+| Name | Description |
+| --- | --- |
+| id | Unique identifier |
+```
+
+The actual width the browser renders is computed automatically from the longest content in that column, regardless of how many `-` characters you write in the separator row.
+
+:::caution[Warning]
+Writing more `-` characters (e.g. `----------`) for a column, hoping it will render wider, is a common misconception. It only makes the source code easier to read and has no effect on the rendered output.
+:::
+
+In this documentation, if you genuinely need to control width (for example, to avoid a column that's too narrow or too wide), add `[width=...]` or `[w=...]` to that column's header.
+
+:::danger[Common mistake]
+Only use the square-bracket syntax `[width=...]` or `[w=...]`. Don't use `{width=...}`, `<width=...>`, or other variants, since MDX may interpret `{...}` as a JSX expression and break the page build.
+:::
+
+Example of forcing the first column to a fixed `200px` width while leaving the rest for the browser to compute:
+
+```mdx showLineNumbers title="Forcing width with a Markdown Table"
+| Name [width=200px] | Description |
+| --- | --- |
+| `id` | Unique identifier |
+```
+
+**Demo**
+
+| Name [width=200px] | Description |
+| --- | --- |
+| `id` | Unique identifier |
+
+The `[width=...]` part is only used for layout rendering and isn't displayed in the header. This approach should still be used sparingly, since too many fixed widths can make a table hard to read on mobile.
+
+---
+
+## 7. When should you align left, center, or right?
+
+Don't align columns arbitrarily.
+
+A simple rule of thumb:
+
+| Content     | Alignment |
+| ----------- | --------- |
+| Text        | Left      |
+| Description | Left      |
+| Code        | Left      |
+| Status      | Center    |
+| Boolean     | Center    |
+| Number      | Right     |
+| Price       | Right     |
+| Percentage  | Right     |
+
+For example:
+
+**Code**
+
+```mdx showLineNumbers title="Alignment in practice"
+| Property | Type | Required | Default |
+| :--- | :--- | :---: | ---: |
+| `name` | `string` | Yes | - |
+| `enabled` | `boolean` | No | `true` |
+| `limit` | `number` | No | `20` |
+| `timeout` | `number` | No | `5000` |
+```
+
+**Demo**
+
+| Property  | Type      | Required | Default |
+| :-------- | :-------- | :------: | ------: |
+| `name`    | `string`  |    Yes   |       - |
+| `enabled` | `boolean` |    No    |  `true` |
+| `limit`   | `number`  |    No    |    `20` |
+| `timeout` | `number`  |    No    |  `5000` |
+
+---
+
+## 8. Inline Code in a Table
+
+One of the most common uses of a table in technical documentation is placing inline code into a cell.
+
+**Code**
+
+```mdx showLineNumbers title="Inline Code"
+| Property | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | Unique identifier |
+| `createdAt` | `Date` | Creation timestamp |
+| `isActive` | `boolean` | Whether the user is active |
+```
+
+**Demo**
+
+| Property    | Type      | Description                |
+| ----------- | --------- | -------------------------- |
+| `id`        | `string`  | Unique identifier          |
+| `createdAt` | `Date`    | Creation timestamp         |
+| `isActive`  | `boolean` | Whether the user is active |
+
+For technical documentation, use inline code for:
+
+* Variable names.
+* Function names.
+* Class names.
+* File names.
+* Commands.
+* API parameters.
+* Environment variables.
+* Types.
+* HTTP methods.
+* URL paths.
+
+For example:
+
+```md
+`DATABASE_URL`
+`npm run dev`
+`UserRepository`
+`POST`
+`/api/users`
+```
+
+---
+
+## 9. Bold and Italic
+
+A table supports normal Markdown formatting.
+
+**Code**
+
+```mdx showLineNumbers title="Text Formatting"
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Authentication** | **Supported** | OAuth2 authentication |
+| *Analytics* | Planned | Usage analytics |
+| ~~Legacy API~~ | Deprecated | Use the new API instead |
+```
+
+**Demo**
+
+| Feature            | Status        | Description             |
+| ------------------ | ------------- | ----------------------- |
+| **Authentication** | **Supported** | OAuth2 authentication   |
+| *Analytics*        | Planned       | Usage analytics         |
+| ~~Legacy API~~     | Deprecated    | Use the new API instead |
+
+Don't overuse bold in a table. If everything is bold, there's no hierarchy left.
+
+---
+
+## 10. Links in a Table
+
+You can place a Markdown link inside a table.
+
+**Code**
+
+```mdx showLineNumbers title="Links in a Table"
+| Resource | Description |
+| --- | --- |
+| [MDX](https://mdxjs.com/) | JSX for Markdown |
+| [Astro](https://astro.build/) | Web framework |
+| [Mermaid](https://mermaid.js.org/) | Diagram generation |
+```
+
+**Demo**
+
+| Resource                           | Description        |
+| ---------------------------------- | ------------------- |
+| [MDX](https://mdxjs.com/)          | JSX for Markdown    |
+| [Astro](https://astro.build/)      | Web framework       |
+| [Mermaid](https://mermaid.js.org/) | Diagram generation  |
+
+In internal documentation, linking to other pages within the same project is also very useful:
+
+```md
+| Component | Documentation |
+| --- | --- |
+| Code Block | [Code Blocks](/web-documentation/ui/code_block) |
+| Table | [Table](/web-documentation/ui/table) |
+| Mermaid | [Mermaid](/web-documentation/ui/mermaid) |
+```
+
+---
+
+## 11. Emoji and Symbols
+
+A table can contain Unicode, emoji, and other common symbols.
+
+**Code**
+
+```mdx showLineNumbers title="Status Table"
+| Feature | Status |
+| --- | --- |
+| Authentication | ✅ Supported |
+| Payment | ⚠️ Beta |
+| Legacy API | ❌ Deprecated |
+```
+
+**Demo**
+
+| Feature        | Status       |
+| -------------- | ------------ |
+| Authentication | ✅ Supported  |
+| Payment        | ⚠️ Beta      |
+| Legacy API     | ❌ Deprecated |
+
+However, if the documentation has its own design system, it's better to standardize how status is displayed rather than using emoji arbitrarily.
+
+---
+
+## 12. Table with Empty Values
+
+Not every cell has to contain data.
+
+**Code**
+
+```mdx showLineNumbers title="Empty Cell"
+| Property | Required | Default |
+| --- | :---: | --- |
+| `id` | Yes | - |
+| `name` | Yes | - |
+| `avatar` | No | |
+```
+
+**Demo**
+
+| Property | Required | Default |
+| -------- | :------: | ------- |
+| `id`     |    Yes   | -       |
+| `name`   |    Yes   | -       |
+| `avatar` |    No    |         |
+
+In technical documentation, use a consistent symbol such as `-` or `N/A` instead of mixing different kinds of empty values.
+
+For example:
+
+| Property  | Default |
+| --------- | ------- |
+| `name`    | `-`     |
+| `avatar`  | `-`     |
+| `timeout` | `5000`  |
+
+---
+
+## 13. Table with Long Text
+
+A cell can contain fairly long text.
+
+**Code**
+
+```mdx showLineNumbers title="Long Description"
+| Property | Description |
+| --- | --- |
+| `timeout` | Determines how long the client waits for a response before the request is considered failed. |
+| `retry` | Determines whether the request should automatically be retried after a temporary network failure. |
+```
+
+**Demo**
+
+| Property  | Description                                                                                       |
+| --------- | --------------------------------------------------------------------------------------------------- |
+| `timeout` | Determines how long the client waits for a response before the request is considered failed.      |
+| `retry`   | Determines whether the request should automatically be retried after a temporary network failure. |
+
+However, if a description gets too long, the table can become hard to read.
+
+In that case, consider moving the detailed explanation outside of the table.
+
+For example:
+
+| Property  | Type      | Required |
+| --------- | --------- | -------- |
+| `timeout` | `number`  | No       |
+| `retry`   | `boolean` | No       |
+
+After the table:
+
+> `timeout` determines how long the client waits for a response before the request fails.
+
+This approach is usually easier to read.
+
+---
+
+## 14. Table with Inline Code
+
+A table is often used to document API parameters.
+
+**Code**
+
+```mdx showLineNumbers title="API Parameters"
+| Parameter | Type | Required | Description |
+| --- | --- | :---: | --- |
+| `page` | `number` | No | Page number |
+| `limit` | `number` | No | Number of records |
+| `sort` | `string` | No | Sort field |
+| `order` | `"asc" \| "desc"` | No | Sort direction |
+```
+
+**Demo**
+
+| Parameter | Type              | Required | Description       |
+| --------- | ----------------- | :------: | ------------------ |
+| `page`    | `number`          |    No    | Page number        |
+| `limit`   | `number`          |    No    | Number of records  |
+| `sort`    | `string`          |    No    | Sort field         |
+| `order`   | `"asc" \| "desc"` |    No    | Sort direction     |
+
+This is a very common pattern in API documentation.
+
+---
+
+## 15. Table for HTTP Status Codes
+
+A table is especially useful when documenting an HTTP API.
+
+**Code**
+
+```mdx showLineNumbers title="HTTP Status Codes"
+| Status | Meaning | Description |
+| ---: | --- | --- |
+| `200` | OK | Request completed successfully |
+| `201` | Created | Resource was created |
+| `400` | Bad Request | Invalid request |
+| `401` | Unauthorized | Authentication required |
+| `403` | Forbidden | Access denied |
+| `404` | Not Found | Resource does not exist |
+| `500` | Internal Server Error | Unexpected server error |
+```
+
+**Demo**
+
+| Status | Meaning               | Description                    |
+| -----: | --------------------- | -------------------------------- |
+|  `200` | OK                    | Request completed successfully |
+|  `201` | Created               | Resource was created           |
+|  `400` | Bad Request           | Invalid request                |
+|  `401` | Unauthorized          | Authentication required        |
+|  `403` | Forbidden             | Access denied                  |
+|  `404` | Not Found             | Resource does not exist        |
+|  `500` | Internal Server Error | Unexpected server error        |
+
+Here, the status code is right-aligned because it's numeric data.
+
+---
+
+## 16. Table for Environment Variables
+
+A table is also well suited to documenting environment variables.
+
+**Code**
+
+```mdx showLineNumbers title="Environment Variables"
+| Variable | Required | Example | Description |
+| --- | :---: | --- | --- |
+| `DATABASE_URL` | Yes | `postgres://...` | PostgreSQL connection string |
+| `REDIS_URL` | No | `redis://...` | Redis connection string |
+| `API_URL` | Yes | `https://api.example.com` | Backend API URL |
+| `DEBUG` | No | `true` | Enables debug logging |
+```
+
+**Demo**
+
+| Variable       | Required | Example                   | Description                  |
+| -------------- | :------: | -------------------------- | ----------------------------- |
+| `DATABASE_URL` |    Yes   | `postgres://...`          | PostgreSQL connection string |
+| `REDIS_URL`    |    No    | `redis://...`             | Redis connection string      |
+| `API_URL`      |    Yes   | `https://api.example.com` | Backend API URL              |
+| `DEBUG`        |    No    | `true`                    | Enables debug logging        |
+
+---
+
+## 17. Table for Feature Comparison
+
+Another use case is comparing features.
+
+**Code**
+
+```mdx showLineNumbers title="Feature Comparison"
+| Feature | Web | Android | iOS |
+| --- | :---: | :---: | :---: |
+| Authentication | ✅ | ✅ | ✅ |
+| Push Notification | ✅ | ✅ | ✅ |
+| Offline Mode | ❌ | ✅ | ✅ |
+| Dark Mode | ✅ | ✅ | ✅ |
+```
+
+**Demo**
+
+| Feature           | Web | Android | iOS |
+| ----------------- | :-: | :-----: | :-: |
+| Authentication    |  ✅  |    ✅    |  ✅  |
+| Push Notification |  ✅  |    ✅    |  ✅  |
+| Offline Mode      |  ❌  |    ✅    |  ✅  |
+| Dark Mode         |  ✅  |    ✅    |  ✅  |
+
+Boolean or status columns should usually be center-aligned.
+
+---
+
+## 18. Table for Keyboard Shortcuts
+
+**Code**
+
+```mdx showLineNumbers title="Keyboard Shortcuts"
+| Shortcut | Action | Platform |
+| --- | --- | --- |
+| `⌘ + K` | Open command menu | macOS |
+| `Ctrl + K` | Open command menu | Windows / Linux |
+| `⌘ + S` | Save | macOS |
+| `Ctrl + S` | Save | Windows / Linux |
+```
+
+**Demo**
+
+| Shortcut   | Action            | Platform        |
+| ---------- | ----------------- | ---------------- |
+| `⌘ + K`    | Open command menu | macOS           |
+| `Ctrl + K` | Open command menu | Windows / Linux |
+| `⌘ + S`    | Save              | macOS           |
+| `Ctrl + S` | Save              | Windows / Linux |
+
+---
+
+## 19. Table for Version Compatibility
+
+This is a very useful pattern when documentation covers multiple versions.
+
+**Code**
+
+```mdx showLineNumbers title="Version Compatibility"
+| Feature | v1 | v2 | v3 |
+| --- | :---: | :---: | :---: |
+| Authentication | ✅ | ✅ | ✅ |
+| OAuth | ❌ | ✅ | ✅ |
+| WebSocket | ❌ | ❌ | ✅ |
+| Legacy API | ✅ | ⚠️ | ❌ |
+```
+
+**Demo**
+
+| Feature        |  v1 |  v2 |  v3 |
+| -------------- | :-: | :-: | :-: |
+| Authentication |  ✅  |  ✅  |  ✅  |
+| OAuth          |  ❌  |  ✅  |  ✅  |
+| WebSocket      |  ❌  |  ❌  |  ✅  |
+| Legacy API     |  ✅  |  ⚠️ |  ❌  |
+
+---
+
+## 20. A Table Whose Content Contains `|`
+
+A common problem is when a cell's content contains a `|` character.
+
+For example, a TypeScript union type:
+
+```ts
+"asc" | "desc"
+```
+
+If written directly:
+
+```md
+| Type |
+| --- |
+| `"asc" | "desc"` |
+```
+
+the `|` character can be misread by the Markdown parser as a table separator.
+
+:::danger
+Forgetting to escape `|` will cause the table to be parsed with the wrong structure — usually shifting columns or breaking the rest of the table below it. This bug is hard to spot because the source still looks valid; it only shows up when rendered.
+:::
+
+The safe approach is to escape it:
+
+**Code**
+
+```mdx showLineNumbers title="Escape Pipe Character"
+| Parameter | Type |
+| --- | --- |
+| `order` | `"asc" \| "desc"` |
+```
+
+**Demo**
+
+| Parameter | Type              |
+| --------- | ----------------- |
+| `order`   | `"asc" \| "desc"` |
+
+The `|` character is written as:
+
+```md
+\|
+```
+
+whenever it needs to appear as literal cell content.
+
+---
+
+## 21. Table with HTML
+
+An MDX/Markdown environment may support HTML depending on the parser and configuration.
+
+For example:
+
+```md
+| Name | Description |
+| --- | --- |
+| **API** | Backend API |
+```
+
+In general, prefer Markdown syntax over HTML unless there's a specific reason not to.
+
+Don't turn a simple Markdown Table into an HTML `<table>` just for styling.
+
+If you need custom behavior or a more complex structure, consider building a dedicated component instead.
+
+---
+
+## 22. Responsive Tables on Mobile
+
+This is a very important concern for a documentation website.
+
+A table with many columns:
+
+| Property  | Type      | Required | Default | Description     | Example |
+| --------- | --------- | -------- | ------- | ---------------- | ------- |
+| `timeout` | `number`  | No       | `5000`  | Request timeout | `3000`  |
+| `retry`   | `boolean` | No       | `false` | Retry request   | `true`  |
+
+can exceed the width of a mobile screen.
+
+Don't force every column to shrink to the point that the text becomes unreadable.
+
+A common approach is to let the table scroll horizontally.
+
+Example CSS:
+
+```css
+table {
+    width: 100%;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+}
+```
+
+If your documentation system already has CSS in place to handle responsive tables, you don't need to add a manual wrapper for every individual table.
+
+:::caution[Warning]
+Wide, multi-column tables are prone to overflowing or breaking the layout on mobile if you don't check them in practice. Don't just look at desktop and assume it also looks fine on a small screen.
+:::
+
+It's important to check the table on:
+
+* Desktop.
+* Tablet.
+* Mobile.
+* Dark mode.
+* Large browser zoom levels.
+
+---
+
+## 23. Avoid Creating Overly Wide Tables
+
+A table with too many columns is usually a sign of poor information architecture.
+
+For example:
+
+| Name | Type | Required | Default | Description | Example | Version | Platform | Notes | Status |
+| ---- | ---- | -------- | ------- | ------------ | ------- | ------- | -------- | ----- | ------ |
+
+This table might hold a lot of information, but readers will find it hard to follow.
+
+It can be split into:
+
+### Parameters
+
+| Name      | Type      | Required | Default |
+| --------- | --------- | -------- | ------- |
+| `timeout` | `number`  | No       | `5000`  |
+| `retry`   | `boolean` | No       | `false` |
+
+### Compatibility
+
+| Version | Platform | Status    |
+| ------- | -------- | --------- |
+| v1      | Web      | Supported |
+| v2      | Web      | Supported |
+
+### Description
+
+Explain each parameter in detail in the sections below.
+
+Splitting information into several smaller tables is usually better than one giant table.
+
+---
+
+## 24. A Table Doesn't Replace Headings
+
+Don't use a table to replace a document's heading structure.
+
+Not good:
+
+| Section        | Content |
+| -------------- | ------- |
+| Authentication | ...     |
+| Configuration  | ...     |
+| Deployment     | ...     |
+
+If that's the document's actual structure, use:
+
+```md
+## Authentication
+
+## Configuration
+
+## Deployment
+```
+
+A table should be used for **structured data**, not to lay out an entire page.
+
+---
+
+## 25. Don't Use a Table for Layout
+
+A Markdown Table isn't a layout system.
+
+Don't do this:
+
+```md
+| Left Content | Right Content |
+| --- | --- |
+| Text... | Text... |
+```
+
+just to create a two-column layout for the page.
+
+If you need layout:
+
+* Use CSS.
+* Use a component.
+* Use grid/flex.
+* Use an MDX component.
+
+A table should represent **tabular data**.
+
+:::caution[Warning]
+Using a table for layout is a common anti-pattern when porting content from elsewhere (Word, Notion, Confluence). Convert these kinds of tables into a component or CSS layout instead of keeping them as-is.
+:::
+
+---
+
+## 26. When Should You Use a Markdown Table?
+
+A Markdown Table is a good fit when:
+
+* The data has clear rows and columns.
+* The rows share the same structure.
+* Readers need to compare values.
+* No interaction is required.
+* No sorting is required.
+* No filtering is required.
+* No pagination is required.
+* No complex nested component is required.
+
+A great example:
+
+```md
+| Property | Type | Required |
+| --- | --- | :---: |
+| `id` | `string` | Yes |
+| `name` | `string` | Yes |
+```
+
+---
+
+## 27. When Should You Avoid a Markdown Table?
+
+If the table needs:
+
+* Sorting.
+* Filtering.
+* Pagination.
+* Search.
+* Checkboxes.
+* Buttons.
+* Dropdowns.
+* Expand/collapse.
+* Nested components.
+* Dynamic data.
+* API data.
+* Custom interaction.
+
+then a Markdown Table is no longer the ideal choice.
+
+Instead, build a component.
+
+For example:
+
+```mdx
+<DataTable
+    data={users}
+    sortable
+    searchable
+/>
+```
+
+This approach fits MDX better, since MDX lets you combine Markdown with components.
+
+---
+
+## 28. Rules for Writing Tables in Technical Documentation
+
+A good table should follow a few simple principles.
+
+### Keep headers short
+
+Good:
+
+| Property | Type | Required |
+| -------- | ---- | -------- |
+
+Not good:
+
+| The name of the property | The type of this property | Whether the property is required or not |
+| ------------------------- | -------------------------- | ----------------------------------------- |
+
+### Use inline code for technical identifiers
+
+Good:
+
+| Property | Type     |
+| -------- | -------- |
+| `userId` | `string` |
+
+Instead of:
+
+| Property | Type   |
+| -------- | ------ |
+| userId   | string |
+
+### Center-align status
+
+| Feature | Status |
+| ------- | :----: |
+| Login   |    ✅   |
+
+### Right-align numbers
+
+| Requests |   |
+| -------: | - |
+|     1000 |   |
+
+### Don't pack in too much information
+
+If a table becomes too wide, split it into several tables.
+
+### Don't use a table for layout
+
+A table is data, not a CSS layout.
+
+---
+
+## 29. A Complete Table for API Documentation
+
+Below is an example close to how tables are actually used in real technical documentation.
+
+**Code**
+
+```mdx showLineNumbers title="API Parameters"
+| Parameter | Type | Required | Default | Description |
+| :--- | :---: | :---: | :---: | :--- |
+| `page` | `number` | No | `1` | Page number. Must be greater than `0`. |
+| `limit` | `number` | No | `20` | Number of records returned per page. |
+| `sort` | `string` | No | `createdAt` | Field used to sort the result. |
+| `order` | `"asc" \| "desc"` | No | `"desc"` | Sort direction. |
+| `search` | `string` | No | `-` | Search keyword. |
+```
+
+**Demo**
+
+| Parameter |        Type       | Required |   Default   | Description                            |
+| :-------- | :---------------: | :------: | :---------: | :-------------------------------------- |
+| `page`    |      `number`     |    No    |     `1`     | Page number. Must be greater than `0`. |
+| `limit`   |      `number`     |    No    |     `20`    | Number of records returned per page.   |
+| `sort`    |      `string`     |    No    | `createdAt` | Field used to sort the result.         |
+| `order`   | `"asc" \| "desc"` |    No    |   `"desc"`  | Sort direction.                        |
+| `search`  |      `string`     |    No    |     `-`     | Search keyword.                        |
+
+This is one of the patterns you should reach for often in API documentation: **Parameter → Type → Required → Default → Description**.
+
+---
+
+## 30. Combining a Table with a Code Block
+
+A table doesn't have to carry every piece of information.
+
+A good pattern is to use a table for the overview, then a code block for the detailed explanation.
+
+**Code**
+
+```mdx showLineNumbers title="Overview"
+| Property | Type | Required |
+| --- | --- | :---: |
+| `host` | `string` | Yes |
+| `port` | `number` | No |
+| `secure` | `boolean` | No |
+```
+
+**Demo**
+
+| Property | Type      | Required |
+| -------- | --------- | :------: |
+| `host`   | `string`  |    Yes   |
+| `port`   | `number`  |    No    |
+| `secure` | `boolean` |    No    |
+
+Then:
+
+````mdx showLineNumbers title="Configuration"
+```ts
+const config = {
+    host: "localhost",
+    port: 3000,
+    secure: false,
+};
+```
+````
+
+This approach gives readers a quick overview before diving into implementation details.
+
+---
+
+## 31. Checklist Before Writing a Table
+
+Before creating a table, ask yourself:
+
+* Does the data really have a row/column shape?
+* Do readers need to compare rows?
+* Is the header short and clear?
+* Do all rows have the same number of columns?
+* Which column should be left-aligned?
+* Which column should be center-aligned?
+* Which column should be right-aligned?
+* Have technical identifiers been wrapped in inline code?
+* Is the table too wide?
+* Is it readable on mobile?
+* Would a component be a better fit than a Markdown Table?
+
+If the answers line up, a Markdown Table is usually the right choice.
+
+---
+
+## Summary
+
+A table in MDX is really just Markdown Table syntax, and doesn't need a dedicated component for ordinary cases.
+
+Basic structure:
+
+```mdx showLineNumbers title="Basic Table"
+| Column 1 | Column 2 | Column 3 |
+| --- | --- | --- |
+| Value | Value | Value |
+| Value | Value | Value |
+```
+
+The most important principles:
+
+1. **Headers must be clear.**
+2. **Every row should have the same number of columns.**
+3. **Text is usually left-aligned.**
+4. **Status/boolean values are usually center-aligned.**
+5. **Numbers are usually right-aligned.**
+6. **Property names, types, commands, and API parameters should use inline code.**
+7. **A table that's too wide should be split up or support horizontal scrolling.**
+8. **Don't use a table for layout.**
+9. **Don't use a Markdown Table for data that needs complex interaction.**
+10. **For technical documentation, favor short, well-structured, easy-to-scan tables.**
+
+A good table isn't the one that packs in the most information — it's the one that helps readers **find the information they need the fastest**.

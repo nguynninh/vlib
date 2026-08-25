@@ -1,0 +1,493 @@
+---
+title: "Media & Files"
+description: "How to embed images, video, audio, and attachments in MDX using links from GitHub Releases, instead of importing files directly into the project."
+---
+
+Media & Files are components that make technical documentation more visual instead of relying solely on text.
+
+However, unlike source code, media files (images, video, audio, attachments) **must not be imported directly into the project**. All media files must be uploaded to [GitHub Releases](https://github.com/nguynninh/vlib-storage/releases) of the `vlib-storage` repository, and then referenced by that asset's link when used in documentation.
+
+:::danger[Don't commit media files to the project]
+Don't place images, videos, audio, or attachments inside `src/assets` or any other project folder and commit them directly to Git. Media files are typically much larger than source code, and Git keeps the full history of every file ever committed — even after that file is deleted in a later commit. This causes the repository to grow permanently, slowing down clones, CI/CD, and even opening the project on a new machine.
+:::
+
+Instead, the correct workflow is:
+
+1. Upload the media file to a **Release** on GitHub.
+2. Copy the download link (`browser_download_url`) of the uploaded asset.
+3. Use that link in MDX, instead of a local file path.
+
+---
+
+## 1. Why use GitHub Releases to store Media
+
+GitHub Releases lets you attach binary files (**Assets**) to a tag, completely separate from the source code's commit history.
+
+| Storage method                  | Impact on the repository                  |
+| ------------------------------- | ------------------------------------------- |
+| Committing directly into `src/`     | Repository grows permanently, slow clones  |
+| Using Git LFS                    | Requires extra configuration, still counts toward the LFS storage quota |
+| Uploading to GitHub Releases         | No impact on commit history, versioned by tag |
+
+For this reason, this project uses GitHub Releases as the official storage location for every media file used in the documentation.
+
+:::note
+The repository that stores media can be a separate storage-only repository (e.g. `vlib-storage`), distinct from the repository that holds the documentation website's source code. Check the project's current convention before creating a new release.
+:::
+
+---
+
+## 2. Uploading files to GitHub Releases
+
+On the repository's **Releases** page, create or open a release, then drag and drop the file into the **Assets** section.
+
+Example of a release containing assets used in documentation:
+
+| Asset             | Size | Purpose                     |
+| ------------------ | ---------: | ------------------------------ |
+| `photo_demo.jpg`   |    2.73 MB | Illustration image for a UI page      |
+| `video_demo.mp4`   |   56.2 MB  | Feature demo video           |
+
+Once uploaded, each asset gets a fixed download link in this format:
+
+```text
+https://github.com/<owner>/<repo>/releases/download/<tag>/<file-name>
+```
+
+Example:
+
+```text
+https://github.com/nguynninh/vlib-storage/releases/download/v1.0.0/photo_demo.jpg
+```
+
+:::tip
+Right-click the file name in the **Assets** section and choose **Copy link address** to get the exact download link, avoiding typos and broken paths.
+:::
+
+### Use the `BASE_STORAGE` variable instead of writing the full link
+
+Instead of pasting the download link's domain into every MDX file, the project uses the `BASE_STORAGE` environment variable (declared in `.env`, `.env.development`, `.env.production`) as a prefix. When writing documentation, just write:
+
+```md
+BASE_STORAGE/<tag>/<file-name>
+```
+
+At build time, a remark plugin automatically replaces `BASE_STORAGE` with the real value from the environment variable, for example:
+
+```bash title=".env.production"
+BASE_STORAGE=https://github.com/nguynninh/vlib-storage/releases/download
+```
+
+:::tip
+This makes it possible to move media storage elsewhere (e.g. switch to a different CDN, or use a different storage repository for development vs. production) without editing every link across the documentation.
+:::
+
+---
+
+## 3. General syntax for Images, Video, Audio
+
+Images, video, and audio all use **the same Markdown image syntax** — don't hand-write HTML `<figure>`, `<a>`, `<img>`, `<video>`, or `<audio>` tags. The site inspects the file extension in the link to decide whether to render an image, a video player, or an audio player.
+
+**Code**
+
+```mdx showLineNumbers title="Embedding media via a GitHub Releases link"
+![Dashboard screen with sidebar, header, and main content](BASE_STORAGE/v1.0.0/photo_demo.jpg)
+```
+
+**Preview**
+
+![Dashboard screen with sidebar, header, and main content](BASE_STORAGE/v1.0.0/photo_demo.jpg)
+
+The structure has three parts:
+
+1. The `!` marks this as media to display inline, not a regular link.
+2. `[Description]` is the alt text (for images) or caption/description (for video, audio), used for accessibility.
+3. `(Release link)` is the download link of the uploaded asset, not a file path within the project.
+
+Writers **don't need to hand-write any HTML** for ordinary media — the site automatically wraps images in a zoomable preview frame, turns video into `<video controls preload="metadata">`, and turns audio into `<audio controls>`.
+
+The caption defaults to the description inside `[]`. To use a different caption, write it in quotes after the link, in the title part.
+
+### General options in the title
+
+Short options placed in the title part (in quotes after the link) apply to all three media types:
+
+| What you want | Write |
+| ----------- | ---- |
+| Left-align | `"left"` |
+| Center-align | leave blank or `"center"` |
+| Right-align | `"right"` |
+| Limit width (px) | `"600"` |
+| Right-align and limit width | `"right 600"` |
+| Caption different from the default description | `"Caption to display"` |
+| Right-aligned caption | `"right caption-right"` |
+
+**Code**
+
+```mdx showLineNumbers title="Basic media"
+![Description of the content](BASE_STORAGE/<tag>/<file-name>)
+```
+
+```mdx showLineNumbers title="Right-aligned media"
+![Description of the content](BASE_STORAGE/<tag>/<file-name> "right")
+```
+
+```mdx showLineNumbers title="Media with display options"
+![Description of the content](BASE_STORAGE/<tag>/<file-name> "right 600")
+```
+
+```mdx showLineNumbers title="Media with a caption"
+![Description of the content](BASE_STORAGE/<tag>/<file-name> "Caption 1. A more detailed description.")
+```
+
+Video has two additional options for locking the frame to a 16:9 aspect ratio — see the **Video** section below.
+
+### Alt text / description is not optional
+
+The text inside `[]` describes the media content for screen readers, and only shows up when the media fails to load; it is **not a title displayed below the media**.
+
+Avoid:
+
+```md
+![](BASE_STORAGE/v1.0.0/photo_demo.jpg)
+```
+
+Prefer:
+
+```md
+![Dashboard screen with sidebar, header, and main content](BASE_STORAGE/v1.0.0/photo_demo.jpg)
+```
+
+:::caution[Warning]
+Empty or generic alt text/descriptions like `image`, `video`, `pic` prevent screen reader users from understanding the content, and also hurt the page's SEO quality.
+:::
+
+### Naming the file before uploading
+
+Since the file will be uploaded to a Release and referenced via a link, the file name needs to be even more meaningful — it's very hard to rename it later once multiple documentation pages already reference the old link.
+
+| Prefer                       | Avoid           |
+| -------------------------- | -------------------- |
+| `login-flow.png`           | `Screenshot 2026-01-01 at 10.23.45.png` |
+| `checkout-payment-demo.mp4` | `video_final_final.mp4` |
+| `order-notification-sound.mp3` | `Recording 2026-01-01.wav` |
+
+:::caution[Warning]
+Renaming or deleting an asset in a Release after it's been published breaks the link on every documentation page that references that asset, since `browser_download_url` is tied directly to the file name and tag. Name it correctly from the start, before uploading.
+:::
+
+### Media inside a Callout
+
+Images, video, or audio can all be placed inside a callout when you need to both warn/note something and illustrate it visually, still using the Release link as usual.
+
+**Code**
+
+```mdx showLineNumbers title="Callout containing media"
+:::caution[The UI has changed in the new version]
+The "Save" button has moved from the top-right corner to the bottom bar:
+
+![New location of the Save button on the bottom bar](BASE_STORAGE/v1.0.0/video_demo2.jpg)
+:::
+```
+
+**Demo**
+
+:::caution[The UI has changed in the new version]
+The "Save" button has moved from the top-right corner to the bottom bar:
+
+![New location of the Save button on the bottom bar](BASE_STORAGE/v1.0.0/video_demo2.jpg "New location of the Save button on the bottom bar")
+:::
+
+---
+
+## 4. Images
+
+### Supported image extensions
+
+Only use the Markdown media syntax for the following common image extensions:
+
+| Extension | When to use |
+| --------- | ------------ |
+| `.png` | UI screenshots, images with transparent areas |
+| `.jpg`, `.jpeg` | Real photos, images with many colors |
+| `.webp` | Images that need small file size while keeping quality |
+| `.gif` | Very short animations, no audio |
+| `.svg` | Icons, logos, simple vector diagrams |
+
+Don't use `.bmp`, `.tiff`, `.heic` for web documentation because of large file size or inconsistent browser support.
+
+### Image size
+
+When you need to control the display size, just write a number in the image's title part (see **General options in the title** in section 3). Don't hand-write an `<img>` tag.
+
+:::caution[Warning]
+Don't shrink a large image with `width` just to make it "fit visually." If the original image has too high a resolution, resize and compress it before uploading to a Release, to avoid unnecessarily increasing page load time.
+:::
+
+### Image and caption placement
+
+Images are centered by default. To change the position, just add `left`, `center`, or `right` in quotes.
+
+**Code**
+
+```mdx showLineNumbers title="Aligning an image and caption"
+![Dashboard screen with sidebar, header, and main content](BASE_STORAGE/v1.0.0/photo_demo.jpg "left caption-left")
+
+![New location of the Save button on the bottom bar](BASE_STORAGE/v1.0.0/video_demo2.jpg "right caption-right")
+```
+
+**Demo**
+
+![Dashboard screen with sidebar, header, and main content](BASE_STORAGE/v1.0.0/photo_demo.jpg "left caption-left")
+
+![New location of the Save button on the bottom bar](BASE_STORAGE/v1.0.0/video_demo2.jpg "right caption-right")
+
+### Before / after comparison images
+
+**Code**
+
+```mdx showLineNumbers title="Before and after comparison"
+| Before | After |
+| --- | --- |
+| ![Old interface](BASE_STORAGE/v1.0.0/photo_demo.jpg) | ![New interface](BASE_STORAGE/v1.0.0/video_demo2.jpg) |
+```
+
+**Demo**
+
+| Before | After |
+| --- | --- |
+| ![Old interface](BASE_STORAGE/v1.0.0/photo_demo.jpg "Old interface") | ![New interface](BASE_STORAGE/v1.0.0/video_demo2.jpg "New interface") |
+
+Placing images in a table helps readers compare them directly without scrolling back and forth.
+
+---
+
+## 5. Video
+
+Video files are always large, so it is **mandatory** to upload them to a Release — never commit video files to the project. The embedding syntax is identical to images (see section 3) — the site inspects the file extension (`.mp4`, `.webm`, `.mov`, `.ogg`) to render a video player with `controls`.
+
+### Video-specific options
+
+In addition to the general options in section 3, video has two extra options for locking the frame to a 16:9 aspect ratio:
+
+| What you want | Write |
+| ----------- | ---- |
+| 720p video frame, 16:9 ratio | `"720p"` |
+| 1080p video frame, 16:9 ratio | `"1080p"` |
+| Keep the file's natural aspect ratio | leave blank or `"auto"` |
+
+```mdx showLineNumbers title="Video with a 720p frame"
+![Description of the video content](BASE_STORAGE/<tag>/<file-name>.mp4 "720p")
+```
+
+```mdx showLineNumbers title="Video with a 1080p frame"
+![Description of the video content](BASE_STORAGE/<tag>/<file-name>.mp4 "1080p")
+```
+
+The video player always has `controls` so readers can pause, seek, or adjust volume as needed. The site also automatically uses `preload="metadata"` so the page doesn't load the entire video as soon as it opens.
+
+:::caution[Warning]
+Don't use autoplay video with sound in documentation. If autoplay is needed, hand-write the HTML and only apply it to `muted` video.
+:::
+
+### Video size
+
+Don't upload 4K video if the documentation only displays it around 640-720px. Resize and re-encode it before uploading to reduce page load time.
+
+### Video from external platforms
+
+If a video already exists on an external platform (YouTube, Vimeo), it can be embedded directly with an `<iframe>` without re-uploading it to a Release:
+
+```mdx showLineNumbers title="Video embedded from YouTube"
+<iframe
+    width="720"
+    height="405"
+    src="https://www.youtube.com/embed/VIDEO_ID"
+    title="Project setup guide"
+    allowfullscreen
+></iframe>
+```
+
+## 6. Audio
+
+Audio, like images and video, must also be uploaded to a Release first, not committed directly into the project. The embedding syntax is identical to images and video (see section 3) — the site inspects the file extension (`.mp3`, `.wav`, `.ogg`) to render an audio player with `controls`. Audio only displays a player for direct listening, without the zoom feature that images have, and doesn't support fixed-frame options like video.
+
+The audio player always has `controls` so readers actively choose to press play, rather than it playing automatically.
+
+:::caution[Warning]
+Don't use autoplaying audio (`autoplay`) in documentation. Readers may have multiple pages open at once, and autoplaying audio disrupts the experience and is hard to stop in time.
+:::
+
+## 7. GIFs for illustrating interactions
+
+GIFs are displayed inline just like images, suitable for short actions without sound.
+
+**Code**
+
+```mdx showLineNumbers title="Illustrative GIF"
+![GIF demo of an action in the documentation](BASE_STORAGE/v1.0.0/gif_demo.gif)
+```
+
+**Preview**
+
+![GIF demo of an action in the documentation](BASE_STORAGE/v1.0.0/gif_demo.gif)
+
+:::caution[Warning]
+GIF files are usually much larger than a properly encoded video, since GIF doesn't compress efficiently. For demos longer than a few seconds, an MP4 video with `controls` is usually a better choice than a GIF, and should also be uploaded to a Release like any other video.
+:::
+
+## 8. PDF
+
+PDFs use the same Markdown image syntax as images, video, and audio. The site inspects the `.pdf` extension to render a file card with a PDF icon and a link to open the file.
+
+**Code**
+
+```mdx showLineNumbers title="PDF displayed inline"
+![SDK Integration Documentation For Android.pdf](BASE_STORAGE/v1.0.0/pdf_demo.pdf)
+```
+
+```mdx showLineNumbers title="PDF with a download button"
+![SDK Integration Documentation For Android.pdf](BASE_STORAGE/v1.0.0/pdf_demo.pdf download)
+```
+
+**Preview**
+
+![SDK Integration Documentation For Android.pdf](BASE_STORAGE/v1.0.0/pdf_demo.pdf download)
+
+The link text is taken from the description inside `[]`. PDFs display as a compact file card; clicking the file name opens the PDF preview. To also show a **Download** button, add `download` after the PDF link.
+
+## 9. Other media
+
+Formats such as `.zip`, `.xlsx`, `.docx`, design files, or templates should not be embedded inline. Provide a download link and clearly state that the reader needs to download it to open with the appropriate software.
+
+Files not well supported for display on the web, such as `.zip`, `.xlsx`, `.docx`, `.psd`, `.fig`, or internal templates, should only be provided as download links.
+
+**Code**
+
+```mdx showLineNumbers title="Downloadable file"
+![Download the report template (.xlsx)](BASE_STORAGE/v1.0.0/report-template.xlsx)
+
+![Download the design asset bundle (.zip)](BASE_STORAGE/v1.0.0/design-assets.zip)
+```
+
+Clearly state the file format in the link text, e.g. `(.xlsx)` or `(.zip)`, so readers know before clicking.
+
+## 10. Management & optimization
+
+### Versioning Media by Release tag
+
+Since each asset is tied to a specific Release tag, media can be versioned the same way as source code.
+
+| Release tag | Change                     |
+| ------------ | --------------------------------------- |
+| `v1.0.0`     | Initial set of demo images and videos           |
+| `v1.1.0`     | Updated screenshots for the new interface |
+
+When the product's interface changes and screenshots need updating, create a new Release with a new tag instead of replacing files in the old Release, to avoid breaking links referenced by older documentation pages.
+
+:::note
+If older documentation (e.g. the `v1.0.0` docs version) still needs to display the old interface correctly, keep the asset link from the `v1.0.0` Release for that page, and only use assets from the `v1.1.0` Release for new content.
+:::
+
+### Recommended file formats
+
+| Format | Suited for                          |
+| --------- | -------------------------------------- |
+| `.png`    | Screenshots, images with transparent areas, UI |
+| `.jpg`    | Real photos, images with many colors |
+| `.svg`    | Icons, logos, simple vector diagrams     |
+| `.webp`   | Images that need small file size while keeping quality |
+| `.gif`    | Short animations, no audio      |
+| `.mp4`    | Demo videos, interactive walkthroughs        |
+
+Avoid `.bmp` or `.tiff` because of their large file size and suboptimal browser support.
+
+### Optimizing files before uploading
+
+Since the file is loaded via a link from GitHub Releases every time a reader opens the page, file size directly affects how fast the documentation loads.
+
+Some guidelines to apply before uploading:
+
+* Resize images to the actual display size needed, don't keep the original screenshot from a Retina/4K screen.
+* Compress images before uploading.
+* Prefer `.webp` for images that don't need transparency.
+* For demo videos, limit the duration to under 1-2 minutes and encode at a reasonable bitrate.
+
+### Illustrative images should have surrounding context
+
+Don't place an image on its own without a lead-in sentence or explanation, regardless of whether the image comes from a Release or elsewhere.
+
+Not good:
+
+```md
+![](BASE_STORAGE/v1.0.0/error-screen.png)
+```
+
+Prefer:
+
+```md
+When a request fails due to an expired token, the app displays the following error screen:
+
+![Error screen "Session expired" with a Log in again button](BASE_STORAGE/v1.0.0/error-screen.png)
+
+The user needs to click **Log in again** to obtain a new token.
+```
+
+### Don't embed important text as an image only
+
+If a piece of text (URL, command, configuration value) only exists inside an image, readers can't copy it, and searching the documentation won't find that content either.
+
+Prefer — including both the image and the actual text:
+
+````md
+Run the following command to install dependencies:
+
+```bash
+npm install
+```
+
+![Terminal after running npm install successfully](BASE_STORAGE/v1.0.0/install-command.png)
+````
+
+:::caution[Warning]
+An image containing an important command or config without accompanying text is a common mistake when quickly pasting a screenshot into documentation. Readers are forced to retype it manually, which is error-prone.
+:::
+
+### Checklist before adding Media or Files
+
+Before adding an image, video, audio, or attachment, ask yourself:
+
+* Has the file been uploaded to GitHub Releases, and not left in the project?
+* Has the correct `browser_download_url` of the asset been copied, rather than typed manually?
+* Is the file name meaningful before uploading, since it's very hard to rename after publishing?
+* Does the alt text accurately describe the image content?
+* Has the file been resized/compressed appropriately before uploading?
+* Is there lead-in text before and after the image?
+* If the image contains a command or config, is there an accompanying text code block?
+* Does the video have `controls` and avoid `autoplay` with sound?
+* If the interface/content has changed, has a new Release tag been created instead of editing the old asset?
+
+---
+
+## Summary
+
+Media & Files make technical documentation more visual and easier to follow, but must be managed correctly to avoid bloating the project.
+
+Basic structure of an image:
+
+```mdx showLineNumbers title="Basic media"
+![Alt text clearly describing the content](BASE_STORAGE/<tag>/<file-name>)
+```
+
+The most important principles:
+
+1. **Don't commit media files to the project** — every image, video, audio file, and attachment must first be uploaded to [GitHub Releases](https://github.com/nguynninh/vlib-storage/releases) of the `vlib-storage` repository.
+2. **Only use the asset link (`browser_download_url`)** in MDX, not a local file path.
+3. **Give the file a meaningful name before uploading**, since renaming after publishing breaks any referenced links.
+4. **Always write a descriptive alt text**, never leave it empty or use generic words.
+5. **Optimize file size** before uploading to a Release.
+6. **Don't embed important information as an image only** — always include real text alongside it when possible.
+7. **Video should not `autoplay` when it has sound.**
+8. **When media content changes, create a new Release tag** instead of replacing the asset of the old tag.
+
+A good documentation page isn't the one with the most images — it's the one where every image, video, or attachment **has a clear reason to exist and is stored in the right place**.

@@ -1,0 +1,66 @@
+---
+title: "Công nghệ sử dụng"
+description: "Các công nghệ và thư viện được sử dụng để xây dựng nền tảng Web Documentation: Astro, Starlight, MDX, Expressive Code, Mermaid."
+---
+
+Nền tảng Web Documentation được xây dựng trên hệ sinh thái **Astro**, kết hợp với một số thư viện và plugin để hỗ trợ nội dung kỹ thuật.
+
+## Bảng tổng quan
+
+| Thành phần         | Công nghệ                          | Vai trò                                          |
+| ------------------ | ----------------------------------- | ------------------------------------------------- |
+| Framework           | [Astro](https://astro.build/)       | Framework build site tài liệu tĩnh                |
+| Theme / UI          | [Starlight](https://starlight.astro.build/) | Bộ khung giao diện tài liệu cho Astro             |
+| Định dạng nội dung  | MDX                                  | Markdown mở rộng, hỗ trợ nhúng component          |
+| Khối mã             | Expressive Code                     | Syntax highlighting, số dòng, tiêu đề khối mã     |
+| Sơ đồ               | [Mermaid](https://mermaid.js.org/)  | Vẽ flowchart, sequence diagram, class diagram...  |
+| Sơ đồ ZenUML        | `@mermaid-js/mermaid-zenuml`        | Plugin mở rộng Mermaid cho sơ đồ ZenUML           |
+| Xử lý ảnh           | [Sharp](https://sharp.pixelplumbing.com/) | Tối ưu và resize ảnh khi build                    |
+| Ngôn ngữ            | TypeScript                          | Cấu hình (`astro.config.mjs`) và các plugin remark |
+| Package manager     | npm                                  | Quản lý dependency và script build                |
+
+## Plugin Markdown tuỳ biến
+
+Ngoài các plugin có sẵn, nền tảng bổ sung một số remark plugin riêng để mở rộng cú pháp Markdown:
+
+* **remark-media-options** — tuỳ biến cách hiển thị media (ảnh, video) trong nội dung.
+* **remark-table-column-widths** — cho phép khai báo độ rộng cột bảng bằng cú pháp `[width=...]`.
+
+## Đa ngôn ngữ (i18n)
+
+Đa ngôn ngữ được cấu hình trực tiếp qua tính năng i18n của Starlight, với `vi` là ngôn ngữ mặc định:
+
+```ts title="astro.config.mjs"
+defaultLocale: 'vi',
+locales: {
+    vi: { label: 'Tiếng Việt', lang: 'vi' },
+    en: { label: 'English', lang: 'en' },
+    zh: { label: '中文', lang: 'zh' },
+    ja: { label: '日本語', lang: 'ja' },
+},
+```
+
+## Cấu trúc thư mục chính
+
+```text
+docs/
+├── astro.config.mjs
+├── src/
+│   ├── content/docs/{vi,en,zh,ja}/   # Nội dung tài liệu theo ngôn ngữ
+│   ├── components/                    # Component Astro tuỳ biến (SiteTitle, PageTitle...)
+│   ├── plugins/                       # Remark plugin tuỳ biến
+│   └── styles/custom.css              # CSS tuỳ biến
+└── public/                            # Ảnh, favicon, tài nguyên tĩnh
+```
+
+## Build & Triển khai
+
+Nền tảng được build thành site tĩnh thông qua Astro:
+
+```bash
+npm run dev       # Chạy dev server
+npm run build     # Build site tĩnh vào thư mục dist/
+npm run preview   # Xem trước bản build
+```
+
+Vì output là site tĩnh, nền tảng có thể được triển khai trên bất kỳ dịch vụ hosting tĩnh nào (Vercel, Netlify, Cloudflare Pages, GitHub Pages...).

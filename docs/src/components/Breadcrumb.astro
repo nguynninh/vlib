@@ -1,0 +1,80 @@
+---
+const { starlightRoute } = Astro.locals;
+const { sidebar, siteTitleHref, entry, locale } = starlightRoute;
+
+const homeLabels: Record<string, string> = {
+	vi: 'Trang chủ',
+	en: 'Home',
+	zh: '首页',
+	ja: 'ホーム',
+};
+const homeLabel = homeLabels[locale ?? 'en'] ?? 'Home';
+
+function findGroupLabel(entries) {
+	for (const item of entries) {
+		if (item.type === 'group') {
+			if (containsCurrent(item.entries)) return item.label;
+			const nested = findGroupLabel(item.entries);
+			if (nested) return nested;
+		}
+	}
+	return undefined;
+}
+
+function containsCurrent(entries) {
+	return entries.some((item) =>
+		item.type === 'link' ? item.isCurrent : containsCurrent(item.entries)
+	);
+}
+
+const groupLabel = findGroupLabel(sidebar);
+const pageTitle = entry.data.title;
+---
+
+<nav class="breadcrumb" aria-label="Breadcrumb">
+	<ol>
+		<li><a href={siteTitleHref}>{homeLabel}</a></li>
+		{groupLabel && <li>{groupLabel}</li>}
+		<li aria-current="page">{pageTitle}</li>
+	</ol>
+</nav>
+
+<style>
+	@layer starlight.core {
+		.breadcrumb {
+			margin-bottom: 0.5rem;
+		}
+		.breadcrumb ol {
+			display: flex;
+			flex-wrap: wrap;
+			align-items: center;
+			gap: 0.35rem;
+			margin: 0;
+			padding: 0;
+			list-style: none;
+			font-size: var(--sl-text-xs);
+			color: var(--sl-color-gray-3);
+		}
+		.breadcrumb li {
+			display: flex;
+			align-items: center;
+			gap: 0.35rem;
+		}
+		.breadcrumb li:not(:last-child)::after {
+			content: '/';
+			color: var(--sl-color-gray-4);
+		}
+		.breadcrumb a {
+			color: var(--sl-color-gray-3);
+			text-decoration: none;
+		}
+		.breadcrumb a:hover {
+			color: var(--sl-color-white);
+			text-decoration: underline;
+		}
+		.breadcrumb li[aria-current='page'] {
+			color: var(--sl-color-white);
+			font-weight: 600;
+		}
+	}
+</style>
