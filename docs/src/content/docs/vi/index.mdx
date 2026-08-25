@@ -1,0 +1,40 @@
+---
+title: Chào mừng đến với VDocs
+description: Bắt đầu xây dựng trang tài liệu của bạn với Starlight.
+template: splash # Remove or comment out this line to display the site sidebar on this page.
+hero:
+  tagline: Nền tảng tài liệu kỹ thuật cho VLib.
+  image:
+    file: ../../../assets/houston.webp
+  actions:
+    - text: Xem tài liệu
+      link: /vi/web-documentation/overview/introduction/
+      icon: right-arrow
+    - text: Đọc tài liệu Starlight
+      link: https://starlight.astro.build
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Các bước tiếp theo
+
+<CardGrid stagger>
+	<Card title="Cập nhật nội dung" icon="pencil">
+		Sửa `src/content/docs/index.mdx` để thấy trang này thay đổi.
+	</Card>
+	<Card title="Thay đổi bố cục trang" icon="document">
+		Xoá `template: splash` trong `src/content/docs/index.mdx` để hiển thị
+		thanh điều hướng trên trang này.
+	</Card>
+	<Card title="Thêm nội dung mới" icon="add-document">
+		Thêm file Markdown hoặc MDX vào `src/content/docs` để tạo trang mới.
+	</Card>
+	<Card title="Cấu hình trang web" icon="setting">
+		Sửa `sidebar` và các cấu hình khác trong `astro.config.mjs`.
+	</Card>
+	<Card title="Đọc tài liệu" icon="open-book">
+		Xem thêm tại [tài liệu Starlight](https://starlight.astro.build/).
+	</Card>
+</CardGrid>

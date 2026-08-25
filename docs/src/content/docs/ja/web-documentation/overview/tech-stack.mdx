@@ -1,0 +1,66 @@
+---
+title: "技術スタック"
+description: "Web Documentation プラットフォームの構築に使用されている技術とライブラリ：Astro、Starlight、MDX、Expressive Code、Mermaid。"
+---
+
+Web Documentation プラットフォームは **Astro** エコシステムをベースに構築されており、技術コンテンツをサポートするいくつかのライブラリとプラグインを組み合わせています。
+
+## 概要
+
+| コンポーネント     | 技術                                          | 役割                                                |
+| ------------------- | ---------------------------------------------- | ----------------------------------------------------- |
+| フレームワーク       | [Astro](https://astro.build/)                 | 静的ドキュメントサイトフレームワーク                 |
+| テーマ / UI          | [Starlight](https://starlight.astro.build/)   | Astro 向けドキュメント UI フレームワーク             |
+| コンテンツ形式       | MDX                                             | コンポーネントを埋め込める拡張 Markdown              |
+| コードブロック       | Expressive Code                                 | シンタックスハイライト、行番号、コードタイトル       |
+| 図表                 | [Mermaid](https://mermaid.js.org/)             | フローチャート、シーケンス図、クラス図など           |
+| ZenUML 図            | `@mermaid-js/mermaid-zenuml`                   | ZenUML 図に対応する Mermaid プラグイン               |
+| 画像処理             | [Sharp](https://sharp.pixelplumbing.com/)      | ビルド時の画像最適化・リサイズ                       |
+| 言語                 | TypeScript                                       | 設定ファイル（`astro.config.mjs`）と remark プラグイン |
+| パッケージマネージャー | npm                                             | 依存関係管理とビルドスクリプト                       |
+
+## カスタム Markdown プラグイン
+
+組み込みのプラグインに加え、このプラットフォームでは Markdown 構文を拡張するためのカスタム remark プラグインをいくつか追加しています。
+
+* **remark-media-options** — コンテンツ内のメディア（画像、動画）の表示方法をカスタマイズする。
+* **remark-table-column-widths** — `[width=...]` 構文でテーブルの列幅を指定できるようにする。
+
+## 国際化（i18n）
+
+多言語対応は Starlight の i18n 機能を通じて直接設定されており、`vi` がデフォルトのロケールです。
+
+```ts title="astro.config.mjs"
+defaultLocale: 'vi',
+locales: {
+    vi: { label: 'Tiếng Việt', lang: 'vi' },
+    en: { label: 'English', lang: 'en' },
+    zh: { label: '中文', lang: 'zh' },
+    ja: { label: '日本語', lang: 'ja' },
+},
+```
+
+## 主なフォルダ構成
+
+```text
+docs/
+├── astro.config.mjs
+├── src/
+│   ├── content/docs/{vi,en,zh,ja}/   # 言語ごとのドキュメントコンテンツ
+│   ├── components/                    # カスタム Astro コンポーネント（SiteTitle、PageTitle など）
+│   ├── plugins/                       # カスタム remark プラグイン
+│   └── styles/custom.css              # カスタム CSS
+└── public/                            # 画像、favicon、静的アセット
+```
+
+## ビルドとデプロイ
+
+このプラットフォームは Astro によって静的サイトとしてビルドされます。
+
+```bash
+npm run dev       # 開発サーバーを起動する
+npm run build     # dist/ に静的サイトをビルドする
+npm run preview   # ビルド結果をプレビューする
+```
+
+出力が静的サイトであるため、このプラットフォームは任意の静的ホスティングサービス（Vercel、Netlify、Cloudflare Pages、GitHub Pages など）にデプロイできます。

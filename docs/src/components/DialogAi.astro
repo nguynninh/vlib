@@ -1,0 +1,372 @@
+---
+export interface Props {
+    pageUrl: string;
+    title: string;
+    description?: string;
+}
+
+const {pageUrl, title, description = ''} = Astro.props;
+const mdUrl = `${pageUrl.replace(/\/$/, '')}.md`;
+
+const aiOptions = [
+    {name: 'ChatGPT', id: 'chatgpt'},
+    {name: 'Claude', id: 'claude'},
+    {name: 'Perplexity', id: 'perplexity'},
+    {name: 'Grok', id: 'grok'},
+    {name: 'Cursor', id: 'cursor'},
+];
+
+const strings = {
+    vi: {openWithAi: 'Mở bằng AI', copyForAi: 'Sao chép cho AI', viewMarkdown: 'Xem Markdown', copied: 'Đã sao chép!'},
+    en: {openWithAi: 'Open with AI', copyForAi: 'Copy for AI', viewMarkdown: 'View Markdown', copied: 'Copied!'},
+    zh: {openWithAi: '用 AI 打开', copyForAi: '复制给 AI', viewMarkdown: '查看 Markdown', copied: '已复制！'},
+    ja: {openWithAi: 'AIで開く', copyForAi: 'AI用にコピー', viewMarkdown: 'Markdownを表示', copied: 'コピーしました！'},
+};
+
+const lang = Astro.currentLocale ?? 'vi';
+const t = strings[lang] ?? strings.vi;
+---
+
+<div class="ai-actions">
+    <div class="dropdown-wrapper">
+        <button id="open-ai-btn" type="button" class="ai-action">
+            <img src="/svgs/ic_brain.svg" alt="">
+
+            <span>{t.openWithAi}</span>
+
+            <svg class="chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2">
+                <path d="m6 9 6 6 6-6"/>
+            </svg>
+        </button>
+
+        <div id="ai-dropdown" class="ai-dropdown">
+            {aiOptions.map((opt) => (
+                    <button
+                            class="ai-option"
+                            data-ai={opt.id}
+                            type="button">
+                        <span>{opt.name}</span>
+
+                        <svg
+                                class="external-icon"
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.8"
+                        >
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                            <path d="M15 3h6v6"/>
+                            <path d="M10 14L21 3"/>
+                        </svg>
+                    </button>
+            ))}
+        </div>
+    </div>
+
+    <button id="copy-ai-btn" type="button" class="ai-action">
+        <img src="/svgs/ic_copy.svg" alt="">
+
+        <span>{t.copyForAi}</span>
+    </button>
+
+    <a id="view-md-btn"
+       href={mdUrl}
+       target="_blank"
+       rel="noopener"
+       class="ai-action">
+        <img src="/svgs/ic_file.svg" alt="">
+
+        <span>{t.viewMarkdown}</span>
+    </a>
+</div>
+
+<script define:vars={{title, description, copiedText: t.copied}}>
+    const pageContent = document.querySelector('.sl-markdown-content')?.innerText ?? '';
+
+    document.getElementById('copy-ai-btn')?.addEventListener('click', async () => {
+        const text = `# ${title}\n\n${description}\n\n${pageContent}`;
+
+        await navigator.clipboard.writeText(text);
+
+        const btn = document.getElementById('copy-ai-btn');
+
+        if (!btn) return;
+
+        const original = btn.innerHTML;
+
+        btn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="1.8">
+                <path d="m5 12 4 4L19 6"/>
+            </svg>
+            <span>${copiedText}</span>
+        `;
+
+        setTimeout(() => {
+            btn.innerHTML = original;
+        }, 1500);
+    });
+
+    const openBtn = document.getElementById('open-ai-btn');
+    const dropdown = document.getElementById('ai-dropdown');
+
+    openBtn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdown?.classList.toggle('is-open');
+    });
+
+    document.addEventListener('click', () => {
+        dropdown?.classList.remove('is-open');
+    });
+
+    dropdown?.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+
+    const currentUrl = window.location.href;
+    const promptText = `Đọc và tóm tắt trang tài liệu sau: ${currentUrl}`;
+
+    const encodedPrompt = encodeURIComponent(promptText);
+    const encodedUrl = encodeURIComponent(currentUrl);
+
+    const aiLinks = {
+        chatgpt: `https://chatgpt.com/?q=${encodedPrompt}`,
+        claude: `https://claude.ai/new?q=${encodedPrompt}`,
+        perplexity: `https://www.perplexity.ai/search?q=${encodedPrompt}`,
+        grok: `https://grok.com/?q=${encodedPrompt}`,
+        cursor: `cursor://anysphere.cursor-open?url=${encodedUrl}`,
+    };
+
+    document.querySelectorAll('.ai-option').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const ai = btn.dataset.ai;
+            const url = aiLinks[ai];
+
+            if (url) {
+                window.open(url, '_blank');
+            }
+
+            dropdown?.classList.remove('is-open');
+        });
+    });
+</script>
+
+<style>
+    .ai-actions {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+
+        margin: 0.75rem 0 1.5rem;
+        padding-bottom: 0.85rem;
+    }
+
+    .dropdown-wrapper {
+        position: relative;
+    }
+
+    /* Actions */
+
+    .ai-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+
+        height: 30px;
+        padding: 0;
+
+        border: 0;
+        background: transparent;
+
+        color: var(--sl-color-gray-2);
+
+        font-size: 0.8rem;
+        font-weight: 500;
+        line-height: 1;
+
+        cursor: pointer;
+        text-decoration: none;
+
+        transition: color 0.15s ease;
+    }
+
+    .ai-action:hover {
+        color: var(--sl-color-text);
+    }
+
+    .ai-action svg {
+        flex-shrink: 0;
+        opacity: 0.8;
+    }
+
+    .ai-action img {
+        width: 14px;
+        height: 14px;
+        flex-shrink: 0;
+        opacity: 0.8;
+    }
+
+    /* Chevron */
+
+    .chevron {
+        margin-left: 0.05rem;
+        opacity: 0.55 !important;
+
+        transition: transform 0.15s ease;
+    }
+
+    .dropdown-wrapper:has(.ai-dropdown.is-open) .chevron {
+        transform: rotate(180deg);
+    }
+
+    /* Dropdown */
+
+    .ai-dropdown {
+        position: absolute;
+        top: calc(100% + 0.45rem);
+        left: -0.4rem;
+
+        display: flex;
+        flex-direction: column;
+
+        min-width: 170px;
+        padding: 0.3rem;
+
+        background: var(--sl-color-bg);
+        border: 1px solid var(--sl-color-gray-5);
+        border-radius: 8px;
+
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12),
+        0 2px 6px rgba(0, 0, 0, 0.05);
+
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+
+        transform: translateY(-4px);
+
+        transition: opacity 0.15s ease,
+        transform 0.15s ease,
+        visibility 0.15s ease;
+
+        z-index: 50;
+    }
+
+    .ai-dropdown.is-open {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+
+        transform: translateY(0);
+    }
+
+    /* Options */
+
+    .ai-option {
+        display: flex !important;
+        align-items: center;
+        justify-content: space-between;
+
+        width: 100%;
+        min-height: 32px;
+
+        padding: 0.45rem 0.55rem;
+
+        border: 0;
+        border-radius: 6px;
+
+        background: transparent;
+
+        color: var(--sl-color-gray-2);
+
+        font-size: 0.8rem;
+        font-weight: 450;
+
+        text-align: left;
+        cursor: pointer;
+
+        transition: background 0.12s ease,
+        color 0.12s ease;
+    }
+
+    .ai-option:hover {
+        background: var(--sl-color-gray-6);
+        color: var(--sl-color-text);
+    }
+
+    .ai-option span {
+        white-space: nowrap;
+    }
+
+    /* External link icon */
+
+    .external-icon {
+        opacity: 0;
+
+        color: var(--sl-color-gray-3);
+
+        transform: translateX(-2px);
+
+        transition: opacity 0.12s ease,
+        transform 0.12s ease;
+    }
+
+    .ai-option:hover .external-icon {
+        opacity: 0.7;
+        transform: translateX(0);
+    }
+
+    :global(:root[data-theme='dark'] .ai-action) {
+        color: #b8c0cf;
+    }
+
+    :global(:root[data-theme='dark'] .ai-action:hover) {
+        color: #f2f4f8;
+    }
+
+    :global(:root[data-theme='dark'] .ai-action img) {
+        filter: invert(88%) sepia(10%) saturate(312%) hue-rotate(184deg) brightness(92%) contrast(88%);
+        opacity: 0.9;
+    }
+
+    :global(:root[data-theme='dark'] .ai-dropdown) {
+        border-color: #343946;
+        background: #171a21;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.32);
+    }
+
+    :global(:root[data-theme='dark'] .ai-option) {
+        color: #c8cfda;
+    }
+
+    :global(:root[data-theme='dark'] .ai-option:hover) {
+        background: #242a35;
+        color: #f2f4f8;
+    }
+
+    :global(:root[data-theme='dark'] .external-icon) {
+        color: #aab3c2;
+    }
+
+    /* Mobile */
+
+    @media (max-width: 640px) {
+        .ai-actions {
+            gap: 0.75rem;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .ai-action {
+            font-size: 0.75rem;
+        }
+
+        .ai-dropdown {
+            left: 0;
+            min-width: 165px;
+        }
+    }
+</style>

@@ -1,0 +1,269 @@
+---
+title: "Code Blocks"
+description: "How to write code blocks in MDX so technical examples stay readable, copyable, and provide enough context."
+---
+
+import {Tabs, TabItem} from '@astrojs/starlight/components';
+
+Code blocks are where readers spend the most time on a technical documentation page. A good code snippet isn't just syntactically correct — it also tells the reader what language it's written in, which file it belongs to, and which lines matter.
+
+This page explains how to write code blocks in MDX consistently with the current documentation system.
+
+{/* SCREENSHOT:
+Rendered code block showing file title, syntax highlighting, line numbers, highlighted lines, and copy button.
+Position: after the opening explanation.
+Purpose: help writers understand how MDX code fence options appear in the final documentation UI.
+*/}
+
+## Basic syntax
+
+A code block starts with three backticks followed by a language identifier. When the document is rendered, the system uses this identifier to apply syntax highlighting.
+
+````mdx showLineNumbers
+```ts
+const message: string = "Hello";
+console.log(message);
+```
+````
+
+The result is code displayed as TypeScript.
+
+````typescript title="hello.ts"
+const message: string = "Hello";
+console.log(message);
+````
+
+If you drop `ts`, the code still renders, but readers lose syntax highlighting and the page looks less clear.
+
+````
+const message: string = "Hello";
+console.log(message);
+````
+
+:::danger
+When code content needs to show another fenced code block nested inside it (like the MDX examples on this page), the outer fence must use more backticks than the inner one — for example four backticks ```` when the inner block uses three ```. Using the same count causes MDX to close the code fence at the wrong spot, breaking the rest of the page.
+:::
+
+## Choosing the right language
+
+Declare the language that matches the actual code content. This is a small detail, but it directly affects how easily users can read, copy, and debug the snippet.
+
+<Tabs>
+    <TabItem label="TypeScript">
+        ````mdx showLineNumbers
+            ```ts title="src/main.ts"
+                const app = createApp();
+                app.start();
+            ```
+        ````
+    </TabItem>
+    <TabItem label="Java">
+
+        ````mdx showLineNumbers
+            ```java title="src/main/java/Main.java"
+                public class Main {
+                    public static void main(String[] args) {
+                        System.out.println("Hello");
+                    }
+                }
+            ```
+        ````
+
+    </TabItem>
+    <TabItem label="JSON">
+        ````mdx showLineNumbers
+            ```json title="package.json"
+                {
+                    "scripts": {
+                        "dev": "astro dev",
+                        "build": "astro build"
+                    }
+                }
+            ```
+        ````
+    </TabItem>
+</Tabs>
+
+Prefer short, common identifiers such as `ts`, `tsx`, `js`, `java`, `kotlin`, `json`, `css`, `scss`, `bash`, `diff`, `mdx`, or `text`.
+
+:::caution[Warning]
+There's one special identifier not in that list: `mermaid`. It's still a fenced code block, but the content inside describes a diagram rather than code to be syntax-highlighted, so it has its own page — see [Mermaid Diagram](/en/web-documentation/ui/code_block_mermaid).
+:::
+
+:::note
+If a snippet belongs to a specific language, always declare its language identifier. Only use a languageless code block for content that is genuinely plain text.
+:::
+
+## Adding a file name
+
+When an example represents a specific file, add `title="..."` so the reader knows where to place the code.
+
+````mdx showLineNumbers
+```tsx title="src/components/Button.tsx"
+export function Button() {
+    return <button>Checkout</button>;
+}
+```
+````
+
+`title` is especially useful in installation, configuration, and migration guides, or in any example that requires the reader to edit a specific file.
+
+## Showing line numbers
+
+Line numbers make explanations more precise. Instead of saying "the config block below," you can say "line 3 declares the build script."
+
+````mdx showLineNumbers
+```json title="package.json" showLineNumbers
+{
+    "scripts": {
+        "dev": "astro dev",
+        "build": "astro build"
+    }
+}
+```
+````
+
+You don't need `showLineNumbers` on every snippet. For short one- or two-line examples, line numbers usually don't add value.
+
+## Highlighting important lines
+
+When an example has many lines but only a few need attention, add line numbers inside `{}` after the code fence's meta info. This helps readers jump straight to what matters.
+
+````mdx showLineNumbers
+```ts title="src/main.ts" showLineNumbers {3}
+const app = createApp();
+
+app.use(paymentPlugin);
+app.start();
+```
+````
+
+````ts title="src/main.ts" showLineNumbers {3}
+const app = createApp();
+
+app.use(paymentPlugin);
+app.start();
+````
+
+To emphasize several consecutive lines, use a range:
+
+````mdx showLineNumbers
+```ts title="src/main.ts" showLineNumbers {3-4}
+const app = createApp();
+
+app.use(paymentPlugin);
+app.start();
+```
+````
+
+````ts title="src/main.ts" showLineNumbers {3-4}
+const app = createApp();
+
+app.use(paymentPlugin);
+app.start();
+````
+
+If the lines to highlight aren't adjacent, separate them with commas:
+
+````mdx showLineNumbers
+```ts title="src/main.ts" showLineNumbers {1,4}
+const app = createApp();
+const config = loadConfig();
+
+app.start(config);
+```
+````
+
+````ts title="src/main.ts" showLineNumbers {1,4}
+const app = createApp();
+const config = loadConfig();
+
+app.start(config);
+````
+
+## Writing diffs to describe changes
+
+When a doc walks through editing code, `diff` is usually easier to follow than placing "before" and "after" blocks side by side.
+
+````mdx showLineNumbers
+```diff
+- const environment = "development";
++ const environment = import.meta.env.MODE;
+```
+````
+
+Diffs work well for migrations, bug fixes, config changes, or any situation where the reader needs to know exactly which line changed.
+
+## Using tabs for multiple implementations
+
+When the same idea has several equivalent implementations, group them in tabs so the page doesn't get too long. Readers can pick the language or framework they're using while keeping the same context.
+
+````mdx title="docs/src/content/docs/example.mdx" showLineNumbers
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+<Tabs>
+	<TabItem label="Java">
+
+```java
+public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello");
+    }
+}
+```
+
+	</TabItem>
+	<TabItem label="Kotlin">
+
+```kotlin
+fun main() {
+    println("Hello")
+}
+```
+
+	</TabItem>
+</Tabs>
+````
+
+Use tabs when the versions genuinely replace one another. If each block explains a different step in the same workflow, keep them as separate sections instead.
+
+## Recommended usage
+
+A good code block usually carries all three layers of context: language, file, and the part worth noticing.
+
+````mdx
+```ts title="src/main.ts" showLineNumbers {4}
+import { createApp } from "./app";
+import { paymentPlugin } from "./plugins/payment";
+
+const app = createApp();
+app.use(paymentPlugin);
+app.start();
+```
+````
+
+This is better than a bare block like this:
+
+````mdx showLineNumbers
+```
+const app = createApp();
+app.start();
+```
+````
+
+The second block still renders, but it lacks context: no language, no file, and no indication of which line matters.
+
+## Quick checklist
+
+Before finishing a documentation page, check its code blocks against these questions:
+
+* Does the code block declare the correct language identifier?
+* If the code belongs to a specific file, does it have a `title`?
+* Does `showLineNumbers` actually make the explanation easier to follow?
+* Do you need to highlight changed or important lines?
+* If there are multiple implementations, would tabs make the page easier to read?
+* If the snippet is an editing guide, would `diff` be clearer than two separate blocks?
+
+## Summary
+
+A code block should help readers understand quickly and copy correctly. Start with a language identifier, add `title` when there's a specific file, use `showLineNumbers` and deliberate highlighting, then choose `diff` or tabs when they make the example clearer.

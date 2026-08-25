@@ -1,0 +1,21 @@
+name: Deploy Docs
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    # Không SSH/không self-hosted runner: gọi thẳng API deploy chạy
+    # trên VPS qua reverse proxy public (VPS đứng sau VPN nên phải
+    # đi qua endpoint HTTPS này thay vì kết nối trực tiếp).
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call deploy API
+        run: |
+          curl -sf -X POST "${{ secrets.DEPLOY_URL }}/deploy" \
+            -H "X-Deploy-Token: ${{ secrets.DEPLOY_TOKEN }}"

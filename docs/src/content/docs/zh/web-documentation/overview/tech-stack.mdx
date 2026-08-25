@@ -1,0 +1,66 @@
+---
+title: "技术栈"
+description: "用于构建 Web Documentation 平台的技术与库：Astro、Starlight、MDX、Expressive Code、Mermaid。"
+---
+
+Web Documentation 平台基于 **Astro** 生态系统构建，并结合了若干支持技术内容的库和插件。
+
+## 概览
+
+| 组件           | 技术                                         | 作用                                              |
+| -------------- | --------------------------------------------- | -------------------------------------------------- |
+| 框架           | [Astro](https://astro.build/)                | 静态文档站点框架                                   |
+| 主题 / UI      | [Starlight](https://starlight.astro.build/)  | 面向 Astro 的文档 UI 框架                          |
+| 内容格式       | MDX                                           | 支持嵌入组件的扩展 Markdown                        |
+| 代码块         | Expressive Code                               | 语法高亮、行号、代码块标题                         |
+| 图表           | [Mermaid](https://mermaid.js.org/)           | 流程图、时序图、类图等                             |
+| ZenUML 图表    | `@mermaid-js/mermaid-zenuml`                 | 支持 ZenUML 图表的 Mermaid 插件                    |
+| 图像处理       | [Sharp](https://sharp.pixelplumbing.com/)    | 构建时的图像优化与缩放                             |
+| 语言           | TypeScript                                    | 配置文件（`astro.config.mjs`）及 remark 插件       |
+| 包管理器       | npm                                            | 依赖管理与构建脚本                                  |
+
+## 自定义 Markdown 插件
+
+除了内置插件外，该平台还添加了一些自定义 remark 插件，用于扩展 Markdown 语法：
+
+* **remark-media-options** — 自定义内容中媒体（图片、视频）的渲染方式。
+* **remark-table-column-widths** — 允许通过 `[width=...]` 语法声明表格列宽。
+
+## 国际化（i18n）
+
+多语言支持直接通过 Starlight 的 i18n 功能配置，默认语言环境为 `vi`：
+
+```ts title="astro.config.mjs"
+defaultLocale: 'vi',
+locales: {
+    vi: { label: 'Tiếng Việt', lang: 'vi' },
+    en: { label: 'English', lang: 'en' },
+    zh: { label: '中文', lang: 'zh' },
+    ja: { label: '日本語', lang: 'ja' },
+},
+```
+
+## 主要目录结构
+
+```text
+docs/
+├── astro.config.mjs
+├── src/
+│   ├── content/docs/{vi,en,zh,ja}/   # 按语言划分的文档内容
+│   ├── components/                    # 自定义 Astro 组件（SiteTitle、PageTitle 等）
+│   ├── plugins/                       # 自定义 remark 插件
+│   └── styles/custom.css              # 自定义 CSS
+└── public/                            # 图片、favicon、静态资源
+```
+
+## 构建与部署
+
+该平台通过 Astro 构建为静态站点：
+
+```bash
+npm run dev       # 运行开发服务器
+npm run build     # 将静态站点构建到 dist/ 目录
+npm run preview   # 预览构建结果
+```
+
+由于输出是静态站点，该平台可以部署到任何静态托管服务上（Vercel、Netlify、Cloudflare Pages、GitHub Pages 等）。
