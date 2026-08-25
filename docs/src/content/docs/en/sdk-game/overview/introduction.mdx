@@ -1,0 +1,59 @@
+---
+title: "Introduction"
+description: "General introduction to the SDK Game: purpose, integration scope, supported platforms, and documentation structure."
+sidebar:
+  order: 1
+---
+
+## About SDK Game
+
+**SDK Game** is an integration SDK for games operating within the **VTV Live** ecosystem, providing ready-made flows for login, authentication, event tracking, and receiving dynamic configuration from the Backend system.
+
+The SDK helps game development teams shorten the integration time for platform features (accounts, notifications, marketing events...) without having to rebuild them from scratch on each project.
+
+## Purpose
+
+SDK Game is built to:
+
+* Standardize the account integration, login, and authentication flow (OTP, forgot password) across games.
+* Provide a mechanism for receiving dynamic configuration from the BE API and Firebase Remote Config.
+* Support tracking of game hub events, notifications, and events used to optimize marketing.
+* Provide shared APIs/IAP for in-game features (receiving gifts, updating user information...).
+* Reduce integration time and ensure consistency between the Android and iOS platforms.
+
+## Supported platforms
+
+SDK Game currently supports two main platforms:
+
+```text
+SDK Game
+│
+├── Android (Java)
+└── iOS (Objective-C / Swift)
+```
+
+Each platform has its own integration documentation, API documentation, and event flow documentation, presented in parallel to ensure content stays in sync between the two sides.
+
+## Documentation structure
+
+The SDK Game documentation is organized into the following main sections:
+
+* **Overview** — introduction, features, and technology used.
+* **Android / iOS** — configuration and SDK integration guides for each platform.
+* **SDK Features** — detailed description of each feature: OTP, forgot password, receiving gifts, dynamic configuration...
+* **Integration / API / Event Flow Documentation** — complete reference documentation used during integration.
+
+## Intended audience
+
+This documentation is mainly intended for:
+
+* Developers integrating SDK Game into an Android or iOS project.
+* QA testers of the account, tracking, and dynamic configuration flows.
+* Operations/marketing teams that need to understand event flows for ad optimization.
+
+## Next steps
+
+After understanding the purpose of SDK Game, continue with:
+
+* [Features](/en/sdk-game/overview/features)
+* [Technology used](/en/sdk-game/overview/tech-stack)

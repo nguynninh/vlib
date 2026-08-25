@@ -1,0 +1,122 @@
+---
+title: Email update flow
+description: Describes the SDK's email update and OTP verification flow, covering the two screen variants VerifyEmail and VerifyEmailV2/VerifyOTP.
+---
+
+This document describes the SDK's email update / verification flow, built from the actual code.
+Similar to the phone number flow, the project has **two variants** of the screen:
+
+- **Option 1 – `VerifyEmail`** (a single screen combining email input and OTP input; title *"UPDATE EMAIL"*). Ends with `callback(CallbackSuccess)`.
+- **Option 2 – `VerifyEmailV2` → `VerifyOTP`** (the newer version, split into two screens; title *"Add email"*, tied to the gift-claiming flow `showReceiveGift`).
+
+Both share the same 2 endpoints: `PATH_VERIFY_OTP_EMAIL_V2` (send OTP, `type = 1`) and
+`PATH_VERIFY_OTP_EMAIL_CONFIRM_V2` (verify OTP). Every request attaches a Bearer accessToken.
+
+## Option 1 – `VerifyEmail` screen
+
+```mermaid
+%% width: 1100
+flowchart TD
+    A["Open VerifyEmail<br/>Enter email"] --> B["btnReceiveOtpClick()"]
+    B --> C{Check email}
+    C -- Empty --> C1([Error: enter email])
+    C -- Wrong format --> C2([Error: invalid email])
+    C -- Valid --> D["doSendEmail()<br/>POST PATH_VERIFY_OTP_EMAIL_V2, type = 1"]
+
+    D --> E{Error code}
+    E -- code 86 --> E1["doRefreshWithAction → resend OTP"]
+    E1 --> D
+    E -- code != 0 --> E2([handleErrorCode → show error])
+    E -- code = 0 --> F["Save GlobalManager.email<br/>canSendOtpAgain: enable OTP field + countdown"]
+
+    F --> G[Enter OTP] --> H["btnUpdateClick()"]
+    H --> I{OTP empty?}
+    I -- Yes --> I1([Error: enter OTP])
+    I -- No --> J["POST PATH_VERIFY_OTP_EMAIL_CONFIRM_V2<br/>otp + email"]
+
+    J --> K{Error code}
+    K -- code 86 --> K1["doRefreshWithAction → press update again"]
+    K1 --> J
+    K -- code != 0 --> K2([handleErrorCode → show error])
+    K -- code = 0 --> L([Alert: Update successful<br/>callback CallbackSuccess → close screen])
+```
+
+### Description – Option 1
+
+1. **Enter email & send OTP** – `btnReceiveOtpClick()` checks that the email is not empty and matches
+   the correct format (email regex), then `doSendEmail()` calls `PATH_VERIFY_OTP_EMAIL_V2` (`type = 1`).
+   - `code = 0`: saves `GlobalManager.shared.email`, enables the OTP input field and starts the resend countdown.
+   - `code = 86` (token expired): `doRefreshWithAction` refreshes the token then automatically presses send again.
+   - other errors: `handleErrorCode`.
+2. **Enter OTP & confirm** – `btnUpdateClick()` checks that the OTP is not empty, calls
+   `PATH_VERIFY_OTP_EMAIL_CONFIRM_V2` (`otp`, `email`).
+   - `code = 0`: shows an "Update successful" alert, fires `callback(CallbackSuccess)`, then closes the screen.
+   - `code = 86`: refreshes the token then retries.
+   - other errors: `handleErrorCode`.
+3. **Resend OTP** – when the countdown reaches 0, the "Send code" button becomes active again to call `PATH_VERIFY_OTP_EMAIL_V2` again.
+
+## Option 2 – `VerifyEmailV2` → `VerifyOTP`
+
+```mermaid
+%% width: 1100
+flowchart TD
+    A["Open VerifyEmailV2<br/>Enter email"] --> B{"Real-time check<br/>email format"}
+    B -- Not valid yet --> B1([Continue button locked])
+    B -- Valid --> C["pressContinue()<br/>POST PATH_VERIFY_OTP_EMAIL_V2, type = 1"]
+
+    C --> D{Error code}
+    D -- code 86 --> D1["doRefreshWithAction → pressContinue again"]
+    D1 --> C
+    D -- code != 0 --> D2([handleErrorCode → show error])
+    D -- code = 0 --> E["Save GlobalManager.email + Analytics<br/>showOTP: opens VerifyOTP typeScreen = .email<br/>Closes VerifyEmailV2"]
+
+    E --> F[Enter 6-digit OTP<br/>Resend countdown] --> G["pressContinue()"]
+    G --> H["callVerifyEmail()<br/>POST PATH_VERIFY_OTP_EMAIL_CONFIRM_V2<br/>otp + email"]
+    H --> I{Error code}
+    I -- code 86 --> I1["doRefreshWithAction → verify again"]
+    I1 --> H
+    I -- code != 0 --> I2([handleErrorCode → show error])
+    I -- code = 0 --> J["Save GlobalManager.email + Analytics"]
+    J --> K([Close screen →<br/>Sdk.showReceiveGift])
+
+    F -. Press Resend .-> L["resendOTPEmail()<br/>POST PATH_VERIFY_OTP_EMAIL_V2 → reset countdown"]
+    L -.-> F
+    E -. Press Back .-> A
+```
+
+### Description – Option 2
+
+1. **`VerifyEmailV2`** – the email input field is checked in real time; if valid, the
+   "Continue" button is enabled. `pressContinue()` calls `PATH_VERIFY_OTP_EMAIL_V2` (`type = 1`).
+   - `code = 0`: saves `GlobalManager.shared.email` + Analytics, then `showOTP()` opens the
+     `VerifyOTP` screen (`typeScreen = .email`, passing `email`, `serverId`, `characterId`)
+     and closes the current screen.
+   - `code = 86`: refreshes the token then calls again.
+   - other errors: `handleErrorCode`.
+2. **`VerifyOTP`** – enter the 6-digit OTP, displays the masked email (`maskedEmailFrom`) and a
+   countdown for "Resend". `pressContinue()` → `callVerifyEmail()` calls
+   `PATH_VERIFY_OTP_EMAIL_CONFIRM_V2` (`otp`, `email`).
+   - `code = 0`: saves `GlobalManager.shared.email`, logs Analytics, closes the screen and
+     calls `Sdk.showReceiveGift()`.
+   - `code = 86`: refreshes the token then retries.
+   - other errors: `handleErrorCode`.
+   - **Resend OTP**: `resendOTPEmail()` calls `PATH_VERIFY_OTP_EMAIL_V2` again and restarts the countdown.
+   - **Back**: returns to the `VerifyEmailV2` screen.
+
+## Endpoints used
+
+- `PATH_VERIFY_OTP_EMAIL_V2` – sends the OTP to the email (POST, `type = 1`)
+- `PATH_VERIFY_OTP_EMAIL_CONFIRM_V2` – verifies the OTP and updates the email (POST)
+
+## Notes
+
+- The `type = 1` parameter means *Verify Mail* (as opposed to `type = 0` for the phone number flow).
+- Every request attaches an `accessToken` (Bearer). When `code = 86` (token expired) occurs,
+  the SDK automatically runs `doRefreshWithAction` to refresh the token, then repeats the in-progress action.
+- A successful update always records `GlobalManager.shared.email` and calls
+  `Analytics.initiateOnDeviceConversionMeasurement(emailAddress:)`.
+- Ending difference: Option 1 fires `callback(CallbackSuccess)` back to whatever opened the screen;
+  Option 2 forwards to `Sdk.showReceiveGift()`.
+- Endpoint difference from the phone number flow: email uses the pair `PATH_VERIFY_OTP_EMAIL_V2`
+  (send/resend) and `PATH_VERIFY_OTP_EMAIL_CONFIRM_V2` (verify); while phone number uses
+  `PATH_OTP_PHONE_V2` and `PATH_VERIFY_OTP_PHONE_V2`.

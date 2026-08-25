@@ -1,0 +1,92 @@
+---
+title: 来自 BE API 与 Firebase Remote Config 的动态配置
+description: SDK 通过 BE API 获取动态配置，并在失败时 fallback 到 Firebase Remote Config 的机制，可在不重新构建应用的情况下自定义 domain 及配置。
+---
+
+## 总览
+
+1. 目的
+
+    1. 减少与合作伙伴集成时因配置产生的错误
+
+    2. 支持在紧急情况下自定义 domain、配置，避免必须重新构建 SDK -> 重新 review 应用。
+
+2. 补充说明
+
+    SDK 会优先从 BE API 获取配置。如果 API 调用失败或返回的数据无法解码，SDK 会自动 fallback 到 Firebase Remote Config。若两个来源均失败，则 SDK 会使用此前保存在 SharedPreferences 中的配置（若是首次安装，则使用 Firebase XML 文件中的默认配置）。
+
+## API
+
+1. 流程图
+
+    - Android
+
+```mermaid
+%% width: 1100
+flowchart LR
+    Start((Khởi động)) --> FirstInstall{Lần Đầu<br/>Cài Đặt}
+    FirstInstall -- true --> SaveDefault[Lưu cấu hình từ file<br/>Firebase XML Mặc<br/>định xuống<br/>SharedPreferences]
+    SaveDefault --> RemoteApi[Api Remote Config]
+    FirstInstall -- false --> RemoteApi
+
+    RemoteApi --> ApiState{Trạng Thái<br/>Api}
+    ApiState -- "Thành Công" --> DecodeApi{Giải mã}
+    ApiState -- "thất bại" --> DecodeApi
+
+    DecodeApi -- "thất bại" --> FirebaseRemote[Firebase Remote<br/>Config]
+    ApiState -- "thất bại" --> FirebaseRemote
+    FirebaseRemote --> FirebaseState{Trạng Thái<br/>Firebase}
+    FirebaseState -- "thành công" --> DecodeFirebase{Giải mã}
+    FirebaseState -- "thất bại" --> InitAppInfo[Khởi tạo AppInfo từ<br/>SharedPreferences]
+
+    DecodeFirebase -- "thành công" --> SaveConfig[Lưu cấu hình xuống<br/>SharedPreferences]
+    DecodeApi -- "thành công" --> SaveConfig
+
+    SaveConfig --> CheckDomain{Kiểm tra Id Domain<br/>thay đổi}
+    CheckDomain -- true --> Logout[Đăng xuất]
+
+    SaveConfig --> InitAppInfo
+    InitAppInfo --> Done((Done))
+```
+
+    - IOS
+
+```mermaid
+%% width: 1100
+flowchart LR
+    Start((khởi động app)) --> A[Call api lấy config động]
+    A --> B{trạng thái trả về api}
+    B -->|true| C{kiểm tra dữ liệu}
+    B -->|false| D[lấy cấu hình từ firebase config]
+    D --> E{trạng thái trả về từ firebase}
+    E -->|true| C
+    E -->|false| F[lấy dữ default từ app config]
+    C -->|false| F
+    C -->|true| G{so sánh với dữ liệu usedefault}
+    F --> G
+    G -->|userDefault # nil| H{so sánh domain}
+    G -->|userDefault nil| K[Lưu xuống userDefault]
+    H -->|khác nhau| I[logout]
+    H -->|giống| K
+    I --> K
+    K --> End((kết thúc))
+```
+
+2. 详情
+
+    - Production domain: [https://config.vapi24.vn](https://config.vapi24.vn/)
+
+    - Beta domain: https://beta-config.vapi24.vn
+
+## Firebase Remote Config
+
+1. 流程图
+
+2. 详情
+
+## 版本
+
+| **Platform** | **Inventory** | **Tag version** | **CommitID** | **Release date** |
+| --- | --- | --- | --- | --- |
+| Android | | | | |
+| IOS | | | | |

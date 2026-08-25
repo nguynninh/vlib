@@ -1139,6 +1139,45 @@ If the answers line up, a Markdown Table is usually the right choice.
 
 ---
 
+## 32. Merging Rows (Rowspan) with `^^`
+
+Standard Markdown Tables **don't support rowspan** — there's no native syntax for a cell to span multiple rows.
+
+In these docs, when a cell at the start of a row contains exactly the two characters `^^`, it's treated as "merge with the cell above, same column" instead of being left empty.
+
+:::danger[Common Mistake]
+Only use exactly `^^` in the cell you want merged upward. Don't add spaces or other characters in the same cell (e.g. `^^ `, `^^abc`), otherwise the cell is treated as plain text instead of a merge marker.
+:::
+
+**Source**
+
+```mdx showLineNumbers title="Rowspan with ^^"
+| Feature | Sub-feature | Status |
+| --- | --- | --- |
+| Login | Vlive account | Done |
+| ^^ | Google | Done |
+| ^^ | Facebook | Done |
+```
+
+**Preview**
+
+| Feature | Sub-feature | Status |
+| --- | --- | --- |
+| Login | Vlive account | Done |
+| ^^ | Google | Done |
+| ^^ | Facebook | Done |
+
+The rendered HTML is a single `Login` cell with a `rowspan` equal to the number of consecutive rows below it that have `^^` in the same column; those `^^` cells no longer exist in their own rows.
+
+A few notes when using it:
+
+* `^^` only merges with the cell **directly above**, not across rows already broken up by a different value.
+* `^^` can be used in any column, not just the first one.
+* Don't use `^^` on the very first data row (right after the header) since there's no cell above it to merge with.
+* Only use it when rows genuinely belong to the same logical group (e.g. several sub-features of one parent feature), not to "patch" the display of an unrelated table.
+
+---
+
 ## Summary
 
 A table in MDX is really just Markdown Table syntax, and doesn't need a dedicated component for ordinary cases.

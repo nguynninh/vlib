@@ -1,0 +1,119 @@
+---
+title: 氏名・生年月日更新フロー
+description: InformationViewとUpdateBirthdayの2画面によるSDKの氏名・生年月日・本人確認情報の更新フローの説明。
+---
+
+本ドキュメントは、実際のコードから作成したSDKの氏名・生年月日更新フローについて説明します。
+projectには関連する**2つの画面**があります。
+
+- **`InformationView`** – **氏名 + 生年月日**を同時に更新（本人確認情報: 身分証明書番号、
+  発行日、発行場所、住所を含む）します。endpointは `PATH_PROFILE_PASSPORT` です。
+  これはアカウント情報／本人確認を完了させる画面です（`requireSecurityLevel`）。
+- **`UpdateBirthday`** – **生年月日のみ**を更新します。endpointは `PATH_UPDATE_INFO_V2` です。
+  個人情報画面 `PersonalView` から開かれます（氏名を個別に編集する欄はここにはなく、
+  氏名はタイトルとしてのみ表示されます）。
+
+どちらもBearer accessTokenを付与し、`code = 86` が発生した場合は自動でtokenをrefreshします。
+
+## 方法1 – `InformationView`（氏名 + 生年月日を同時に更新）
+
+```mermaid
+%% width: 1100
+flowchart TD
+    A["InformationViewを開く<br/>氏名、生年月日 + 本人確認情報を入力"] --> B["pressSave()"]
+
+    B --> C{各項目を順にチェック}
+    C -- 氏名が空 --> C1([氏名欄でエラー])
+    C -- 生年月日が空 --> C2([生年月日欄でエラー])
+    C -- 生年月日の形式dd/MM/yyyyが不正 --> C3([生年月日欄でエラー])
+    C -- 身分証明書番号が空/不正 --> C4([本人確認欄でエラー])
+    C -- 発行日が空 --> C5([発行日欄でエラー])
+    C -- 発行場所が空 --> C6([発行場所欄でエラー])
+    C -- 住所が空 --> C7([住所欄でエラー])
+    C -- 有効 --> D["updateInfoUser()<br/>日付をyyyy-MM-ddに変換"]
+
+    D --> E["POST PATH_PROFILE_PASSPORT<br/>fullName, birthday, passport,<br/>passportDate, passportPlateOfIssue, address"]
+    E --> F{結果}
+    F -- ネットワークエラー --> F1([Toast: 更新失敗])
+    F -- code != 0 --> F2([Toast: 更新失敗])
+    F -- code = 0 --> G["Toast: 更新成功<br/>loginSuccess + registerTimerTask<br/>showOrHideFloatingButton"]
+    G --> H([画面を閉じる])
+```
+
+### 説明 – 方法1
+
+ユーザーは氏名（`tfName`）、生年月日（`tfBirthDay`、UIDatePickerで選択）と各本人確認
+項目を入力します。保存ボタンを押すと、`pressSave()` が順に以下をチェックします。
+
+- 氏名は空にできません。
+- 生年月日は空にできず、`dd/MM/yyyy` の形式に一致する必要があります。
+- 身分証明書番号は空でなく有効である必要があります（`^[0-9]{9,12}$` またはパスポート `^[A-Z][0-9]{8}$`）。
+- 発行日、発行場所、住所は空にできません。
+
+有効な場合 → `updateInfoUser()` が生年月日（および発行日）を `yyyy-MM-dd` に変換し、
+`PATH_PROFILE_PASSPORT`（POST）を `fullName`、`birthday`、`passport`、`passportDate`、
+`passportPlateOfIssue`、`address`（`deviceId`、`os`、`osVersion`、`ip` も含む）で呼び出します。
+
+- `code = 0`: 「情報の更新に成功しました」のtoastを表示し、`loginSuccess()`（delegate
+  `loginSuccess` + `registerTimerTask` を発行）、`showOrHideFloatingButton()` を呼び出してから画面を閉じます。
+- ネットワークエラーまたは `code != 0`: 「アカウント情報の更新に失敗しました!」のtoastを表示します。
+
+> 注意: この画面は**氏名と生年月日を同時に**1つのrequestで更新しますが、
+> 本人確認情報も含めてすべて入力しなければ保存できません。
+
+## 方法2 – `UpdateBirthday`（生年月日のみ、`PersonalView`から開く）
+
+```mermaid
+%% width: 1100
+flowchart TD
+    A["PersonalView<br/>一覧: メール、電話番号、本人確認、生年月日"] --> B{行を選択}
+    B -- 生年月日 id=4 --> C["UpdateBirthdayを開く<br/>userBirthDayを渡す"]
+    B -- メール id=1 未認証 --> B1([VerifyEmailを開く])
+    B -- 電話番号 id=2 未認証 --> B2([VerifyPhoneを開く])
+    B -- 本人確認 id=3 --> B3([UpdateIDを開く])
+
+    C --> D[UIDatePickerで生年月日を選択<br/>1950 - 2014に制限] --> E["btnUpdateClick()"]
+    E --> F{生年月日をチェック}
+    F -- 空 --> F1([エラー: 生年月日を入力してください])
+    F -- 形式dd/MM/yyyyが不正 --> F2([エラー: 形式が正しくありません])
+    F -- 有効 --> G["doUpdateBirthday()<br/>yyyy-MM-ddに変換"]
+
+    G --> H["POST PATH_UPDATE_INFO_V2<br/>birthday, type = 1"]
+    H --> I{エラーコード}
+    I -- code 86 --> I1["doRefreshWithAction → 再度更新をタップ"]
+    I1 --> H
+    I -- code != 0 --> I2([handleErrorCode → エラー表示])
+    I -- code = 0 --> J([Alert: 更新成功<br/>callback CallbackSuccess → 閉じる<br/>PersonalViewでrefreshDisplay])
+```
+
+### 説明 – 方法2
+
+`PersonalView` はリスト形式の個人情報画面です（メール、電話番号、本人確認、
+生年月日、ログアウト）。アカウントの氏名はタイトルにのみ表示され、ここでは編集しません。
+**生年月日**の行（`id = 4`、タイプ `.edit`）を選択すると、`UpdateBirthday` が開きます（現在の生年月日を渡します）。
+
+`UpdateBirthday` では、ユーザーは `UIDatePicker`（1950/01/01から2014/01/01の範囲に制限）で
+日付を選択します。`btnUpdateClick()` が生年月日が空でなく `dd/MM/yyyy` の形式に一致することを確認し、
+`doUpdateBirthday()` が `yyyy-MM-dd` に変換して `PATH_UPDATE_INFO_V2`（POST）を
+`birthday`、`type = 1` で呼び出します。
+
+- `code = 0`: 「更新成功」のalertを表示し、`callback(CallbackSuccess)` を発行 → 画面を閉じます。
+  `PersonalView` がcallbackを受け取り `refreshDisplay()` でリストを更新します。
+- `code = 86`（token期限切れ）: `doRefreshWithAction` がtokenを更新してから自動的に再度更新します。
+- その他のエラー: `handleErrorCode`。
+
+## 使用するendpoint
+
+- `PATH_PROFILE_PASSPORT` – 氏名 + 生年月日 + 本人確認情報を更新（POST）– `InformationView` で使用
+- `PATH_UPDATE_INFO_V2` – 生年月日を更新（POST、`birthday`、`type = 1`）– `UpdateBirthday` で使用
+
+## 備考
+
+- 生年月日はUI上では常に `dd/MM/yyyy` で入力・表示されますが、serverには `yyyy-MM-dd` で送信されます。
+- `InformationView` は本人確認情報もすべて必須とする統合更新画面であり、セキュリティ完了
+  フロー（`requireSecurityLevel`）に紐づきます。成功すると `loginSuccess()` を通じてログインを継続します。
+- `UpdateBirthday` は生年月日のみを変更し、`code = 86` が発生した場合は自動でtokenをrefreshし、
+  callbackを通じて `PersonalView` に結果を返して表示を更新します。
+- 現在のSDKには**氏名のみを編集する専用画面はありません**。氏名は
+  `InformationView` の中でのみ一緒に更新されます。
+

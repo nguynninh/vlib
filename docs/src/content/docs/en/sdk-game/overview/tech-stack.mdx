@@ -1,0 +1,44 @@
+---
+title: "Technology Used"
+description: "The technologies, languages, and services used to build SDK Game on Android and iOS."
+sidebar:
+  order: 3
+---
+
+SDK Game is built separately for each mobile platform, while sharing a number of Backend and third-party services.
+
+## Overview Table
+
+| Component               | Technology              | Role                                                     |
+| ------------------------ | ------------------------ | --------------------------------------------------------- |
+| Android platform          | Java                     | Implementation language for the Android SDK               |
+| iOS platform               | Objective-C / Swift      | Implementation language for the iOS SDK                    |
+| Account authentication     | OIDC V2                  | Authentication standard used for login and the SDK's API/IAP |
+| Dynamic configuration       | Internal BE API          | Provides real-time configuration for the game              |
+| Dynamic configuration       | Firebase Remote Config   | Additional dynamic configuration source, supporting per-version rollout |
+| OTP authentication          | Internal BE API          | Verifies users' email and phone number                     |
+| Event tracking              | Tracking BE API          | Records game hub events, notifications, play_time...        |
+
+## Android Platform
+
+The Android SDK is written in **Java**, integrated directly into the game project via the SDK library, with detailed documentation on configuration, integration, Backend error codes, and the emit/ack event flow.
+
+## iOS Platform
+
+The iOS SDK is written in **Objective-C** (with Swift support), providing integration documentation, tracking guides, third-party libraries used, and update notes across SDK versions.
+
+## Authentication: OIDC V2
+
+The APIs/IAP used in the SDK are built on top of **OIDC V2**, ensuring a consistent authentication mechanism across games and SDK versions.
+
+## Dynamic Configuration
+
+Dynamic configuration is combined from two sources:
+
+* **Internal BE API** — operated by the VTV Live Backend team.
+* **Firebase Remote Config** — a Google service that supports real-time configuration adjustments without releasing a new build.
+
+## Event Tracking
+
+Events (game hub, notifications, play_time...) are sent to the tracking BE API, along with documentation describing the flow of each event and notes on marketing events used for ad optimization.
+

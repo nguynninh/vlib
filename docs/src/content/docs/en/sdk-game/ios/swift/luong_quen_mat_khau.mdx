@@ -1,0 +1,122 @@
+---
+title: Forgot Password Flow
+description: Describes the password recovery and reset flow via OTP, from ForgotPwd to ForgotPwdOTP and PasswordView.
+---
+
+This document describes the SDK's password recovery/reset flow, built from the actual code:
+`ForgotPwd.swift` (email/phone entry) → `ForgotPwdOTP.swift` (OTP verification) →
+`PasswordView.swift` (setting a new password).
+
+## Overview diagram
+
+```mermaid
+%% width: 1100
+flowchart TD
+    A([User taps Forgot Password]) --> B["Opens ForgotPwd<br/>Enters email or phone number"]
+    B --> C["btnUpdateClick()"]
+
+    C --> D{Validate input}
+    D -- Empty --> D1([Error: enter email or phone number])
+    D -- Wrong format --> D2([Error: invalid format])
+    D -- Valid --> E[/"Determines verifyType:<br/>1 = phone, 2 = email"/]
+    E --> F["runRecaptchaVisual()<br/>Shows reCAPTCHA"]
+
+    F --> G{reCAPTCHA}
+    G -- Failure / cancel --> G1([recapchaError → removes captcha view])
+    G -- Has token --> H["recapchaSuccess(token)<br/>POST PATH_FORGOT_PASSWORD_V2_SEND_OTP"]
+
+    H --> I{Error code}
+    I -- code != 0 --> I1([handleErrorCode → shows error])
+    I -- code = 0 --> J["Opens ForgotPwdOTP<br/>Closes ForgotPwd screen"]
+
+    %% ===== OTP entry screen =====
+    J --> K[Enter 6-digit OTP<br/>Countdown to resend]
+    K --> L["pressConfirm()"]
+    L --> M{OTP has 6 digits?}
+    M -- No --> M1([Error: OTP must be 6 characters])
+    M -- Yes --> N["verifyOTP(otp)<br/>POST PATH_FORGOT_PASSWORD_V2_VERIFY_OTP"]
+
+    N --> O{Error code}
+    O -- code != 0 --> O1([Alert: OTP incorrect / expired])
+    O -- code = 0 --> P["Receives token<br/>Opens PasswordView, closes OTP screen"]
+
+    K -. Timeout .-> R["Taps Resend Code → reCAPTCHA<br/>POST SEND_OTP again → resets countdown"]
+    R -.-> K
+
+    %% ===== New password screen =====
+    P --> S[Enters new password +<br/>confirm password]
+    S --> T["pressAction()"]
+    T --> U{Validate password}
+    U -- Empty --> U1([Error: must not be empty])
+    U -- Fails REGEX_CHECK_PASS_WORD --> U2([Error: invalid password])
+    U -- < 6 characters --> U3([Error: password too short])
+    U -- Confirmation mismatch --> U4([Error: passwords do not match])
+    U -- Valid --> V["updatePass()<br/>POST PATH_FORGOT_PASSWORD_V2_UPDATE<br/>token + password"]
+
+    V --> W{Error code}
+    W -- code = 0 --> X([Alert: Password changed successfully<br/>Closes screen → returns to login])
+    W -- code != 0 --> Y([Error alert])
+```
+
+## Detailed description
+
+### Step 1 – Enter email/phone (`ForgotPwd`)
+
+The user enters an email or phone number. `btnUpdateClick()` checks:
+
+- Must not be empty.
+- Correct format via `isValidPhoneOrEmail()`:
+  - Matches `REGEX_PHONE` (Vietnamese phone number) → `verifyType = 1`.
+  - Matches the email regex → `verifyType = 2`.
+  - Matches neither → shows a format error.
+
+If valid → calls `runRecaptchaVisual()` to show the reCAPTCHA. Once a token is obtained,
+`recapchaSuccess()` calls `PATH_FORGOT_PASSWORD_V2_SEND_OTP` (POST) with
+`reCaptChaVer`, `reCaptChaToken`, `verifyInfo`, `clientId`, `deviceId`, `os`, `osVersion`, `ip`.
+
+- `code = 0`: opens the `ForgotPwdOTP` screen (passing `verifyInfo`, `verifyType`) and closes the current screen.
+- `code != 0`: `handleErrorCode(99)` displays an error message.
+
+### Step 2 – OTP verification (`ForgotPwdOTP`)
+
+The screen shows a 6-digit OTP entry field and a resend countdown timer (`Constants.timeOutOtpAgain`).
+
+When the confirm button is tapped, `pressConfirm()` checks that the OTP has 6 characters; if so, it calls `verifyOTP()`
+→ `PATH_FORGOT_PASSWORD_V2_VERIFY_OTP` (POST) with `verifyInfo`, `otp`, `clientId`, `deviceId`, etc.
+
+- `code = 0`: extracts `token` from the response (`ForgotPwdOTPJsonWrapper`), opens `PasswordView`
+  (passing `token`) and closes the OTP screen.
+- `code != 0`: shows an alert (OTP incorrect or expired).
+
+**Resending the code:** when the countdown reaches 0, the label changes to "Resend Code". Tapping it re-runs
+the reCAPTCHA and calls `PATH_FORGOT_PASSWORD_V2_SEND_OTP` again; on success the
+countdown restarts, on failure an error is shown.
+
+### Step 3 – Set new password (`PasswordView`)
+
+The user enters a new password and confirms it. `pressAction()` checks:
+
+- Must not be empty.
+- Matches `REGEX_CHECK_PASS_WORD`.
+- At least 6 characters.
+- The confirmation must match.
+
+If valid → `updatePass()` calls `PATH_FORGOT_PASSWORD_V2_UPDATE` (POST) with
+`token` (received from the OTP step), `password`, `clientId`, `deviceId`, `os`, `osVersion`, `ip`.
+
+- `code = 0`: alert "Password changed successfully" → closes the screen, and the user returns to log in with the new password.
+- `code != 0`: shows an error alert.
+
+## Endpoints used
+
+- `PATH_FORGOT_PASSWORD_V2_SEND_OTP` – sends OTP to email/phone (POST, with reCAPTCHA)
+- `PATH_FORGOT_PASSWORD_V2_VERIFY_OTP` – verifies OTP, returns `token` (POST)
+- `PATH_FORGOT_PASSWORD_V2_UPDATE` – sets a new password using `token` (POST)
+
+## Notes
+
+- reCAPTCHA is a mandatory step every time an OTP is sent (both the first send and any resend).
+- The `token` received after OTP verification is what allows changing the password in the final step;
+  without a valid OTP, no token can be obtained.
+- After a successful password change, the flow **does not auto-login** but returns the user
+  to the login screen to sign in again with the new password.

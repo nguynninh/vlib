@@ -1,0 +1,207 @@
+---
+title: 开发者游戏配置指南
+description: 获取游戏配置信息、Hub 与 Firebase Remote Config 的配置流程以及配置参数列表的说明。
+---
+
+## 获取游戏配置信息
+
+1. 从邮件中获取配置信息
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image1.png)
+
+2. 从后端获取已在 Hub 上配置好的信息
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image2.png)
+
+3. 从主管处获取全部配置信息
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image3.png)
+
+## 配置流程
+
+1. 在 Hub 上配置
+
+    在 Hub 上配置成功并通过将该数据复制到 SDK 中检查各字段是否正确后，请像其他游戏一样将其配置到 Firebase Remote Config 上。
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image4.png)
+
+    1. Global
+
+        适用于所有自动创建的应用，无需修改，除非有误差需通知 BE 修正。默认值为 0。
+
+    2. App
+
+        适用于所有 package（包括 iOS），参数取自 appId。
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image5.png)
+
+    1. Package
+
+        仅适用于单一 package，取自 packageId。
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image6.png)
+
+    2. 配置参数列表
+
+| 序号 | 字段名 | 是否可从旧项目复制 | 数据类型 | 参数要求 | 字段说明 |
+| --- | --- | --- | --- | --- | --- |
+| 1 | hub_api_base_url | 可以 | String | 必填 | Hub 的 Base Url |
+| 2 | authen_api_base_url | 可以 | String | 必填 | Auth 的 Base Url |
+| 3 | payment_api_base_url | 可以 | String | 必填 | Payment 的 Base Url |
+| 4 | translate_api_base_url | 可以 | String | 必填 | Translate 的 Base Url |
+| 5 | client_id | 不可以 | String | 必填 | 由 BE 通过邮件提供的应用 Client Id |
+| 6 | client_secret | 不可以 | String | 必填 | 由 BE 通过邮件提供的应用 Client Secret |
+| 7 | google_web_client | 不可以 | String | 必填 | 从 Google Cloud 获取的 Google web client id（不是 android client id），需与 keystore 的 sha1 正确关联才能进行 Google 登录 |
+| 8 | achieved_levels | 可以 | Array | 必填 | 用于跟踪用户等级的值 |
+| 9 | achieved_vips | 可以 | Array | 必填 | 用于跟踪用户 vip 等级的值 |
+| 10 | af_dev_key | 可以 | String | 必填 | AppsFlyer 的 Key |
+| 11 | scope | 可以 | String | 必填 | api 的访问权限 |
+| 12 | app_id | 不可以 | String | 必填 | appId，与上方 app 的值相同 |
+| 13 | apple_client_id | 不可以 | String | 非必填 | 用于 Apple 登录的值（目前已弃用，填写只是为了完整） |
+| 14 | api_key_recapcha | 可以 | String | 必填 | recaptcha v3 的 Key |
+| 15 | package_id | 不可以 | String | 必填 | 应用的 Package Id |
+| 16 | tik_tok_app_id | 不可以 | String | 非必填 | Tiktok app id，应用上架并可下载后才能配置 |
+| 17 | access_token_tik_tok | 不可以 | String | 非必填 | Tiktok accesstoken，应用上架并可下载后才能配置 |
+| 18 | multilingual | 不可以 | String | 必填 | 是否在登录界面显示语言选择。1 为显示，其他为隐藏 |
+| 19 | language_list | 不可以 | Array | 必填 | 用于多语言列表的数组数据，默认设为单一语言。第一个语言将作为默认语言 |
+| 20 | app_code | 不可以 | String | 必填 | 应用的 app 名称，例如：R001、T026、T028 |
+| 21 | event_countdown | 不可以 | Json | 非必填 | 包含即将上线应用发布日期倒计时信息的 Json |
+| 22 | version_store | 不可以 | String | 必填 | 审核通过并已在商店发布后的新版本信息。发布最新版本时需要更新 |
+| 23 | show_floating | 可以 | String | 必填 | 登录后是否显示悬浮按钮：0 为隐藏，1 为显示 |
+| 24 | hidden_floating_version | 不可以 | String | 必填 | 提交商店审核时隐藏悬浮按钮的版本，审核完成后需清空 |
+| 25 | reward_profile_event | 可以 | Json | 必填 | 上线生产环境并发布应用前必须更换图片，此功能需配合游戏内领取奖励功能一起使用 |
+
+    3. 配置从服务器推送到 Firebase 的事件
+
+        需要主管更新这两个参数的信息，事件才能推送到 Firebase。
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image7.png)
+
+    4. 根据已发送的充值调用列表配置充值套餐。这一步需要小心，否则会造成赔偿。
+
+2. 在 Firebase 上配置
+
+    1. 配置应用
+
+        访问：Setting -> General -> Add app -> 填写 package Id
+
+        创建应用后 **需请示主管** 在 google cloud 上更新配置，以补充 google-service.json 的信息
+
+        在此处检查 json：https://dandar3.github.io/android/google-services-json-to-xml.html
+
+        需要与下图一致
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image8.png)
+
+    2. 配置来自服务器的通知
+
+        将正确的 google-server.json 配置到示例应用后，即可确保收到通知，可先用 Firebase 的消息进行测试
+
+        Project Setting -> Services account
+
+        请确保只创建一次，并妥善保存该文件。
+
+        为 Android 和 iOS 在 Hub 上都创建好配置后，用 Hub 上 package 的配置再次测试通知
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image9.png)
+
+        在 Hub 上进行设置
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image10.png)
+
+3. 在 Facebook 上配置
+
+    1. 配置应用
+
+        应用设置 -> 基本信息 -> 添加平台 -> Google play
+
+        主 Hash：
+
+        从 store 签名后的应用中获取 SHA1，生成链接后粘贴到此处 https://tomeko.net/online_tools/hex_to_base64.php
+
+        包名：Package 名称
+
+        类名：MainActivity
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image11.png)
+
+4. 配置示例项目
+
+    请参考其他项目
+
+    - 修改 package name
+    - 修改项目名称
+    - 修改 string.xml 中的信息
+    - 修改 google-service.json
+    - 修改 vtvlive_config_sdk_game_defaults 文件 -> 信息从 hub 获取
+    - 修改用于下载 sdk game 与 game tracking 两个库的 key，创建 key accesstoken -> developer -> read-api 并保存
+
+5. 示例项目测试流程
+
+    1. 常规登录
+
+        失败 -> 检查 Hub 配置及示例项目的 package 与所提供信息是否正确 -> 若正确则通知 BE 检查登录是否已配置
+
+    2. 注册与忘记密码
+
+        失败 -> 打开日志发现 recaptcha 提示 package name 不存在 -> **需请示主管** 进行配置
+
+        失败 -> 显示 BE 返回的错误弹窗 -> 设备与网络被 recaptcha 判定为垃圾请求，请更换设备和 3G 网络
+
+    3. Google 登录
+
+        信息验证失败。
+
+        原因：
+
+        -> 构建的应用未签名，或 google cloud 上的签名有误。需检查 Apk、google cloud、store 三处的 sha1 签名是否一致
+
+        ! 也可能是 Hub 上 GG login client ID 设置有误
+
+    4. Facebook 登录
+
+        提示无法登录。
+
+        在开发模式下：
+
+        检查应用内 facebook 相关信息是否正确
+
+        确认是否使用了正确的测试账号进行登录
+
+        在公开模式下：
+
+        检查 facebook 是否已授予 profile 权限 -> 若未授予，**需请示主管** 向 facebook 为该项目申请权限
+
+    5. 检查上报到 AppsFlyer 的事件
+
+        打开日志并筛选 appsflyer 标签，若上报报错提示 package name 不存在，**需请示主管**
+
+    6. 检查支付
+
+        要能够完成支付，需先推送一个版本到内部测试渠道，然后在 store 和 hub 上配置充值套餐
+
+        若无法完成支付，会提示未知错误
+
+        检查 apk 是否已正确传入充值套餐名称。
+
+        若游戏方已正确传入充值套餐名称，但 BE 的 api 仍返回未知错误
+
+        **需请示主管**，由主管通知支付方在生产环境开启，并在 google cloud 上配置开启相关服务。
+
+        开启该配置最长需要 1 天才能完成支付
+
+## Store 配置
+
+1. 注册应用
+
+    注册工作需尽快进行，因为 package name 的注册审核最长需要 48 小时。
+
+    完成示例项目后，按路径创建文件
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image12.png)
+
+    该代码在 store 注册 package name 时获取
+
+    使用正确的 keystore 构建出 apk 并上传到 store 以注册 package name
+
+    注册 package name 完成后，才能在 store 上创建该应用
