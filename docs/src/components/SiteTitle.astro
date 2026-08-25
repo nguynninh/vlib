@@ -1,0 +1,24 @@
+---
+import Default from '@astrojs/starlight/components/SiteTitle.astro';
+import type { Props } from '@astrojs/starlight/props';
+
+const props = Astro.props as Props;
+---
+
+<Default {...props}>
+    <slot />
+</Default>
+<span class="version-badge">v1.0.0</span>
+
+<style>
+    .version-badge {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--sl-color-gray-3);
+        background: var(--sl-color-gray-6);
+        padding: 0.15rem 0.5rem;
+        border-radius: 999px;
+        margin-left: 0.25rem;
+        align-self: center;
+    }
+</style>

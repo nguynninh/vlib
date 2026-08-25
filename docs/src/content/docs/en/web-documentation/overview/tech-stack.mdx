@@ -1,0 +1,66 @@
+---
+title: "Tech Stack"
+description: "The technologies and libraries used to build the Web Documentation platform: Astro, Starlight, MDX, Expressive Code, Mermaid."
+---
+
+The Web Documentation platform is built on the **Astro** ecosystem, combined with a number of libraries and plugins that support technical content.
+
+## Overview
+
+| Component           | Technology                                  | Role                                              |
+| -------------------- | -------------------------------------------- | -------------------------------------------------- |
+| Framework             | [Astro](https://astro.build/)               | Static documentation site framework               |
+| Theme / UI            | [Starlight](https://starlight.astro.build/) | Documentation UI framework for Astro              |
+| Content format        | MDX                                          | Extended Markdown with embeddable components      |
+| Code blocks           | Expressive Code                              | Syntax highlighting, line numbers, code titles    |
+| Diagrams              | [Mermaid](https://mermaid.js.org/)          | Flowcharts, sequence diagrams, class diagrams...  |
+| ZenUML diagrams       | `@mermaid-js/mermaid-zenuml`                | Mermaid plugin for ZenUML diagrams                |
+| Image processing      | [Sharp](https://sharp.pixelplumbing.com/)   | Image optimization and resizing at build time     |
+| Language              | TypeScript                                   | Configuration (`astro.config.mjs`) and remark plugins |
+| Package manager       | npm                                          | Dependency management and build scripts           |
+
+## Custom Markdown plugins
+
+Besides the built-in plugins, the platform adds a few custom remark plugins to extend Markdown syntax:
+
+* **remark-media-options** — customizes how media (images, videos) are rendered in content.
+* **remark-table-column-widths** — allows declaring table column widths via `[width=...]` syntax.
+
+## Internationalization (i18n)
+
+Multi-language support is configured directly through Starlight's i18n feature, with `vi` as the default locale:
+
+```ts title="astro.config.mjs"
+defaultLocale: 'vi',
+locales: {
+    vi: { label: 'Tiếng Việt', lang: 'vi' },
+    en: { label: 'English', lang: 'en' },
+    zh: { label: '中文', lang: 'zh' },
+    ja: { label: '日本語', lang: 'ja' },
+},
+```
+
+## Main folder structure
+
+```text
+docs/
+├── astro.config.mjs
+├── src/
+│   ├── content/docs/{vi,en,zh,ja}/   # Documentation content per language
+│   ├── components/                    # Custom Astro components (SiteTitle, PageTitle...)
+│   ├── plugins/                       # Custom remark plugins
+│   └── styles/custom.css              # Custom CSS
+└── public/                            # Images, favicon, static assets
+```
+
+## Build & Deployment
+
+The platform builds to a static site via Astro:
+
+```bash
+npm run dev       # Run the dev server
+npm run build     # Build the static site into dist/
+npm run preview   # Preview the build
+```
+
+Since the output is a static site, the platform can be deployed to any static hosting service (Vercel, Netlify, Cloudflare Pages, GitHub Pages...).

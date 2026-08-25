@@ -1,0 +1,63 @@
+.sl-markdown-content table {
+	display: block;
+	width: max-content;
+	max-width: 100%;
+	border-collapse: separate;
+	border-spacing: 0;
+	border: 1px solid #dbe3ec;
+	border-radius: 6px;
+	overflow-x: auto;
+	overflow-y: hidden;
+	font-size: 0.9rem;
+	scrollbar-width: thin;
+	scrollbar-color: #cfd8e3 transparent;
+}
+
+.sl-markdown-content th,
+.sl-markdown-content td {
+	padding: 0.75rem 1rem;
+	border: 0;
+	border-bottom: 1px solid #dbe3ec;
+	text-align: left;
+	vertical-align: middle;
+}
+
+.sl-markdown-content th {
+	background: #edf2f7;
+	color: #33485f;
+	font-size: 0.75rem;
+	font-weight: 700;
+	letter-spacing: 0;
+	text-transform: uppercase;
+}
+
+.sl-markdown-content tr:last-child td {
+	border-bottom: 0;
+}
+
+.sl-markdown-content td {
+	color: #0f2742;
+	background: #fff;
+}
+
+.sl-markdown-content td code {
+	padding: 0.125rem 0.375rem;
+	border-radius: 4px;
+	background: #eaf2ff;
+	color: #1d5fbf;
+	font-size: 0.85em;
+	white-space: nowrap;
+}
+
+.sl-markdown-content table::-webkit-scrollbar {
+	height: 8px;
+}
+
+.sl-markdown-content table::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.sl-markdown-content table::-webkit-scrollbar-thumb {
+	border-radius: 999px;
+	background: #cfd8e3;
+}

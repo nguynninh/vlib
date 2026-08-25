@@ -1,0 +1,106 @@
+---
+title: "Introduction"
+description: "An overview of the Web Documentation platform: its purpose, documentation structure, content format, and design principles."
+---
+
+## Overview
+
+**Web Documentation** is a web-based documentation platform designed to provide a structured, searchable, and easy-to-maintain knowledge base for technical documentation.
+
+The platform uses **MDX** as its primary content format, allowing documentation to combine standard Markdown with interactive components when needed.
+
+This approach keeps documentation content simple and readable while still providing the flexibility to build richer technical documentation.
+
+## Purpose
+
+The Web Documentation platform is designed to:
+
+* Organize technical documentation into a clear hierarchy.
+* Store documentation as version-controlled MDX files.
+* Support Markdown syntax and custom MDX components.
+* Provide fast navigation between documentation pages.
+* Support code examples and technical diagrams (Mermaid).
+* Provide full-text search across documentation.
+* Support light and dark themes.
+* Support multiple languages.
+* Provide a responsive experience across desktop, tablet, and mobile devices.
+
+## Documentation Structure
+
+Documentation is organized into several main areas:
+
+```text
+Web Documentation
+│
+├── Overview
+├── Architecture
+├── Development
+├── Documentation
+├── UI
+├── Features
+├── Deployment
+├── Maintenance
+└── Changelog
+```
+
+Each section focuses on a specific aspect of the platform, from architecture and development to deployment and maintenance.
+
+## Content Format
+
+Documentation pages are written using **MDX**:
+
+```mdx title="src/content/docs/en/example.mdx"
+---
+title: "Introduction"
+description: "Introduction to the Web Documentation platform."
+---
+
+## Introduction
+
+This is a documentation page.
+
+<CustomComponent />
+```
+
+MDX provides the simplicity of Markdown while allowing components to be embedded directly into documentation pages.
+
+## Target Users
+
+This documentation is primarily intended for:
+
+* Web developers working on the documentation platform.
+* Developers contributing new documentation pages.
+* Maintainers responsible for the platform.
+* DevOps engineers responsible for deployment.
+* Technical writers maintaining documentation content.
+
+## Key Principles
+
+The platform follows several principles:
+
+### Simple
+
+Documentation should be easy to write, read, and update.
+
+### Structured
+
+Content should follow a predictable hierarchy so users can quickly find what they need.
+
+### Version Controlled
+
+Documentation is stored alongside the source code and managed through Git.
+
+### Extensible
+
+MDX components allow the documentation system to support additional interactive features without changing the underlying content format.
+
+### Maintainable
+
+The project structure and documentation conventions should make it easy for future developers to understand and maintain the system.
+
+## Next Steps
+
+After understanding the purpose of the platform, continue with:
+
+* [Features](/en/web-documentation/overview/features)
+* [Tech Stack](/en/web-documentation/overview/tech-stack)

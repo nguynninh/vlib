@@ -1,0 +1,1168 @@
+---
+
+title: "Bảng"
+description: "Hướng dẫn sử dụng Bảng trong MDX, từ cú pháp cơ bản đến căn chỉnh, nội dung nâng cao, Mã nguồn, link và các quy tắc trình bày bảng trong tài liệu kỹ thuật."
+---
+
+Table là một trong những thành phần quan trọng nhất khi viết technical documentation.
+
+Thay vì mô tả nhiều thông tin có cùng cấu trúc bằng các đoạn văn dài, bạn có thể sử dụng table để đặt chúng cạnh nhau và giúp người đọc nhanh chóng so sánh.
+
+Ví dụ, thay vì viết:
+
+:::note
+TypeScript được sử dụng cho frontend. Java được sử dụng cho Android. Swift được sử dụng cho iOS.
+:::
+
+có thể viết:
+
+| Platform | Language   |
+| -------- | ---------- |
+| Web      | TypeScript |
+| Android  | Kotlin     |
+| iOS      | Swift      |
+
+Cách này đặc biệt hữu ích khi tài liệu cần trình bày:
+
+* So sánh nhiều lựa chọn.
+* Danh sách thuộc tính.
+* API parameters.
+* Configuration options.
+* Environment variables.
+* HTTP status codes.
+* Supported platforms.
+* Feature comparison.
+* Version compatibility.
+* Database fields.
+* CLI commands.
+* Keyboard shortcuts.
+
+---
+
+## 1. Cú pháp Table cơ bản
+
+Một Markdown Table tối thiểu gồm:
+
+1. Header row.
+2. Separator row.
+3. Một hoặc nhiều data row.
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="Table cơ bản"
+| Name | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | Unique identifier |
+| `name` | `string` | User name |
+| `email` | `string` | User email |
+```
+
+**Thử nghiệm**
+
+| Name    | Type     | Description       |
+| ------- | -------- | ----------------- |
+| `id`    | `string` | Unique identifier |
+| `name`  | `string` | User name         |
+| `email` | `string` | User email        |
+
+Dòng:
+
+```md
+| --- | --- | --- |
+```
+
+được sử dụng để phân tách header và nội dung.
+
+Số lượng dấu `---` không quan trọng miễn là phần phân cách hợp lệ.
+
+Ví dụ:
+
+```md
+| Name | Type |
+| - | - |
+| id | string |
+```
+
+vẫn có thể được render thành table.
+
+Tuy nhiên, nên sử dụng `---` để source code dễ đọc hơn.
+
+---
+
+## 2. Header của Table
+
+Header là hàng đầu tiên của table và dùng để mô tả ý nghĩa của từng column.
+
+Ví dụ:
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="Table có Header"
+| Property | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | `string` | Yes | User identifier |
+| `name` | `string` | Yes | User name |
+| `avatar` | `string` | No | Avatar URL |
+```
+
+**Thử nghiệm**
+
+| Property | Type     | Required | Description     |
+| -------- | -------- | -------- | --------------- |
+| `id`     | `string` | Yes      | User identifier |
+| `name`   | `string` | Yes      | User name       |
+| `avatar` | `string` | No       | Avatar URL      |
+
+Header nên ngắn gọn và dễ hiểu.
+
+Không nên:
+
+| This is the property name of the object | This is the data type of the property | Is this property required? |
+| --------------------------------------- | ------------------------------------- | -------------------------- |
+
+Nên:
+
+| Property | Type | Required |
+| -------- | ---- | -------- |
+
+Header càng ngắn thì table càng dễ scan.
+
+---
+
+## 3. Số lượng Column
+
+Mỗi row nên có cùng số lượng column.
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="Số lượng Column"
+| Name | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | Identifier |
+| `name` | `string` | User name |
+| `email` | `string` | Email |
+```
+
+**Thử nghiệm**
+
+| Name    | Type     | Description |
+| ------- | -------- | ----------- |
+| `id`    | `string` | Identifier  |
+| `name`  | `string` | User name   |
+| `email` | `string` | Email       |
+
+Không nên tạo table với số lượng column không nhất quán:
+
+```md
+| Name | Type | Description |
+| --- | --- | --- |
+| id | string |
+| name | string | User name | Extra |
+```
+
+Một số Markdown renderer có thể cố gắng tự sửa cấu trúc này, nhưng kết quả giữa các parser có thể khác nhau.
+
+Vì vậy, hãy đảm bảo mỗi row có đúng số column.
+
+:::caution[Cảnh báo]
+Row thiếu hoặc thừa column so với header là lỗi rất dễ mắc phải khi copy-paste hoặc chỉnh sửa table thủ công. Hãy kiểm tra lại số lượng dấu `|` trên mỗi row trước khi commit.
+:::
+
+---
+
+## 4. Table một Column
+
+Markdown Table vẫn có thể được sử dụng với một column.
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="Một Column"
+| Supported Format |
+| --- |
+| Markdown |
+| MDX |
+| HTML |
+```
+
+**Thử nghiệm**
+
+| Supported Format |
+| ---------------- |
+| Markdown         |
+| MDX              |
+| HTML             |
+
+Tuy nhiên, nếu chỉ có một danh sách đơn giản thì Markdown list thường phù hợp hơn:
+
+```md
+- Markdown
+- MDX
+- HTML
+```
+
+Table một column chỉ nên được sử dụng khi dữ liệu thực sự mang ý nghĩa dạng bảng.
+
+---
+
+## 5. Table nhiều Column
+
+Table có thể có nhiều column.
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="Nhiều Column"
+| Platform | Language | Version | Framework | Framework Version | UI Toolkit | Package Manager | Build Tool | IDE | OS | Min OS | Target OS | Architecture | State Management | Networking | Database | Cache | Testing | Unit Test | UI Test | Linting | Formatting | Documentation | CI/CD | Repository | Branch | Environment | Deployment | Distribution | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Web | TypeScript | 5.x | React | 19.x | Tailwind CSS | npm | Vite | VS Code | macOS / Linux / Windows | Chrome 120+ | Modern Browsers | Feature-based | Zustand | Axios | PostgreSQL | Redis | Vitest | Jest | Playwright | ESLint | Prettier | MDX | GitHub Actions | GitHub | main | dev / staging / prod | Vercel | Web | Active |
+| Android | Kotlin | 2.1.x | Android SDK | API 36 | Jetpack Compose | Gradle | Gradle | Android Studio | macOS / Linux / Windows | Android 8 | Android 16 | Clean Architecture | ViewModel | Retrofit | Room | DataStore | JUnit | JUnit | Compose Test | ktlint | ktfmt | Dokka | GitHub Actions | GitHub | main | dev / staging / prod | Google Play | APK / AAB | Active |
+| iOS | Swift | 6.x | SwiftUI | iOS 18 | SwiftUI | Swift Package Manager | Xcode Build | Xcode | macOS | iOS 16 | iOS 18 | Clean Architecture | Observation | URLSession | SwiftData | NSCache | XCTest | XCTest | XCUITest | SwiftLint | SwiftFormat | DocC | GitHub Actions | GitHub | main | dev / staging / prod | App Store | IPA | Active |
+```
+
+**Thử nghiệm**
+
+| Platform | Language | Version | Framework | Framework Version | UI Toolkit | Package Manager | Build Tool | IDE | OS | Min OS | Target OS | Architecture | State Management | Networking | Database | Cache | Testing | Unit Test | UI Test | Linting | Formatting | Documentation | CI/CD | Repository | Branch | Environment | Deployment | Distribution | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Web | TypeScript | 5.x | React | 19.x | Tailwind CSS | npm | Vite | VS Code | macOS / Linux / Windows | Chrome 120+ | Modern Browsers | Feature-based | Zustand | Axios | PostgreSQL | Redis | Vitest | Jest | Playwright | ESLint | Prettier | MDX | GitHub Actions | GitHub | main | dev / staging / prod | Vercel | Web | Active |
+| Android | Kotlin | 2.1.x | Android SDK | API 36 | Jetpack Compose | Gradle | Gradle | Android Studio | macOS / Linux / Windows | Android 8 | Android 16 | Clean Architecture | ViewModel | Retrofit | Room | DataStore | JUnit | JUnit | Compose Test | ktlint | ktfmt | Dokka | GitHub Actions | GitHub | main | dev / staging / prod | Google Play | APK / AAB | Active |
+| iOS | Swift | 6.x | SwiftUI | iOS 18 | SwiftUI | Swift Package Manager | Xcode Build | Xcode | macOS | iOS 16 | iOS 18 | Clean Architecture | Observation | URLSession | SwiftData | NSCache | XCTest | XCTest | XCUITest | SwiftLint | SwiftFormat | DocC | GitHub Actions | GitHub | main | dev / staging / prod | App Store | IPA | Active |
+
+Table nhiều column rất phù hợp với các trang documentation cần so sánh platform hoặc technology stack.
+
+Tuy nhiên, nếu số lượng column quá lớn, table sẽ trở nên khó đọc trên màn hình nhỏ.
+
+---
+
+## 6. Căn chỉnh Column
+
+Markdown Table hỗ trợ căn trái, căn phải và căn giữa bằng dấu `:`.
+
+### Căn trái
+
+```md
+| Name | Type |
+| :--- | :--- |
+| id | string |
+```
+
+### Căn giữa
+
+```md
+| Name | Type |
+| :---: | :---: |
+| id | string |
+```
+
+### Căn phải
+
+```md
+| Name | Type |
+| ---: | ---: |
+| Price | 100 |
+```
+
+Có thể kết hợp cả ba.
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="Column Alignment"
+| Property | Type | Required | Default |
+| :--- | :---: | :---: | ---: |
+| `id` | `string` | Yes | - |
+| `limit` | `number` | No | 20 |
+| `enabled` | `boolean` | No | true |
+```
+
+**Thử nghiệm**
+
+| Property  |    Type   | Required | Default |
+| :-------- | :-------: | :------: | ------: |
+| `id`      |  `string` |    Yes   |       - |
+| `limit`   |  `number` |    No    |      20 |
+| `enabled` | `boolean` |    No    |    true |
+
+### Độ rộng Column
+
+Markdown Table chuẩn **không có cú pháp để khai báo độ rộng cố định** cho một column, kể cả `:---` hay `---:` cũng chỉ điều khiển alignment, không điều khiển width.
+
+```md
+| Name | Description |
+| --- | --- |
+| id | Unique identifier |
+```
+
+Độ rộng thực tế mà trình duyệt hiển thị được tính tự động dựa trên nội dung dài nhất trong column đó, không phụ thuộc vào số dấu `-` bạn viết trong hàng phân cách.
+
+:::caution[Cảnh báo]
+Viết nhiều dấu `-` hơn (ví dụ `----------`) cho một column với hy vọng nó sẽ rộng hơn khi render là hiểu lầm phổ biến. Điều đó chỉ giúp source code dễ đọc hơn, không ảnh hưởng đến kết quả hiển thị.
+:::
+
+Trong docs này, nếu thực sự cần kiểm soát width (ví dụ tránh một column quá hẹp hoặc quá rộng), thêm `[width=...]` hoặc `[w=...]` vào header của column đó.
+
+:::danger[Lỗi thường gặp]
+Chỉ dùng cú pháp dấu vuông `[width=...]` hoặc `[w=...]`. Không dùng `{width=...}`, `<width=...>` hay biến thể khác, vì MDX có thể hiểu `{...}` là JSX expression và làm trang build lỗi.
+:::
+
+Ví dụ ép column đầu rộng cố định `200px`, các column còn lại để trình duyệt tự tính:
+
+```mdx showLineNumbers title="Ép width bằng Markdown Table"
+| Name [width=200px] | Description |
+| --- | --- |
+| `id` | Unique identifier |
+```
+
+**Thử nghiệm**
+
+| Name [width=200px] | Description |
+| --- | --- |
+| `id` | Unique identifier |
+
+Phần `[width=...]` chỉ dùng để render layout, không hiển thị trong header. Cách này vẫn nên dùng có chừng mực, vì width cố định quá nhiều có thể làm table khó đọc trên mobile.
+
+---
+
+## 7. Khi nào nên căn trái, giữa và phải?
+
+Không nên căn chỉnh ngẫu nhiên.
+
+Một quy tắc đơn giản:
+
+| Nội dung    | Alignment |
+| ----------- | --------- |
+| Text        | Left      |
+| Description | Left      |
+| Mã nguồn        | Left      |
+| Status      | Center    |
+| Boolean     | Center    |
+| Number      | Right     |
+| Price       | Right     |
+| Percentage  | Right     |
+
+Ví dụ:
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="Alignment thực tế"
+| Property | Type | Required | Default |
+| :--- | :--- | :---: | ---: |
+| `name` | `string` | Yes | - |
+| `enabled` | `boolean` | No | `true` |
+| `limit` | `number` | No | `20` |
+| `timeout` | `number` | No | `5000` |
+```
+
+**Thử nghiệm**
+
+| Property  | Type      | Required | Default |
+| :-------- | :-------- | :------: | ------: |
+| `name`    | `string`  |    Yes   |       - |
+| `enabled` | `boolean` |    No    |  `true` |
+| `limit`   | `number`  |    No    |    `20` |
+| `timeout` | `number`  |    No    |  `5000` |
+
+---
+
+## 8. Inline Mã nguồn trong Table
+
+Một trong những cách sử dụng table phổ biến nhất trong technical documentation là đặt Mã nguồn inline vào trong cell.
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="Inline Mã nguồn"
+| Property | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | Unique identifier |
+| `createdAt` | `Date` | Creation timestamp |
+| `isActive` | `boolean` | Whether the user is active |
+```
+
+**Thử nghiệm**
+
+| Property    | Type      | Description                |
+| ----------- | --------- | -------------------------- |
+| `id`        | `string`  | Unique identifier          |
+| `createdAt` | `Date`    | Creation timestamp         |
+| `isActive`  | `boolean` | Whether the user is active |
+
+Đối với technical documentation, nên sử dụng inline Mã nguồn cho:
+
+* Variable name.
+* Function name.
+* Class name.
+* File name.
+* Command.
+* API parameter.
+* Environment variable.
+* Type.
+* HTTP method.
+* URL path.
+
+Ví dụ:
+
+```md
+`DATABASE_URL`
+`npm run dev`
+`UserRepository`
+`POST`
+`/api/users`
+```
+
+---
+
+## 9. Bold và Italic
+
+Table hỗ trợ Markdown formatting thông thường.
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="Text Formatting"
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Authentication** | **Supported** | OAuth2 authentication |
+| *Analytics* | Planned | Usage analytics |
+| ~~Legacy API~~ | Deprecated | Use the new API instead |
+```
+
+**Thử nghiệm**
+
+| Feature            | Status        | Description             |
+| ------------------ | ------------- | ----------------------- |
+| **Authentication** | **Supported** | OAuth2 authentication   |
+| *Analytics*        | Planned       | Usage analytics         |
+| ~~Legacy API~~     | Deprecated    | Use the new API instead |
+
+Không nên lạm dụng bold trong table. Nếu mọi thứ đều được in đậm thì không còn hierarchy.
+
+---
+
+## 10. Link trong Table
+
+Bạn có thể đặt Markdown link trong table.
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="Link trong Table"
+| Resource | Description |
+| --- | --- |
+| [MDX](https://mdxjs.com/) | JSX for Markdown |
+| [Astro](https://astro.build/) | Web framework |
+| [Mermaid](https://mermaid.js.org/) | Diagram generation |
+```
+
+**Thử nghiệm**
+
+| Resource                           | Description        |
+| ---------------------------------- | ------------------ |
+| [MDX](https://mdxjs.com/)          | JSX for Markdown   |
+| [Astro](https://astro.build/)      | Web framework      |
+| [Mermaid](https://mermaid.js.org/) | Diagram generation |
+
+Trong documentation nội bộ, link đến các trang khác trong cùng project cũng rất hữu ích:
+
+```md
+| Component | Documentation |
+| --- | --- |
+| Code Block | [Code Blocks](/web-documentation/ui/code_block) |
+| Table | [Table](/web-documentation/ui/table) |
+| Mermaid | [Mermaid](/web-documentation/ui/mermaid) |
+```
+
+---
+
+## 11. Emoji và Symbol
+
+Table có thể chứa Unicode, emoji và các symbol thông thường.
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="Status Table"
+| Feature | Status |
+| --- | --- |
+| Authentication | ✅ Supported |
+| Payment | ⚠️ Beta |
+| Legacy API | ❌ Deprecated |
+```
+
+**Thử nghiệm**
+
+| Feature        | Status       |
+| -------------- | ------------ |
+| Authentication | ✅ Supported  |
+| Payment        | ⚠️ Beta      |
+| Legacy API     | ❌ Deprecated |
+
+Tuy nhiên, nếu documentation có design system riêng, nên thống nhất cách hiển thị status thay vì sử dụng emoji tùy ý.
+
+---
+
+## 12. Table với Empty Value
+
+Không phải cell nào cũng bắt buộc phải có dữ liệu.
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="Empty Cell"
+| Property | Required | Default |
+| --- | :---: | --- |
+| `id` | Yes | - |
+| `name` | Yes | - |
+| `avatar` | No | |
+```
+
+**Thử nghiệm**
+
+| Property | Required | Default |
+| -------- | :------: | ------- |
+| `id`     |    Yes   | -       |
+| `name`   |    Yes   | -       |
+| `avatar` |    No    |         |
+
+Trong technical documentation, nên sử dụng một ký hiệu nhất quán như `-` hoặc `N/A` thay vì để nhiều loại empty value khác nhau.
+
+Ví dụ:
+
+| Property  | Default |
+| --------- | ------- |
+| `name`    | `-`     |
+| `avatar`  | `-`     |
+| `timeout` | `5000`  |
+
+---
+
+## 13. Table với nhiều dòng Text
+
+Cell có thể chứa text khá dài.
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="Long Description"
+| Property | Description |
+| --- | --- |
+| `timeout` | Determines how long the client waits for a response before the request is considered failed. |
+| `retry` | Determines whether the request should automatically be retried after a temporary network failure. |
+```
+
+**Thử nghiệm**
+
+| Property  | Description                                                                                       |
+| --------- | ------------------------------------------------------------------------------------------------- |
+| `timeout` | Determines how long the client waits for a response before the request is considered failed.      |
+| `retry`   | Determines whether the request should automatically be retried after a temporary network failure. |
+
+Tuy nhiên, nếu description quá dài, table có thể trở nên khó đọc.
+
+Khi đó nên cân nhắc chuyển phần giải thích chi tiết ra bên ngoài table.
+
+Ví dụ:
+
+| Property  | Type      | Required |
+| --------- | --------- | -------- |
+| `timeout` | `number`  | No       |
+| `retry`   | `boolean` | No       |
+
+Sau table:
+
+> `timeout` determines how long the client waits for a response before the request fails.
+
+Cách này thường dễ đọc hơn.
+
+---
+
+## 14. Table với Mã nguồn Inline
+
+Table thường được dùng để document API parameters.
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="API Parameters"
+| Parameter | Type | Required | Description |
+| --- | --- | :---: | --- |
+| `page` | `number` | No | Page number |
+| `limit` | `number` | No | Number of records |
+| `sort` | `string` | No | Sort field |
+| `order` | `"asc" \| "desc"` | No | Sort direction |
+```
+
+**Thử nghiệm**
+
+| Parameter | Type              | Required | Description       |
+| --------- | ----------------- | :------: | ----------------- |
+| `page`    | `number`          |    No    | Page number       |
+| `limit`   | `number`          |    No    | Number of records |
+| `sort`    | `string`          |    No    | Sort field        |
+| `order`   | `"asc" \| "desc"` |    No    | Sort direction    |
+
+Đây là một pattern rất phổ biến trong API documentation.
+
+---
+
+## 15. Table cho HTTP Status Code
+
+Table đặc biệt hữu ích khi document HTTP API.
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="HTTP Status Codes"
+| Status | Meaning | Description |
+| ---: | --- | --- |
+| `200` | OK | Request completed successfully |
+| `201` | Created | Resource was created |
+| `400` | Bad Request | Invalid request |
+| `401` | Unauthorized | Authentication required |
+| `403` | Forbidden | Access denied |
+| `404` | Not Found | Resource does not exist |
+| `500` | Internal Server Error | Unexpected server error |
+```
+
+**Thử nghiệm**
+
+| Status | Meaning               | Description                    |
+| -----: | --------------------- | ------------------------------ |
+|  `200` | OK                    | Request completed successfully |
+|  `201` | Created               | Resource was created           |
+|  `400` | Bad Request           | Invalid request                |
+|  `401` | Unauthorized          | Authentication required        |
+|  `403` | Forbidden             | Access denied                  |
+|  `404` | Not Found             | Resource does not exist        |
+|  `500` | Internal Server Error | Unexpected server error        |
+
+Ở đây status code được căn phải vì đó là dữ liệu số.
+
+---
+
+## 16. Table cho Environment Variables
+
+Table cũng rất phù hợp để document environment variables.
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="Environment Variables"
+| Variable | Required | Example | Description |
+| --- | :---: | --- | --- |
+| `DATABASE_URL` | Yes | `postgres://...` | PostgreSQL connection string |
+| `REDIS_URL` | No | `redis://...` | Redis connection string |
+| `API_URL` | Yes | `https://api.example.com` | Backend API URL |
+| `DEBUG` | No | `true` | Enables debug logging |
+```
+
+**Thử nghiệm**
+
+| Variable       | Required | Example                   | Description                  |
+| -------------- | :------: | ------------------------- | ---------------------------- |
+| `DATABASE_URL` |    Yes   | `postgres://...`          | PostgreSQL connection string |
+| `REDIS_URL`    |    No    | `redis://...`             | Redis connection string      |
+| `API_URL`      |    Yes   | `https://api.example.com` | Backend API URL              |
+| `DEBUG`        |    No    | `true`                    | Enables debug logging        |
+
+---
+
+## 17. Table cho Feature Comparison
+
+Một use case khác là so sánh feature.
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="Feature Comparison"
+| Feature | Web | Android | iOS |
+| --- | :---: | :---: | :---: |
+| Authentication | ✅ | ✅ | ✅ |
+| Push Notification | ✅ | ✅ | ✅ |
+| Offline Mode | ❌ | ✅ | ✅ |
+| Dark Mode | ✅ | ✅ | ✅ |
+```
+
+**Thử nghiệm**
+
+| Feature           | Web | Android | iOS |
+| ----------------- | :-: | :-----: | :-: |
+| Authentication    |  ✅  |    ✅    |  ✅  |
+| Push Notification |  ✅  |    ✅    |  ✅  |
+| Offline Mode      |  ❌  |    ✅    |  ✅  |
+| Dark Mode         |  ✅  |    ✅    |  ✅  |
+
+Các column boolean hoặc status thường nên căn giữa.
+
+---
+
+## 18. Table cho Keyboard Shortcut
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="Keyboard Shortcuts"
+| Shortcut | Action | Platform |
+| --- | --- | --- |
+| `⌘ + K` | Open command menu | macOS |
+| `Ctrl + K` | Open command menu | Windows / Linux |
+| `⌘ + S` | Save | macOS |
+| `Ctrl + S` | Save | Windows / Linux |
+```
+
+**Thử nghiệm**
+
+| Shortcut   | Action            | Platform        |
+| ---------- | ----------------- | --------------- |
+| `⌘ + K`    | Open command menu | macOS           |
+| `Ctrl + K` | Open command menu | Windows / Linux |
+| `⌘ + S`    | Save              | macOS           |
+| `Ctrl + S` | Save              | Windows / Linux |
+
+---
+
+## 19. Table cho Version Compatibility
+
+Đây là một pattern rất hữu ích khi documentation có nhiều version.
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="Version Compatibility"
+| Feature | v1 | v2 | v3 |
+| --- | :---: | :---: | :---: |
+| Authentication | ✅ | ✅ | ✅ |
+| OAuth | ❌ | ✅ | ✅ |
+| WebSocket | ❌ | ❌ | ✅ |
+| Legacy API | ✅ | ⚠️ | ❌ |
+```
+
+**Thử nghiệm**
+
+| Feature        |  v1 |  v2 |  v3 |
+| -------------- | :-: | :-: | :-: |
+| Authentication |  ✅  |  ✅  |  ✅  |
+| OAuth          |  ❌  |  ✅  |  ✅  |
+| WebSocket      |  ❌  |  ❌  |  ✅  |
+| Legacy API     |  ✅  |  ⚠️ |  ❌  |
+
+---
+
+## 20. Table có dấu `|` bên trong nội dung
+
+Một vấn đề thường gặp là nội dung cell có ký tự `|`.
+
+Ví dụ TypeScript union type:
+
+```ts
+"asc" | "desc"
+```
+
+Nếu viết trực tiếp:
+
+```md
+| Type |
+| --- |
+| `"asc" | "desc"` |
+```
+
+ký tự `|` có thể bị Markdown parser hiểu là separator của table.
+
+:::danger
+Quên escape `|` sẽ làm table bị parse sai cấu trúc — thường là dịch lệch column hoặc phá vỡ toàn bộ table bên dưới. Đây là lỗi khó phát hiện vì source trông vẫn hợp lệ, chỉ khi render mới lộ ra.
+:::
+
+Cách an toàn là escape:
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="Escape Pipe Character"
+| Parameter | Type |
+| --- | --- |
+| `order` | `"asc" \| "desc"` |
+```
+
+**Thử nghiệm**
+
+| Parameter | Type              |
+| --------- | ----------------- |
+| `order`   | `"asc" \| "desc"` |
+
+Ký tự `|` được viết thành:
+
+```md
+\|
+```
+
+khi cần xuất hiện như nội dung của cell.
+
+---
+
+## 21. Table có HTML
+
+MDX/Markdown environment có thể hỗ trợ HTML tùy parser và configuration.
+
+Ví dụ:
+
+```md
+| Name | Description |
+| --- | --- |
+| **API** | Backend API |
+```
+
+Thông thường nên ưu tiên Markdown syntax thay vì HTML nếu không có lý do đặc biệt.
+
+Không nên biến một Markdown Table đơn giản thành một HTML `<table>` chỉ để tạo styling.
+
+Nếu cần custom behavior hoặc cấu trúc phức tạp, hãy cân nhắc tạo component riêng.
+
+---
+
+## 22. Table responsive trên Mobile
+
+Đây là vấn đề rất quan trọng đối với documentation website.
+
+Một table có nhiều column:
+
+| Property  | Type      | Required | Default | Description     | Example |
+| --------- | --------- | -------- | ------- | --------------- | ------- |
+| `timeout` | `number`  | No       | `5000`  | Request timeout | `3000`  |
+| `retry`   | `boolean` | No       | `false` | Retry request   | `true`  |
+
+có thể vượt quá chiều rộng màn hình mobile.
+
+Không nên cố ép tất cả column co lại đến mức text trở nên khó đọc.
+
+Một cách phổ biến là cho table scroll ngang.
+
+Ví dụ CSS:
+
+```css
+table {
+    width: 100%;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+}
+```
+
+Nếu hệ thống documentation của bạn đã có CSS xử lý responsive table, không cần thêm wrapper thủ công cho từng table.
+
+:::caution[Cảnh báo]
+Table nhiều column rất dễ bị tràn hoặc vỡ layout trên mobile nếu không kiểm tra thực tế. Đừng chỉ xem trên desktop rồi giả định nó cũng ổn ở màn hình nhỏ.
+:::
+
+Điều quan trọng là kiểm tra table ở:
+
+* Desktop.
+* Tablet.
+* Mobile.
+* Dark mode.
+* Zoom trình duyệt lớn.
+
+---
+
+## 23. Không nên tạo Table quá rộng
+
+Một table có quá nhiều column thường là dấu hiệu information architecture chưa tốt.
+
+Ví dụ:
+
+| Name | Type | Required | Default | Description | Example | Version | Platform | Notes | Status |
+| ---- | ---- | -------- | ------- | ----------- | ------- | ------- | -------- | ----- | ------ |
+
+Table này có thể chứa rất nhiều thông tin, nhưng người đọc sẽ khó theo dõi.
+
+Có thể tách thành:
+
+### Parameters
+
+| Name      | Type      | Required | Default |
+| --------- | --------- | -------- | ------- |
+| `timeout` | `number`  | No       | `5000`  |
+| `retry`   | `boolean` | No       | `false` |
+
+### Compatibility
+
+| Version | Platform | Status    |
+| ------- | -------- | --------- |
+| v1      | Web      | Supported |
+| v2      | Web      | Supported |
+
+### Description
+
+Giải thích chi tiết từng parameter ở các section bên dưới.
+
+Tách information thành nhiều table nhỏ thường tốt hơn một table khổng lồ.
+
+---
+
+## 24. Table không thay thế Heading
+
+Không nên sử dụng table để thay thế cấu trúc heading của document.
+
+Không tốt:
+
+| Section        | Content |
+| -------------- | ------- |
+| Authentication | ...     |
+| Configuration  | ...     |
+| Deployment     | ...     |
+
+Nếu đó là cấu trúc của tài liệu, hãy dùng:
+
+```md
+## Authentication
+
+## Configuration
+
+## Deployment
+```
+
+Table nên được sử dụng cho **dữ liệu có cấu trúc**, không phải để tạo layout cho toàn bộ trang.
+
+---
+
+## 25. Table không nên dùng để tạo Layout
+
+Markdown Table không phải layout system.
+
+Không nên làm:
+
+```md
+| Left Content | Right Content |
+| --- | --- |
+| Text... | Text... |
+```
+
+chỉ để tạo hai cột layout cho trang.
+
+Nếu cần layout:
+
+* Use CSS.
+* Use component.
+* Use grid/flex.
+* Use MDX component.
+
+Table nên đại diện cho **tabular data**.
+
+:::caution[Cảnh báo]
+Dùng table để dàn layout là một anti-pattern phổ biến khi porting nội dung từ nơi khác (Word, Notion, Confluence). Hãy chuyển những table kiểu này sang component hoặc CSS layout thay vì giữ nguyên.
+:::
+
+---
+
+## 26. Khi nào nên dùng Markdown Table?
+
+Markdown Table phù hợp khi:
+
+* Dữ liệu có hàng và cột rõ ràng.
+* Các row có cùng cấu trúc.
+* Người đọc cần so sánh.
+* Không cần tương tác.
+* Không cần sorting.
+* Không cần filtering.
+* Không cần pagination.
+* Không cần nested component phức tạp.
+
+Ví dụ rất phù hợp:
+
+```md
+| Property | Type | Required |
+| --- | --- | :---: |
+| `id` | `string` | Yes |
+| `name` | `string` | Yes |
+```
+
+---
+
+## 27. Khi nào không nên dùng Markdown Table?
+
+Nếu table cần:
+
+* Sorting.
+* Filtering.
+* Pagination.
+* Search.
+* Checkbox.
+* Button.
+* Dropdown.
+* Expand/collapse.
+* Nested component.
+* Dynamic data.
+* API data.
+* Custom interaction.
+
+thì Markdown Table không còn là lựa chọn lý tưởng.
+
+Thay vào đó, nên tạo component.
+
+Ví dụ:
+
+```mdx
+<DataTable
+    data={users}
+    sortable
+    searchable
+/>
+```
+
+Cách này phù hợp hơn với MDX vì MDX cho phép kết hợp Markdown với component.
+
+---
+
+## 28. Quy tắc viết Table cho Technical Documentation
+
+Một table tốt nên tuân theo một số nguyên tắc đơn giản.
+
+### Giữ header ngắn
+
+Tốt:
+
+| Property | Type | Required |
+| -------- | ---- | -------- |
+
+Không tốt:
+
+| The name of the property | The type of this property | Whether the property is required or not |
+| ------------------------ | ------------------------- | --------------------------------------- |
+
+### Dùng inline Mã nguồn cho technical identifier
+
+Tốt:
+
+| Property | Type     |
+| -------- | -------- |
+| `userId` | `string` |
+
+Thay vì:
+
+| Property | Type   |
+| -------- | ------ |
+| userId   | string |
+
+### Căn giữa status
+
+| Feature | Status |
+| ------- | :----: |
+| Login   |    ✅   |
+
+### Căn phải số
+
+| Requests |   |
+| -------: | - |
+|     1000 |   |
+
+### Không nhồi quá nhiều thông tin
+
+Nếu table trở nên quá rộng, hãy tách thành nhiều table.
+
+### Không dùng table làm layout
+
+Table là dữ liệu, không phải CSS layout.
+
+---
+
+## 29. Một Table hoàn chỉnh cho API Documentation
+
+Dưới đây là một ví dụ gần với cách sử dụng thực tế nhất trong technical documentation.
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="API Parameters"
+| Parameter | Type | Required | Default | Description |
+| :--- | :---: | :---: | :---: | :--- |
+| `page` | `number` | No | `1` | Page number. Must be greater than `0`. |
+| `limit` | `number` | No | `20` | Number of records returned per page. |
+| `sort` | `string` | No | `createdAt` | Field used to sort the result. |
+| `order` | `"asc" \| "desc"` | No | `"desc"` | Sort direction. |
+| `search` | `string` | No | `-` | Search keyword. |
+```
+
+**Thử nghiệm**
+
+| Parameter |        Type       | Required |   Default   | Description                            |
+| :-------- | :---------------: | :------: | :---------: | :------------------------------------- |
+| `page`    |      `number`     |    No    |     `1`     | Page number. Must be greater than `0`. |
+| `limit`   |      `number`     |    No    |     `20`    | Number of records returned per page.   |
+| `sort`    |      `string`     |    No    | `createdAt` | Field used to sort the result.         |
+| `order`   | `"asc" \| "desc"` |    No    |   `"desc"`  | Sort direction.                        |
+| `search`  |      `string`     |    No    |     `-`     | Search keyword.                        |
+
+Đây là một trong những pattern nên sử dụng thường xuyên trong API documentation: **Parameter → Type → Required → Default → Description**.
+
+---
+
+## 30. Table kết hợp với Code Block
+
+Table không nhất thiết phải chứa toàn bộ thông tin.
+
+Một pattern tốt là sử dụng table để tổng quan, sau đó dùng code block để giải thích chi tiết.
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="Overview"
+| Property | Type | Required |
+| --- | --- | :---: |
+| `host` | `string` | Yes |
+| `port` | `number` | No |
+| `secure` | `boolean` | No |
+```
+
+**Thử nghiệm**
+
+| Property | Type      | Required |
+| -------- | --------- | :------: |
+| `host`   | `string`  |    Yes   |
+| `port`   | `number`  |    No    |
+| `secure` | `boolean` |    No    |
+
+Sau đó:
+
+````mdx showLineNumbers title="Configuration"
+```ts
+const config = {
+    host: "localhost",
+    port: 3000,
+    secure: false,
+};
+```
+````
+
+Cách này giúp người đọc có overview nhanh trước khi đi vào implementation detail.
+
+---
+
+## 31. Checklist trước khi viết Table
+
+Trước khi tạo table, hãy tự hỏi:
+
+* Dữ liệu có thực sự dạng hàng/cột không?
+* Người đọc có cần so sánh các row không?
+* Header có ngắn và rõ ràng không?
+* Các row có cùng số lượng column không?
+* Column nào nên căn trái?
+* Column nào nên căn giữa?
+* Column nào nên căn phải?
+* Technical identifiers đã dùng inline Mã nguồn chưa?
+* Table có quá rộng không?
+* Mobile có đọc được không?
+* Có cần component thay vì Markdown Table không?
+
+Nếu câu trả lời là có, Markdown Table thường là lựa chọn phù hợp.
+
+---
+
+## Tóm tắt
+
+Table trong MDX thực chất sử dụng cú pháp Markdown Table và không cần component riêng cho những trường hợp thông thường.
+
+Cấu trúc cơ bản:
+
+```mdx showLineNumbers title="Basic Table"
+| Column 1 | Column 2 | Column 3 |
+| --- | --- | --- |
+| Value | Value | Value |
+| Value | Value | Value |
+```
+
+Nguyên tắc quan trọng nhất:
+
+1. **Header phải rõ ràng.**
+2. **Mỗi row nên có cùng số column.**
+3. **Text thường căn trái.**
+4. **Status/boolean thường căn giữa.**
+5. **Number thường căn phải.**
+6. **Tên property, type, command và API parameter nên dùng inline Mã nguồn.**
+7. **Table quá rộng nên được tách nhỏ hoặc hỗ trợ horizontal scrolling.**
+8. **Không sử dụng table để làm layout.**
+9. **Không dùng Markdown Table cho dữ liệu cần interaction phức tạp.**
+10. **Với technical documentation, hãy ưu tiên table ngắn, có cấu trúc và dễ scan.**
+
+Một table tốt không phải là table chứa được nhiều thông tin nhất, mà là table giúp người đọc **tìm đúng thông tin cần thiết nhanh nhất**.
