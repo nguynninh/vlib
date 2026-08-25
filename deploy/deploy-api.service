@@ -1,0 +1,14 @@
+[Unit]
+Description=Deploy API for vlib docs
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/vtvlive/vlib/deploy
+EnvironmentFile=/home/vtvlive/vlib/deploy/.env
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+User=vtvlive
+
+[Install]
+WantedBy=multi-user.target
