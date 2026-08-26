@@ -1,0 +1,19 @@
+name: Deploy Docs
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call deploy API
+        run: |
+          curl -sf -X POST "${{ secrets.DEPLOY_URL }}/deploy" \
+            -H "X-Deploy-Token: ${{ secrets.DEPLOY_TOKEN }}"
