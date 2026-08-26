@@ -82,38 +82,16 @@ export default defineConfig({
 					items: [{ autogenerate: { directory: 'sdk-game/overview' } }],
 				},
 				{
-					label: 'Tài liệu tích hợp',
-					translations: { en: 'Integration documentation', zh: '集成文档', ja: '統合ドキュメント' },
-					link: '/sdk-game/tai_lieu_tich_hop',
-				},
-				{
-					label: 'Tài liệu API',
-					translations: { en: 'API documentation', zh: 'API 文档', ja: 'API ドキュメント' },
-					link: '/sdk-game/tai_lieu_api',
-				},
-				{
-					label: 'Tài liệu mô tả luồng sự kiện',
-					translations: { en: 'Event workflow documentation', zh: '事件流程文档', ja: 'イベントフロードキュメント' },
-					link: '/sdk-game/tai_lieu_mo_ta_luong_su_kien',
-				},
-				{
-					label: 'Nhật ký thay đổi',
-					translations: { en: 'Changelog', zh: '更新日志', ja: '変更履歴' },
-					link: '/sdk-game/changelog',
-				},
-				{
-					label: 'Tính năng SDK',
-					translations: { en: 'SDK features', zh: 'SDK 功能', ja: 'SDK 機能' },
-					items: [{ autogenerate: { directory: 'sdk-game/sdk_features' } }],
-				},
-				{
 					label: 'Android',
 					translations: { en: 'Android', zh: 'Android', ja: 'Android' },
 					items: [
 						{
 							label: 'Java',
 							translations: { en: 'Java', zh: 'Java', ja: 'Java' },
-							items: [{ autogenerate: { directory: 'sdk-game/android/java' } }],
+							items: [
+								{ label: 'Hướng dẫn tích hợp', translations: { en: 'Integration guide', zh: '集成指南', ja: '統合ガイド' }, link: '/sdk-game/android/java/integration_guide' },
+								{ label: 'Nhật ký phát hành', translations: { en: 'Release notes', zh: '发布说明', ja: 'リリースノート' }, link: '/sdk-game/android/java/release_notes' },
+							],
 						},
 					],
 				},
@@ -124,14 +102,29 @@ export default defineConfig({
 						{
 							label: 'Objective-C',
 							translations: { en: 'Objective-C', zh: 'Objective-C', ja: 'Objective-C' },
-							items: [{ autogenerate: { directory: 'sdk-game/ios/objective_c' } }],
+							items: [
+								{ label: 'Hướng dẫn tích hợp', translations: { en: 'Integration guide', zh: '集成指南', ja: '統合ガイド' }, link: '/sdk-game/ios/objective_c/integration_guide' },
+								{ label: 'Nhật ký phát hành', translations: { en: 'Release notes', zh: '发布说明', ja: 'リリースノート' }, link: '/sdk-game/ios/objective_c/release_notes' },
+								{ label: 'Cập nhật SDK 5.0.0', translations: { en: 'Update SDK 5.0.0', zh: '更新 SDK 5.0.0', ja: 'SDK 5.0.0 更新' }, link: '/sdk-game/ios/objective_c/update_sdk_5_0_0' },
+								{ label: 'Cập nhật SDK 5.1.4', translations: { en: 'Update SDK 5.1.4', zh: '更新 SDK 5.1.4', ja: 'SDK 5.1.4 更新' }, link: '/sdk-game/ios/objective_c/update_sdk_5_1_4' },
+								{ label: 'Cập nhật SDK 5.3.1', translations: { en: 'Update SDK 5.3.1', zh: '更新 SDK 5.3.1', ja: 'SDK 5.3.1 更新' }, link: '/sdk-game/ios/objective_c/update_sdk_5_3_1' },
+								{ label: 'Sửa lỗi SDK 5.1.0', translations: { en: 'Fix SDK 5.1.0', zh: '修复 SDK 5.1.0', ja: 'SDK 5.1.0 修正' }, link: '/sdk-game/ios/objective_c/error_fixbug' },
+								{ label: 'Thư viện bên thứ ba', translations: { en: 'Third-party libraries', zh: '第三方库', ja: 'サードパーティライブラリ' }, link: '/sdk-game/ios/objective_c/third_party_libraries' },
+							],
 						},
 						{
 							label: 'Swift',
 							translations: { en: 'Swift', zh: 'Swift', ja: 'Swift' },
-							items: [{ autogenerate: { directory: 'sdk-game/ios/swift' } }],
+							items: [
+								{ label: 'Hướng dẫn tích hợp', translations: { en: 'Integration guide', zh: '集成指南', ja: '統合ガイド' }, link: '/sdk-game/ios/swift/integration_guide' },
+							],
 						},
 					],
+				},
+				{
+					label: 'Nhật ký thay đổi',
+					translations: { en: 'Changelog', zh: '更新日志', ja: '変更履歴' },
+					link: '/sdk-game/changelog',
 				},
 
 				// Interactive

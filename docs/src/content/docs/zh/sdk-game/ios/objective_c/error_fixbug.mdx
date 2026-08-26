@@ -1,0 +1,23 @@
+---
+title: SDK 5.1.0 错误修复
+description: 更新 iTapSdk 至 5.1.0 版本，以修复 iOS 上无法收到通知（notification）的问题。
+---
+
+1. 更新 iTapSdk 5.1.0
+
+2. 请将以下代码添加到 AppDelegate 中。
+
+```Plain Text
+- (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
+    [FIRMessaging messaging].APNSToken = deviceToken;
+}
+
+- (void)messaging:(FIRMessaging *)messaging didReceiveRegistrationToken:(NSString *)fcmToken {
+    
+}
+-(void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
+    completionHandler(UIBackgroundFetchResultNewData);
+}
+```
+
+![](BASE_STORAGE/v2.0.0/update_sdk_fixbug_notification_image.png)

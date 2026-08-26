@@ -1,45 +1,50 @@
 ---
-title: iTapSDK iOS release notes
-description: Release history of iTapSDK iOS versions by SDK line, with changes and links to download the corresponding files.
+title: iTapSDK iOS Release Notes
+description: Release history of iTapSDK iOS versions by SDK line, with change summaries and download links.
 ---
+
+This page lists the release history of the iTapSDK on iOS, organized by each separate **SDK line** (Game SDK, OIDC v2, ON Live, SeeNow). Each SDK line has its own independently incrementing version — make sure you pick the table that matches the SDK line you are integrating.
+
+Meaning of the table columns:
+
+- **Version**: the identifier name of the release.
+- **File**: download link for the `.xcframework` (or configuration file) of that version.
+- **Commit hash**: the commit hash in the corresponding source control system for this build.
+- **MD5**: the integrity checksum of the file, used to verify the downloaded file is not corrupted or altered.
+- **Release date**: when this version was released.
+- **Changes**: summary of the main changes compared to the previous version.
+
+:::note
+Some cells are left blank because the development team had not fully updated the information (commit hash, MD5, release date...) at the time of release. If you need missing information, please contact the VTVLive team.
+:::
 
 ## 1. Game SDK version 1
 
-| Version | File | CommitID | MD5 | Release date | Change logs |
+| Version | File | Commit hash | MD5 | Release date | Changes |
 | --- | --- | --- | --- | --- | --- |
-| iTapSdk.ver.3.2.1 | [`iTapSdk.xcframework.3.2.1.zip`](BASE_STORAGE/v2.0.0/iTapSdk.xcframework.3.2.1.zip) | 67a2a19 | f4fef87e6822359b78cbbe339b84d71b | 30/05/2024 13:59 | - Update play time<br />- [`_UPDATE_SDK_GAME_3.2.1.pdf`](BASE_STORAGE/v2.0.0/_UPDATE.SDK.GAME.3.2.1.pdf) |
-| iTapSdk.ver.3.2 | [`iTapSdk.ver.3.2.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk.ver.3.2.xcframework.zip) | | | | - Update Firebase 10.25.0<br />- Update FB 17.0.0<br />- Update AppsFlyer 16.14.2 |
+| iTapSdk.ver.3.2.1 | [`iTapSdk.xcframework.3.2.1.zip`](BASE_STORAGE/v2.0.0/iTapSdk.xcframework.3.2.1.zip) | 67a2a19 | f4fef87e6822359b78cbbe339b84d71b | 30/05/2024 13:59 | - Updated play time measurement feature<br />- Details: [`_UPDATE_SDK_GAME_3.2.1.pdf`](BASE_STORAGE/v2.0.0/_UPDATE.SDK.GAME.3.2.1.pdf) |
+| iTapSdk.ver.3.2 | [`iTapSdk.ver.3.2.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk.ver.3.2.xcframework.zip) | — | — | — | - Updated Firebase to 10.25.0<br />- Updated Facebook SDK to 17.0.0<br />- Updated AppsFlyer to 16.14.2 |
 
 ## 2. Game SDK OIDC v2
 
-| Version | File | CommitID | MD5 | Release date | Change logs |
+| Version | File | Commit hash | MD5 | Release date | Changes |
 | --- | --- | --- | --- | --- | --- |
-| oidc_v2_4.5 | | | | 7/1/2025 | - update domain config |
-| oidc_v2_4.4 | [`iTapSdk_v2_4.4.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_v2_4.4.xcframework.zip) | e3cc4ef | | 7/1/2025 | - update brand recognition UI<br />- add Adservice<br />- update email, phone, forgot pass<br />- update info |
-| oidc_v2_4.3 | [`4.3.zip`](BASE_STORAGE/v2.0.0/4.3.zip) | e753499 | | | - update third-party libs FB, GG, AFnetwork, RXSwift, Recacha |
-| oidc_v2_4.2 | [`iTapSdk_oidc_v2_4.2.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_oidc_v2_4.2.xcframework.zip) | | | | update facebook sdk 16.3.1<br />- [`Update_SDK_Game_08_10_2024.pdf`](BASE_STORAGE/v2.0.0/Update.SDK.Game.08_10_2024.pdf) |
-| oidc_v2_4.1 | [`iTapSdk_oidc_v2_4.1.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_oidc_v2_4.1.xcframework.zip) | | | | - Update event log |
-| oidc_v2_4.0 | [`iTapSdk_oidc_v2_4.0.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_oidc_v2_4.0.xcframework.zip) | | | | - Update playtime logic |
-| oidc_v2_3.9 | [`iTapSdk_oidc_v2_3.9.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_oidc_v2_3.9.xcframework.zip) | | | | - Fix event appsflyer |
-| oidc_v2_3.8 | | | | | |
-| oidc_v2_3.7 | [`iTapSdk_oidc_v2_3.7.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_oidc_v2_3.7.xcframework.zip) | | | | - Update AppsFlyer 16.14.2 |
-| oidc_v2_3.6 | [`iTapSdk_oidc_v2_3.6.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_oidc_v2_3.6.xcframework.zip) | | | | -update Firebase 10.25.0<br />-Update FB 17.0.0 |
+| oidc_v2_4.5 | — | — | — | 07/01/2025 | - Updated domain configuration |
+| oidc_v2_4.4 | [`iTapSdk_v2_4.4.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_v2_4.4.xcframework.zip) | e3cc4ef | — | 07/01/2025 | - Updated brand recognition UI<br />- Added Adservice<br />- Updated email, phone number, forgot password flows<br />- Updated account information |
+| oidc_v2_4.3 | [`4.3.zip`](BASE_STORAGE/v2.0.0/4.3.zip) | e753499 | — | — | - Updated third-party libraries: Facebook, Google, AFNetworking, RXSwift, Recaptcha |
+| oidc_v2_4.2 | [`iTapSdk_oidc_v2_4.2.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_oidc_v2_4.2.xcframework.zip) | — | — | — | - Updated Facebook SDK to 16.3.1<br />- Details: [`Update_SDK_Game_08_10_2024.pdf`](BASE_STORAGE/v2.0.0/Update.SDK.Game.08_10_2024.pdf) |
+| oidc_v2_4.1 | [`iTapSdk_oidc_v2_4.1.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_oidc_v2_4.1.xcframework.zip) | — | — | — | - Updated event log |
+| oidc_v2_4.0 | [`iTapSdk_oidc_v2_4.0.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_oidc_v2_4.0.xcframework.zip) | — | — | — | - Updated play time measurement logic |
+| oidc_v2_3.9 | [`iTapSdk_oidc_v2_3.9.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_oidc_v2_3.9.xcframework.zip) | — | — | — | - Fixed AppsFlyer event bug |
+| oidc_v2_3.7 | [`iTapSdk_oidc_v2_3.7.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_oidc_v2_3.7.xcframework.zip) | — | — | — | - Updated AppsFlyer to 16.14.2 |
+| oidc_v2_3.6 | [`iTapSdk_oidc_v2_3.6.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_oidc_v2_3.6.xcframework.zip) | — | — | — | - Updated Firebase to 10.25.0<br />- Updated Facebook SDK to 17.0.0 |
 
 ## 3. ON Live SDK
 
-| Version | File | CommitID | MD5 | Release date | Change logs |
+| Version | File | Commit hash | MD5 | Release date | Changes |
 | --- | --- | --- | --- | --- | --- |
-| iTapSdk_AFTV_ver3.2 | [`iTapSdk_AFTV_ver3.2.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_AFTV_ver3.2.xcframework.zip) | | | | Update Firebase 10.25.0<br />Update Facebook 17.0.0<br />Update Appsflyer 6.14.2 |
-| | | | | | |
-| | | | | | |
-| | | | | | |
+| iTapSdk_AFTV_ver3.2 | [`iTapSdk_AFTV_ver3.2.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_AFTV_ver3.2.xcframework.zip) | — | — | — | - Updated Firebase to 10.25.0<br />- Updated Facebook to 17.0.0<br />- Updated AppsFlyer to 6.14.2 |
 
 ## 4. SeeNow SDK
 
-| Version | File | CommitID | MD5 | Release date | Change logs |
-| --- | --- | --- | --- | --- | --- |
-| | | | | | |
-| | | | | | |
-| | | | | | |
-| | | | | | |
-| | | | | | |
+No releases have been recorded yet for this SDK line. This list will be updated when a new release is available.
