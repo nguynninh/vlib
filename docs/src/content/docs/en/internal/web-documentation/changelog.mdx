@@ -1,0 +1,38 @@
+---
+title: "Changelog"
+---
+
+## 1.0.1
+
+### Changed
+
+- Moved the entire Web Documentation section from `/web-documentation` to `/internal/web-documentation`, separating it from the public area (SDK Game, Interactive Docs, About us).
+- The site's default homepage (`index.mdx`) was also moved into `/internal`, now serving as a dedicated welcome page for the internal area; the public area (`/vi`, `/en`, `/zh`, `/ja`) now goes straight into SDK Game.
+- The top navigation bar now renders differently depending on context: 3 items in the public area, and only the "Web Docs" item while inside `/internal`.
+- The VLive logo in the top-left corner now links out to the official site `https://vtvlive.vn/` instead of the docs homepage.
+- Updated every internal link across the Web Documentation pages (Typography, Table, Code Block, Media & Files, Introduction, Features, Tech Stack, etc.) to the new `/internal/web-documentation/...` paths.
+- Translated the "About us" page into English, Chinese, and Japanese (previously these locales fell back to Vietnamese content with an untranslated-content warning).
+
+### Added
+
+- Added a `<meta name="robots" content="noindex, nofollow">` tag and a `robots.txt` rule blocking crawlers for every page under `/internal/*`, since this is an internal area not meant for search engines.
+- Added redirects for shortened paths: `/<locale>` → the SDK Game overview page, `/<locale>/internal/web-documentation` → the overview/introduction page.
+
+### Fixed
+
+- Fixed prev/next pagination at the boundary between the public area and `internal`: the last page of the Interactive Docs section used to automatically chain into Web Documentation even though that section is hidden from the public nav; the link is now cut on both ends.
+- Fixed a broken relative image path (`houston.webp`) after the homepage was moved one level deeper into the `internal/` folder.
+
+## 1.0.0
+
+### Added
+
+- [Typography](/en/internal/web-documentation/ui/typography) page: a guide covering headings, paragraphs, bold, italic, strikethrough, inline code, lists (unordered, ordered, task), blockquotes, horizontal rules, links, images, line breaks, escaping special characters, and text presentation rules for technical documentation.
+
+### Updated
+
+- [Introduction](/en/internal/web-documentation/overview/introduction): rewrote the entire content, moving away from leftover sample content (a payment gateway integration) to a proper introduction to the Web Documentation platform.
+- [Features](/en/internal/web-documentation/overview/features): added detailed content for each feature (MDX, code blocks, Mermaid, callouts, enhanced tables, full-text search, multiple languages, light/dark theme, responsive layout, navigation, version control via Git).
+- [Tech Stack](/en/internal/web-documentation/overview/tech-stack): added a technology table, custom Markdown plugins, i18n configuration, folder structure, and build & deployment instructions.
+- [Media & Files](/en/internal/web-documentation/ui/media_file): replaced sample image/video/file links that pointed directly to GitHub Releases with the `BASE_STORAGE` variable, making the storage source easier to change.
+- Build configuration (`astro.config.mjs`, `remark-media-options.mjs`): reads the `PORT` variable to set the dev server port, and automatically replaces the `BASE_STORAGE` token in media links with the real value from `.env` at build time.
