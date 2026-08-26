@@ -1,81 +1,67 @@
 ---
-title: iOS SDK 5.3.0 集成指南
-description: iTapSDK iOS 5.3.0 版本集成到项目所需的文件列表及操作步骤指南。
+title: iOS SDK Objective-C 版集成指南
+description: 集成 iTapSDK iOS Objective-C 版到项目所需的文件列表及操作步骤。
 ---
 
-## Necessary documents for sdk integration
+## 1. 所需文件列表
 
-1. AFNetworking.xcframework
+在开始集成之前，您需要准备好以下所有文件（由 VTVLive 团队提供）：
 
-2. FBAEMKit.xcframework
-
-3. FBSDKCoreKit_Basics.xcframework
-
-4. FBSDKCoreKit.xcframework
-
-5. FBSDKLoginKit.xcframework
-
-6. FBSDKShareKit.xcframework
-
-7. iTapSdk.xcframework
-
-8. ISdkTrackier.xcframework
-
-9. RecapchaSdk.xcframework
-
-10. RXSwift.xcframework
-
-11. Gooogle-Facebook-plist
-
-12. AppConfigDefault.plist
-
-13. Gooogle-Facebook-plist.txt
-
-14. Podfile
-
-15. Example demo
-
-16. Mobileprovision
+1. `AFNetworking.xcframework`
+2. `FBAEMKit.xcframework`
+3. `FBSDKCoreKit_Basics.xcframework`
+4. `FBSDKCoreKit.xcframework`
+5. `FBSDKLoginKit.xcframework`
+6. `FBSDKShareKit.xcframework`
+7. `iTapSdk.xcframework`
+8. `ISdkTrackier.xcframework`
+9. `RecapchaSdk.xcframework`
+10. `RXSwift.xcframework`
+11. Google-Facebook `.plist`
+12. `AppConfigDefault.plist`
+13. Google-Facebook `.plist.txt`
+14. `Podfile`
+15. Demo 示例项目（example）
+16. `.mobileprovision` 文件
 
 :::caution
-如果您没有收到上述文件或有任何疑问，请联系 VTVLive 团队。
+如果您没有收到以上任何文件，或在集成过程中有任何疑问，请联系 VTVLive 团队获取支持。
 :::
 
-在 dev 环境测试完成后，我们会提供 production 环境的 key。
+在 dev 环境测试完成后，我们会提供 production 环境专用的 key。
 
-## SDK integration steps
+## 2. SDK 集成步骤
 
-要集成 SDK，我们建议按照以下安装指南进行操作。
+要集成 SDK，请严格按照以下顺序完成各个步骤。
 
-选择要添加到项目中的 frameworks 和 libraries。
+### 2.1. 将 framework 和 library 添加到项目中
 
-- 在 project 中，请对各个 library 使用 **Embed & Sign**。
+- 在**主项目**（target app）中，对上面列出的各个 library 选择 **Embed & Sign** 模式。
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image1.png)
 
-- 在 UnityFramework 中，请对各个 library 使用 **Do Not Embed**。
+- 在 **UnityFramework**（如果游戏是从 Unity 构建的）中，对各个 library 选择 **Do Not Embed** 模式——因为这些 library 已经在主 target 中被 embed，避免重复。
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image2.png)
 
-## Add Notification Service Extension
+### 2.2. 添加 Notification Service Extension
 
-1. 在 **Xcode** 中打开您的 iOS 项目
+此 extension 可帮助 SDK 正确处理和展示 push notification 的内容（包括来自 Firebase 的图片、自定义数据等）。
 
-2. 进入 File > New > Target...
+1. 在 **Xcode** 中打开 iOS 项目。
+2. 进入 **File > New > Target...**
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image3.png)
 
-3. 在 template chooser 中，查找并选择 **Notification Service Extension**
-
-4. 点击 **Next**，输入名称，例如 `FirebaseNotificationServiceExtension`，然后点击 **Finish**
-
-5. 出现提示时，选择 **Activate** scheme。
+3. 在模板列表中，查找并选择 **Notification Service Extension**。
+4. 点击 **Next**，输入 target 名称——例如 `FirebaseNotificationServiceExtension`——然后点击 **Finish**。
+5. 当 Xcode 询问是否要激活新的 scheme 时，选择 **Activate**。
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image4.png)
 
-## Install Firebase SDK for the Extension
+### 2.3. 为 Extension 安装 Firebase SDK
 
-1. 打开 `Podfile` 并为 extension **添加新的 target**：
+1. 打开 `Podfile` 文件，并为刚创建的 extension **添加一个新的 target**：
 
 ```Swift
 source 'https://mirrors.tuna.tsinghua.edu.cn/git/CocoaPods/Specs.git'
@@ -127,21 +113,20 @@ post_install do |lib|
 end
 ```
 
-2. 运行以下命令安装依赖项：
+2. 运行以下命令，重新干净地安装依赖：
 
-```Swift
-pod cache clean --all 
+```bash
+pod cache clean --all
 pod deintegrate
 pod install
 ```
 
-## FirebaseNotificationServiceExtension
+### 2.4. 配置 FirebaseNotificationServiceExtension
 
-1. 打开 `.xcworkspace` 文件
+1. 打开 `.xcworkspace` 文件（不要打开 `.xcodeproj`）。
+2. 按如下方式修改 extension 的 `NotificationService.m` 文件内容：
 
-2. 然后按如下方式修改 `NotificationService.m` 文件：
-
-```Swift
+```Objective-C
 #import "NotificationService.h"
 @import Firebase;
 @import FirebaseMessaging;
@@ -164,19 +149,20 @@ pod install
 @end
 ```
 
-此时，Xcode 界面将显示如下。
+完成此步骤后，Xcode 中的项目结构将如下图所示：
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image5.png)
 
-要启用 Apple 登录，您需要集成 **Sign in with Apple**。
+另外：
 
-要接收 notification，您需要添加 **Push Notifications**，并确保在 **Background Modes** 中开启 **Background Fetch** 和 **Remote Notifications**。
+- 要启用 Apple 登录，您需要为主 target 启用 **Sign in with Apple** capability。
+- 要接收 push notification，您需要添加 **Push Notifications** capability，同时在 **Background Modes** 中启用 **Background Fetch** 和 **Remote Notifications**。
 
-## Add Facebook Config to info.plist
+### 2.5. 将 Facebook 配置添加到 `Info.plist`
 
-在获取到 facebook id 和 facebook client 信息后，您应将以下代码添加到项目的 `Info.plist` 中（关于 facebook id 的详细配置方法请参见此处）：
+在获取到 Facebook App ID 和 Facebook Client Token 后（请联系 VTVLive 获取您应用对应的信息），将以下配置添加到项目的 `Info.plist` 文件中。以下数值仅为示例——请替换为您实际的信息：
 
-```Swift
+```xml
 <key>CFBundleURLTypes</key>
         <array>
                 <dict>
@@ -224,30 +210,32 @@ pod install
         <string>This identifier will be used to deliver personalized ads to you.</string>
 ```
 
-## Firebase Crashlytics
+### 2.6. 配置 Firebase Crashlytics
+
+在主 target 的 Build Phases 中添加一个 **Run Script Phase**，内容如下，以便 Crashlytics 在每次构建时自动上传 debug symbol（dSYM）：
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image6.png)
 
-```Bash
+```bash
 echo "Symbols Directory"
 echo "${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}"
 #Firebase
 "${PODS_ROOT}/FirebaseCrashlytics/upload-symbols" -gsp "${PROJECT_DIR}/SdkExample/GoogleService-Info.plist" -p ios "${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}"
 ```
 
-注意：请确保您指向的是磁盘上 `GoogleService-Info.plist` 文件的实际路径。
+:::note
+上面示例中的路径 `${PROJECT_DIR}/SdkExample/GoogleService-Info.plist` 仅适用于我们的示例项目结构。您需要修改此路径，使其正确指向您项目中 `GoogleService-Info.plist` 文件的实际位置。
+:::
 
-`${PROJECT_DIR}/SdkExample/GoogleService-Info.plist` 只是一个示例，它是我这边 GoogleService-Info 文件的实际路径。
+## 3. 集成 SDK 各项功能
 
-请修改路径，使其正确指向您文件的实际物理位置。
+本节介绍如何在代码中调用 SDK 的主要函数，按照使用生命周期的顺序进行：初始化 → 登录 → 游戏内操作 → 登出。
 
-## SDK Integrate
+### 3.1. 初始化 SDK
 
-1. 初始化 SDK
+在 `AppDelegate.h` 文件中，导入 SDK 并声明 `AppDelegate` 遵循 `SdkDelegate` 协议：
 
-在 `AppDelegate.h` 文件中，您可以按如下方式导入 SDK：
-
-```Swift
+```Objective-C
 #import <UIKit/UIKit.h>
 #import <iTapSdk/iTapSdk.h>
 @interface AppDelegate : UIResponder <UIApplicationDelegate,SdkDelegate>
@@ -256,9 +244,9 @@ echo "${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}"
 @end
 ```
 
-在 `AppDelegate.m` 文件中，按如下方式实现 SdkDelegate 的 callback：
+在 `AppDelegate.m` 文件中，在应用启动时立即初始化 SDK：
 
-```Swift
+```Objective-C
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     [[Sdk sharedInstance] initWithDelegate:self application:application launchOptions:launchOptions isProdEnv:TRUE];
     [[Sdk sharedInstance] setLocationFloatingButton:20 with:100];
@@ -267,45 +255,43 @@ echo "${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}"
 }
 ```
 
-集成时，您应通过以下代码切换到 dev 环境：
+- 在集成和测试期间，请将 `isProdEnv` 改为 `FALSE`，以在 dev 环境下运行：
 
-```Swift
+```Objective-C
 [[Sdk sharedInstance] initWithDelegate:self application:application launchOptions:launchOptions isProdEnv:FALSE];
 ```
 
-要显示权限申请弹窗，请将 `setGrantEnv` 设为 `YES`。如果不想显示，请将 `setGrantEnv` 设为 `NO`。
+- `setGrantEnv:YES`——进入游戏时显示权限申请弹窗（广告、tracking 等）。如果不想显示此弹窗，请设置 `setGrantEnv:NO`。
 
-2. Login
+### 3.2. 登录（Login）
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image7.png)
+请务必在**游戏开始之前**调用 `login` 函数。如果用户首次进入游戏，SDK 会自动显示登录对话框；如果用户之前已经登录过，则会自动刷新 token。更多内容请参见下方的 [Flowchart 章节](#6-流程图-flowchart)中的登录流程图。
 
-请务必在游戏开始前调用此函数。若用户首次进入游戏，内部会显示 dialog；若用户再次进入，SDK 会刷新 token。您可以在下方的 flowchart 部分查看更多关于 login 的说明。
-
-```Swift
+```Objective-C
 [[Sdk sharedInstance] login];
 ```
 
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image7.png)
+
+如果一切顺利，登录对话框将如上图所示。
+
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image8.png)
 
-如果一切顺利，您将看到如下的 login dialog。
+当用户登录成功后，用户信息将通过您已向 SDK 注册的 `SdkDelegate` 的 `loginSuccess` 函数返回。
 
-如果登录成功，用户信息将通过已向 SDK 注册的 SdkDelegate 的 `loginSuccess` 函数返回。
+### 3.3. 登出（Logout）
 
-3. Logout
-
-如果登出成功，用户信息将通过已向 SDK 注册的 SdkDelegate 的 `logout` 函数返回。
-
-```Swift
+```Objective-C
 [[Sdk sharedInstance] logout];
 ```
 
-4. List products
+登出成功后，SDK 会回调 `SdkDelegate` 的 `logout` 函数，以通知游戏。
 
-从 store（Play Store 或 Apple Store）获取产品列表。您应调用此函数，因为需要获取产品价格以便在用户支付时发送给 tracking 系统。
+### 3.4. 获取产品列表（List products）
 
-注意：建议将其包裹在仅在登录成功后才运行的代码段中。
+从 store（App Store）获取产品（充值礼包）列表。建议在登录成功后立即调用此函数，因为在用户支付时需要用到产品价格来发送给 tracking 系统。
 
-```Swift
+```Objective-C
 -(void)loginSuccess:(User *)user withAccessToken:(NSString *)accessToken andRefreshToken:(NSString *)refreshToken{
     
     [[Sdk sharedInstance] listProducts:^(NSError *error, NSArray<IAPProduct*> * _Nullable result) {
@@ -316,273 +302,289 @@ echo "${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}"
 }
 ```
 
-5. Update language（若 app 支持多语言）
+:::note
+应将 `listProducts` 的调用放在**登录成功后**才会执行的代码段中，如上例所示。
+:::
+
+### 3.5. 修改语言（Set Language）
+
+调用以下函数来更改 SDK 显示的语言，并传入对应的参数：
+
+```Objective-C
+[[Sdk sharedInstance] setLanguage:@"vi"];
+```
+
+支持的语言代码：
+
+| 代码 | 语言 |
+| --- | --- |
+| `vi` | 越南语 |
+| `en` | 英语 |
+| `th` | 泰语 |
+| `zh` | 中文 |
+
+SDK 还提供了 `getLangaugeSdk` delegate，用于在语言发生变化时通知游戏。
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image9.png)
 
-更改语言时，请调用函数 **`[[Sdk sharedInstance] setLanguage:@"vi"];`**，传入对应的参数：
+### 3.6. 显示倒计时（Show countdown）
 
-`vi` 表示越南语，
-
-`en` 表示英语，
-
-`th` 表示泰语，
-
-`zh` 表示中文。
-
-6. Show countdown
+要显示如下图所示的倒计时界面，请在 `AppDelegate` 的 `loginSuccess` 回调中，在**登录完成后**调用 `showCountdown`：
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image10.png)
 
-要显示如上所示的 countdown 界面，您只需在 AppDelegate 中登录完成后调用 **`[[Sdk sharedInstance] showCountdown]`** 即可。
+```Objective-C
+-(void)loginSuccess:(User *)user withAccessToken:(NSString *)accessToken andRefreshToken:(NSString *)refreshToken{
 
-> `-(void)loginSuccess:(User *)user withAccessToken:(NSString *)accessToken andRefreshToken:(NSString *)refreshToken{`
->
-> `[[Sdk sharedInstance] listProducts:^(NSError *error, NSArray<IAPProduct*> * `**`_Nullable`**` result) {`
->
-> `}];`
->
-> `[[Sdk sharedInstance] showOrHideFloatingButton];`
->
-> `[[Sdk sharedInstance] showCountdown];`
->
-> `}`
+    [[Sdk sharedInstance] listProducts:^(NSError *error, NSArray<IAPProduct*> * _Nullable result) {
 
-7. Receive Gift
+    }];
+    [[Sdk sharedInstance] showOrHideFloatingButton];
+    [[Sdk sharedInstance] showCountdown];
 
-当用户点击 gift box 按钮时，请调用此函数：
-`[[Sdk sharedInstance] showReceiveGift:@"1111111" withCharacterId:@"11112"];`
+}
+```
 
-serverId：Server 的 Id
+### 3.7. 领取礼物（Receive Gift）
 
-characterId：Character 的 Id
+当用户点击礼物盒（gift box）按钮时，调用以下函数：
 
-8. Make payment
+```Objective-C
+[[Sdk sharedInstance] showReceiveGift:@"1111111" withCharacterId:@"11112"];
+```
 
-注意：productId 从 `listProducts` 中获取
+- `serverId`：服务器 Id。
+- `characterId`：角色（character）Id。
 
-forCharacterId：游戏内的 Character ID
+### 3.8. 支付（Make payment）
 
-onServerId：Server ID
-
-```Swift
+```Objective-C
 [[Sdk sharedInstance] payProduct:itemProduct.productId forCharacterId:@"17782088632480" onServerId:@"s6003"];
 ```
 
-无论支付成功还是失败，信息都将通过已向 SDK 注册的 SdkDelegate 的 `didPurchaseSuccess` 或 `didPurchaseFailed` 函数返回。
+- `itemProduct.productId`：取自 [第 3.4 节](#34-获取产品列表list-products) `listProducts` 的返回结果。
+- `forCharacterId`：游戏内角色 Id。
+- `onServerId`：服务器 Id。
 
-6. Set Language
+支付结果（成功或失败）将分别通过您已向 SDK 注册的 `SdkDelegate` 的 `didPurchaseSuccess` 或 `didPurchaseFailed` 函数返回。
 
-您可以通过调用以下函数来更改所需的语言：
+### 3.9. 显示/隐藏悬浮按钮（Show dashboard）
 
-```Swift
-[[Sdk sharedInstance] setLanguage: @"vi"];
-```
-
-我们提供了语言变化时的通知 delegate：`getLangaugeSdk`
-
-7. Show dashboard
-
-```Swift
+```Objective-C
 [[Sdk sharedInstance] showOrHideFloatingButton];
 ```
 
-8. Map User
+### 3.10. 映射角色信息（Map User）
+
+调用此函数，将用户当前的角色信息发送给 SDK，用于 tracking 及与角色/服务器相关的功能：
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image11.png)
 
-```Swift
+```Objective-C
 -(void) mappingUser:(NSString*)characterName
         characterId:(NSString*)characterId
      characterLevel:(NSString*)characterLevel
         serverName:(NSString*)serverName
           serverId:(NSString*)serverId;
-          
- example. : 
- [[SdkTracking sharedInstance] mappingUser: @"name" characterId : @1 characterLevel : @1 serverName : @"test" serverId : @"1"];
+
+// 示例：
+[[SdkTracking sharedInstance] mappingUser: @"name" characterId : @1 characterLevel : @1 serverName : @"test" serverId : @"1"];
 ```
 
-characterName：角色名称
+- `characterName`：角色名称。
+- `characterId`：角色 Id。
+- `characterLevel`：角色当前等级。
+- `serverName`：服务器名称。
+- `serverId`：服务器 Id。
 
-characterId：角色 Id
+## 4. 领取礼物（无需参数）
 
-characterLevel：角色等级
+SDK 还提供了另一个领取礼物函数的重载版本，**无需传入 `characterId`/`serverId`**——适用于您已经在 [第 3.10 节](#310-映射角色信息map-user) 调用过 `mappingUser` 的情况，此时 SDK 已经自动获取了当前的角色/服务器信息。
 
-serverName：服务器名称
+当用户点击礼物盒按钮时，调用：
 
-serverId：服务器 Id
-
-## Receive Gift
-
-（您需要在调用 showReceiveGift 之前初始化 characterId 和 serverId）
-
-当用户点击 gift box 按钮时，请调用此函数：
-`[[Sdk sharedInstance] showReceiveGift];`
+```Objective-C
+[[Sdk sharedInstance] showReceiveGift];
+```
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image12.png)
 
-## Log Function
+## 5. 日志追踪函数（Log Function）
+
+以下函数用于向系统发送 tracking 事件，帮助衡量用户在整个游戏生命周期中的行为——从打开应用、下载补丁、创建角色到进入游戏。
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image13.png)
 
-注意：
+上图颜色说明：
 
-灰色：游戏内的步骤
+- **灰色**：游戏侧处理的步骤。
+- **黄色**：游戏需要调用 SDK 函数的位置。
 
-黄色：游戏调用 SDK 的步骤
+请参阅下方 [Flowchart](#6-流程图-flowchart) 中的 "Login or Start Game" 部分，了解应在游戏流程中的具体位置调用下方的日志函数。
 
-请查看 Flowchart 中的 "Login or Start Game" 部分，了解如何在游戏中放置这些函数。
-
-```Java
+```Objective-C
 -(void) logStartGameScreen;
 -(void) logEnterGamePlay;
 -(void) logStartTutorial;
 -(void) logCompleteTutorial;
 ```
 
-`logEnterGamePlay`
+#### `logEnterGamePlay`
 
-在用户点击 "Enter Game" 按钮后，追踪用户进入 Game Play 屏幕。
+在用户点击 "Enter Game" 按钮后，立即追踪用户进入 gameplay 屏幕的事件。
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image14.png)
 
-开始下载资源。
+#### `logPatchStart` —— 开始下载资源（patch）
 
-```Swift
-// 开始下载资源
+```Objective-C
 -(void) logPatchStart: (NSNumber * _Nullable) sizeMB withVerrsion:(NSString * _Nullable)version withNetworkType: (NSString * _Nullable) networkType;
 
-sizeMB : 需要更新的补丁文件大小（以 Mb 显示）
-version : 安装包版本
+// sizeMB  : 需要下载的补丁文件大小，单位 MB
+// version : 安装包版本
 
-example. : 
- [[SdkTracking sharedInstance] logPatchStart: @"500" withVerrsion : @"1.0.1" withNetworkType : @"wifi"];
+// 示例：
+[[SdkTracking sharedInstance] logPatchStart: @"500" withVerrsion : @"1.0.1" withNetworkType : @"wifi"];
 ```
 
-资源下载完成。
+#### `logPatchSuccess` —— 资源下载完成
 
-```Swift
+```Objective-C
 -(void) logPatchSuccess: (NSNumber * _Nullable) durationSec withAvgSpeedKbps: (NSNumber * _Nullable) avgSpeedKbps withCdnNode :(NSString * _Nullable) cdnNode;
 
-durationSec : 从开始下载到下载完成所经过的时间。请检查 update_type 为 Store 时是否也能获取到。
-avgSpeedKbps : 需要更新的补丁文件大小（以 Mb 显示）
-cdnNode : cdn 节点
+// durationSec  : 从开始下载到下载完成所经过的时间（秒）
+// avgSpeedKbps : 平均下载速度（Kbps）
+// cdnNode      : 下载所使用的 CDN 节点
 
-example. : 
- [[SdkTracking sharedInstance] logPatchSuccess: @"500" withAvgSpeedKbps : @"111" avgSpeedKbps : @"450" withCdnNode: @"192.168.0.2"];
+// 示例：
+[[SdkTracking sharedInstance] logPatchSuccess: @"500" withAvgSpeedKbps : @"111" avgSpeedKbps : @"450" withCdnNode: @"192.168.0.2"];
 ```
 
-资源下载失败。
+#### `logPatchError` —— 资源下载失败
 
-```Swift
-//当资源下载被中断或失败时。
+当资源下载被中断或失败时调用。
+
+```Objective-C
 -(void) logPatchError:(NSString * _Nullable) errorCode withRetryCount:(NSNumber * _Nullable) retryCount withFailedUrl:(NSString * _Nullable) failedUrl withCdnNode :(NSString * _Nullable) cdnNode;
 
-errorCode : 错误代码
-retryCount : 因错误需要重试的次数
-failedUrl : 出错的 url
-cdnNode : 出错的 cdn 节点
+// errorCode   : 错误代码
+// retryCount  : 因出错已重试的次数
+// failedUrl   : 下载出错的 url
+// cdnNode     : 出错的 CDN 节点
 
-example. : 
- [[SdkTracking sharedInstance] logPatchError: @"500" withRetryCount: @1 withFailedUrl: @"https://cdn.game.com/patch/v120.zip" withCdnNode : @"192.168.0.2"];
+// 示例：
+[[SdkTracking sharedInstance] logPatchError: @"500" withRetryCount: @1 withFailedUrl: @"https://cdn.game.com/patch/v120.zip" withCdnNode : @"192.168.0.2"];
 ```
 
-开始解压资源。
+#### `logExtractStarted` —— 开始解压资源
 
-```Swift
-//下载完成后立即开始解压/安装。
+在下载完成、开始解压/安装时立即调用。
+
+```Objective-C
 -(void) logExtractStarted:(NSString * _Nullable) totalSizeMb withTotalSize: (NSString * _Nullable) totalSize;
 
-totalSizeMb : 解压后的大小，以 mb 计算
-totalSize : 补丁中需要解压的文件数量。若无法获取则可忽略
+// totalSizeMb : 解压后的大小，单位 MB
+// totalSize   : 补丁中需要解压的文件数量（如无法获取可忽略）
 
-example. : 
- [[SdkTracking sharedInstance] logExtractStarted: @"500" withTotalSize : @"400"];
+// 示例：
+[[SdkTracking sharedInstance] logExtractStarted: @"500" withTotalSize : @"400"];
 ```
 
-已下载数据解压完成。
+#### `logExtractFinished` —— 解压完成
 
-```Swift
-//解压完成后，准备进入 Login 屏幕。
+在解压完成、准备进入登录界面时调用。
+
+```Objective-C
 -(void) logExtractFinished:(NSNumber * _Nullable) durationSec withResultCode:(NSString * _Nullable) resultCode;
-durationSec : 从开始解压到解压成功所经过的时间 
-resultCode : duration_sec, result_code (0: OK, 1: Disk Full)
 
-example. : 
- [[SdkTracking sharedInstance] logExtractFinished: @100 withResultCode : @"ok"];
+// durationSec : 从开始解压到解压完成所经过的时间（秒）
+// resultCode  : 结果代码——0：正常，1：Disk Full（磁盘空间不足）
+
+// 示例：
+[[SdkTracking sharedInstance] logExtractFinished: @100 withResultCode : @"ok"];
 ```
 
-开始创建角色。
+#### `logCharCreateStart` —— 开始创建角色
 
-```Swift
+```Objective-C
 -(void) logCharCreateStart: (NSString * _Nullable) serverId;
 
-serverId : server id 
+// serverId : 服务器 id
 
-example. : 
- [[SdkTracking sharedInstance] logCharCreateStart: @"100"];
+// 示例：
+[[SdkTracking sharedInstance] logCharCreateStart: @"100"];
 ```
 
-注意：请设置一个 timer 来计算从开始到角色创建完成所经过的时间。
+:::note
+建议设置一个内部计时器，自行测量从开始创建角色到创建完成所经过的时间——该数值需要传入下方的 `logCharCreateSuccess`。
+:::
 
-角色创建成功。
+#### `logCharCreateSuccess` —— 角色创建成功
 
 ```Objective-C
 -(void) logCharCreateSuccess: (NSString * _Nullable) serverId withCharId:(NSString * _Nullable) charId withCharName:(NSString * _Nullable) charName withCharClass:(NSString * _Nullable) charClass withDurationSec: (NSNumber * _Nullable) durationSec;
 
-serverId : Id of Server
-charId : id of Character
-charName : name of Character
-charClass : Class_id 
-durationSec : 从开始创建角色到创建成功所经过的时间。
+// serverId    : 服务器 id
+// charId      : 角色 id
+// charName    : 角色名称
+// charClass   : 角色职业 id（class_id）
+// durationSec : 从开始创建到创建成功所经过的时间（秒）
 
-example. : 
- [[SdkTracking sharedInstance] logCharCreateSuccess: @"500" withVerrsion : @"1.0.1" withNetworkType : @"wifi"];
+// 示例：
+[[SdkTracking sharedInstance] logCharCreateSuccess: @"500" withVerrsion : @"1.0.1" withNetworkType : @"wifi"];
 ```
 
-角色创建失败。
+:::danger[示例可能有误]
+上面这行示例保留自原始文档，但其中的参数 `withVerrsion`/`withNetworkType` 与上方声明的 `logCharCreateSuccess` 函数签名不一致（疑似从 `logPatchStart` 的示例中误复制而来）。使用前请与 SDK 开发团队确认正确的参数。
+:::
+
+#### `logCharCreateError` —— 角色创建失败
 
 ```Objective-C
 -(void) logCharCreateError:(NSString * _Nullable) errorCode withCharName:(NSString * _Nullable) charName withServerId:(NSString * _Nullable) serverId;
 
-errorCode : error code 
-charName : name of Character
-serverId : Id of Server
+// errorCode : 错误代码
+// charName  : 角色名称
+// serverId  : 服务器 id
 
-example. : 
- [[SdkTracking sharedInstance] logCharCreateError: @"NAME_DUPLICATED" withCharName : @"test" withServerId :@"1"];
+// 示例：
+[[SdkTracking sharedInstance] logCharCreateError: @"NAME_DUPLICATED" withCharName : @"test" withServerId :@"1"];
 ```
 
-选择服务器后，调用此函数。
+#### `logCharSelect` —— 选择角色
+
+在用户选择服务器和角色进入游戏后立即调用此函数。
 
 ```Objective-C
 -(void) logCharSelect: (NSString * _Nullable) charId withCharacterName :(NSString* _Nonnull) characterName withCharLevel:(NSString * _Nullable) charLevel;
-serverId : Id of Server
-charId : id of Character
-example. : 
- [[SdkTracking sharedInstance] logCharSelect: @"1" withCharacterName : @"name " withCharLevel : @"1"];
+
+// charId        : 角色 id
+// characterName : 角色名称
+// charLevel     : 角色等级
+
+// 示例：
+[[SdkTracking sharedInstance] logCharSelect: @"1" withCharacterName : @"name " withCharLevel : @"1"];
 ```
 
-## Update event 147
+## 6. 按照第 147 号法令同步更新信息
 
-```Swift
+```Objective-C
 dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
     BOOL needShow = [[Sdk sharedInstance] isNeedShowEventProfileSync];
     if (needShow) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            [[Sdk sharedInstance] showEventProfile];   // showEventProfile chắc chắn cần chạy trên main thread vì có UI
+            [[Sdk sharedInstance] showEventProfile];   // showEventProfile 需要在主线程运行，因为涉及 UI
         });
     }
 });
 ```
 
-如果 `isNeedShowEventProfile()` 返回 true，打开 Event Profile 屏幕。
+- 如果 `isNeedShowEventProfile()` 返回 `true`：打开信息同步界面（Event Profile），让用户更新信息。
+- 如果 `isNeedShowEventProfile()` 返回 `false`：允许用户直接进入游戏，无需显示此界面。
 
-如果 `isNeedShowEventProfile()` 返回 false，允许用户直接进入游戏。
+## 7. 应用评价提示（Review App）
 
-## Review App
-
-您可以使用此功能来触发 Apple 评价提示。
+使用此功能，在应用内通过 Apple 标准的评价对话框，提示用户对应用进行评价（review）。
 
 ```Objective-C
 [[Sdk sharedInstance] requestReview];
@@ -590,104 +592,107 @@ dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image15.png)
 
-## Class in SDK
+## 8. SDK 中的各个类
 
-| **IAPProduct** | |
+**`IAPProduct`** —— 一个产品（充值礼包）的信息：
+
+| 属性 | 说明 |
 | --- | --- |
-| productId | 产品 Id，即 google store 上的 product id |
-| localizedPrice | 按 locale 显示的产品价格 |
-| appAmount | 用户购买此礼包获得的 gold 数量 |
+| `productId` | 产品 Id，与 App Store 上声明的 product id 相同 |
+| `localizedPrice` | 按设备 locale 显示的产品价格 |
+| `appAmount` | 用户购买该礼包所获得的 gold（金币）数量 |
 
-| accountID | User Id |
+**`User`** —— 用户信息：
+
+| 属性 | 说明 |
 | --- | --- |
-| accountName | Username |
+| `accountID` | 用户账号 Id |
+| `accountName` | 账号的 Username |
 
-| **Sdk** | |
+**`Sdk`** —— SDK 的主要对象：
+
+| 成员 | 说明 |
 | --- | --- |
-| sharedInstance | 获取 object 的 singleton |
-| showOrHideFloatingButton() | 显示或隐藏 floating button |
-| accessToken | 登录成功后获取 access token |
+| `sharedInstance` | 获取 SDK 的单例（singleton）实例 |
+| `showOrHideFloatingButton()` | 显示或隐藏悬浮按钮 |
+| `accessToken` | 登录成功后获取 access token |
 
-## Flowchart
+## 9. 流程图（Flowchart）
 
-1. Flowchart
+**总体流程图：**
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image16.png)
 
-2. Login or Start game
+上图描述了 "Login or Start Game" 流程——即上方各章节所介绍的 SDK/tracking 函数的调用顺序及位置。
 
-3. Payment
+**支付流程图（Payment）：**
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image17.png)
 
-## Import certificates to keychain
+## 10. 将证书导入 Keychain 并构建 IPA
 
-我们将向您提供包括 apn_certificate、dev_certificate、dis_certificate、development provision、production provision 在内的 certificate，用于构建 ipa。
+我们将向您提供构建 `.ipa` 文件所需的证书，包括：`apn_certificate`、`dev_certificate`、`dis_certificate`、development provisioning profile 和 production provisioning profile。
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image18.png)
 
-
-点击 p12 文件将其添加到 keychain。
+**第 1 步——将证书导入 Keychain：** 双击（或拖放）`.p12` 文件，将其添加到 Keychain Access 中。
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image19.png)
 
-
-然后您将在 keychain 中看到如下的 certificate。
+导入成功后，您会在 Keychain 中看到该证书，如下图所示：
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image20.png)
 
-
-将 provision 导入 Xcode。
+**第 2 步——将 provisioning profile 导入 Xcode：** 双击 provisioning profile 文件（或拖放到 Xcode 中），Xcode 会自动识别。
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image21.png)
 
+:::caution[Client ID / Client Secret 错误]
+如果 Client ID 或 Client Secret 配置错误，您将看到如下图所示的签名（code signing）错误提示。请进入 **Signing & Capabilities**，检查并选择与已导入的 provisioning profile 对应的正确 **Code Sign Identity**。
 
-Client Id 和 Client Secret 错误
-
-如果 client id 和 client secret 错误，您将收到如图所示的错误提示。选择 Code Sign。
-
-如果您在构建 IPA 文件时因 provisioning key 出错，请仔细检查。
+如果在构建 IPA 文件时仍然遇到与 provisioning 相关的错误，请仔细检查用于创建该 provisioning profile 的 bundle id、team 和证书是否正确。
+:::
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image22.png)
 
+### 导出 IPA 文件以上传到 App Store 的方法
 
-导出 IPA 文件以上传至 store 的方法
+:::danger[需要核对]
+原始文档在这几个步骤中只有截图，没有配套的文字说明。以下 7 个步骤是文档团队根据 Xcode 标准的 archive/export 流程重新整理的说明——请在操作前对照下方实际截图进行核对，如有不符请反馈。
+:::
 
-请按照以下步骤操作：
+请在 Xcode 中按照以下步骤操作：
 
-1.
+1. 选择构建目标为 **Any iOS Device (arm64)**，而不是模拟器。
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image23.png)
 
-
-2. 然后选择 Product > Archive
+2. 进入菜单 **Product > Archive**，让 Xcode 构建并打包 archive。
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image24.png)
 
-3.
+3. archive 完成后，**Organizer** 窗口会自动打开并显示刚创建的 archive。选择 **Distribute App**。
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image25.png)
 
-4.
+4. 选择合适的分发方式（例如 **App Store Connect** 或 **Ad Hoc**），并按照 Xcode 向导的步骤完成操作。
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image26.png)
 
-5. 记得检查 aps-environment 是否为 production
+5. 导出前，请务必检查 entitlements 中的 **aps-environment** 是否为 `production`（而不是 `development`），否则 push notification 在正式发布版本中将无法正常工作。
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image27.png)
 
-
-6. Show in finder
+6. 导出完成后，选择 **Show in Finder** 打开包含 `.ipa` 文件的文件夹。
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image28.png)
 
-7. Show package Contents
+7. 右键点击 `.ipa` 文件（或 `.xcarchive` 文件），选择 **Show Package Contents**，如需发送 debug symbol 可从中获取 dSYM 文件。
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image29.png)
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image30.png)
 
-请将 dSYM 文件和 .ipa 文件发送给我。
-
-谢谢！
-
+:::note
+如需 debug 支持，请将对应的 **dSYM** 文件和 **.ipa** 文件一并发送给 VTVLive 团队。
+:::

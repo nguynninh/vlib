@@ -1,19 +1,19 @@
 ---
-title: Update SDK 5.1.4
+title: Cập nhật SDK 5.1.4
 description: Lịch sử thay đổi và cấu hình Podfile khi cập nhật iTapSDK iOS lên phiên bản 5.1.4.
 ---
 
-Lịch sử thay đổi:
+## 1. Tóm tắt thay đổi
 
-- Cập nhật AppsFlyerFramework 6.17.7
+- Cập nhật AppsFlyerFramework lên 6.17.7.
+- Cập nhật tính năng nhận quà (Receive Gift).
+- Cập nhật tính năng chuyển tài khoản (Switch account).
 
-- Cập nhật Receive Gift
+## 2. Cập nhật Podfile
 
-- Cập nhật Switch account
+Sửa lại `Podfile` như bên dưới, sau đó chạy lại `pod install`:
 
-1. Profile
-
-```SQL
+```ruby
 platform :ios, '15.0'
 target 'SdkExample' do
   use_frameworks!
@@ -48,21 +48,20 @@ post_install do |lib|
 end
 ```
 
-Run pod:
+Sau đó chạy lệnh để cài lại dependencies cho sạch:
 
-`pod cache clean --all`
+```bash
+pod cache clean --all
+pod deintegrate
+pod install
+```
 
-`pod deintegrate`
+## 3. Cập nhật AppDelegate
 
-`pod install`
+Cập nhật `AppDelegate.m` theo mẫu dưới đây để khớp với phiên bản SDK mới:
 
-2. Update AppDelegate
-
-```Plain Text
-
+```Objective-C
 @import Firebase;
-
-
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     [[Sdk sharedInstance] initWithDelegate:self application:application launchOptions:launchOptions isProdEnv:TRUE];
@@ -72,7 +71,7 @@ Run pod:
 }
 
 -(void) getLangaugeSdk: (NSString *) langauge {
-    // print  Langauge
+    // Xử lý khi ngôn ngữ SDK thay đổi
 }
 
 - (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
@@ -85,9 +84,14 @@ Run pod:
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_update_sdk_5_1_4_image1.png)
 
-3. Receive Gift
+## 4. Nhận quà (Receive Gift)
 
-(Bạn cần khởi tạo characterId và serverId trước khi gọi showReceiveGift)
+:::note
+Bạn cần khởi tạo `characterId` và `serverId` (ví dụ qua `mappingUser`) trước khi gọi `showReceiveGift`.
+:::
 
-Khi người dùng click nút gift box, vui lòng gọi hàm này:
-`[[Sdk sharedInstance] showReceiveGift];`
+Khi người dùng bấm nút hộp quà (gift box), gọi hàm sau:
+
+```Objective-C
+[[Sdk sharedInstance] showReceiveGift];
+```

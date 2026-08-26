@@ -1,23 +1,21 @@
 ---
-title: Update SDK 5.0.0
+title: 更新 SDK 5.0.0
 description: 将 iTapSDK iOS 更新至 5.0.0 版本时的变更历史与 Podfile 配置。
 ---
 
-变更历史：
+## 1. 变更摘要
 
-- 更新 platform 至 iOS 15
+- 将 deployment target 提升至 iOS 15。
+- 更新 Firebase 至 12.0.0。
+- 更新 AppsFlyerFramework 至 6.17.2。
+- 更新 tracking 逻辑。
+- 新增 FirebaseCrashlytics 12.0.0。
 
-- 更新 Firebase 12.0.0
+## 2. 更新 Podfile
 
-- 更新 AppsFlyerFramework 6.17.2
+按下方内容修改 `Podfile`，然后重新运行 `pod install`：
 
-- 更新 tracking
-
-- 新增 FirebaseCrashlytics 12.0.0
-
-1. PodFile
-
-```Swift
+```ruby
 platform :ios, '15.0'
 target 'SdkExample' do
   use_frameworks!
@@ -51,17 +49,18 @@ post_install do |lib|
 end
 ```
 
-2. Config lib
+## 3. 在 Xcode 中重新配置 library
+
+`pod install` 完成后，请通过 `.xcworkspace` 文件重新打开项目，并按下图检查各个 library 的 **Embed & Sign** / **Do Not Embed** 配置（详细配置方法请参见[集成指南](/sdk-game/ios/objective_c/integration_guide)）：
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_update_sdk_5_0_0_image1.png)
 
-3. Update AppDelegate
+## 4. 更新 AppDelegate
 
-```Swift
+按下方示例更新 `AppDelegate.m`，以匹配新版本 SDK：
 
+```Objective-C
 @import Firebase;
-
-
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     [[Sdk sharedInstance] initWithDelegate:self application:application launchOptions:launchOptions isProdEnv:TRUE];
@@ -71,7 +70,7 @@ end
 }
 
 -(void) getLangaugeSdk: (NSString *) langauge {
-    // print  Langauge
+    // 处理 SDK 语言变化时的逻辑
 }
 
 - (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
@@ -82,28 +81,24 @@ end
 }
 ```
 
-4. Update log
+## 5. 更新角色创建日志函数
 
-调用 **logStartedCharacterCreation** 或 **logFinishedCharacterCreation** 时，您需要补充以下参数：
+从此版本开始，调用 `logStartedCharacterCreation` 或 `logFinishedCharacterCreation` 时，您需要额外传入以下参数：
 
-- 对于 **logStartedCharacterCreation**，请提供 **serverId** 和 **serverName**。
+- `logStartedCharacterCreation`：补充 `serverId` 和 `serverName`。
+- `logFinishedCharacterCreation`：补充 `characterId` 和 `characterName`。
 
-- 对于 **logFinishedCharacterCreation**，请提供 **characterId** 和 **characterName**。
-
-```Swift
+```Objective-C
 -(void) logStartedCharacterCreation:(NSString *) serverId withSeverName: (NSString *) serverName;
 -(void) logFinishedCharacterCreation:(NSString *) characterId characterName :(NSString*)characterName;
 ```
 
-5. Firebase Crashlytics
+## 6. 上传 dSYM 至 Firebase Crashlytics
 
-成功构建 .ipa 文件后，点击 "Show in Finder."
+成功构建 `.ipa` 文件后，选择 **Show in Finder** 以获取 dSYM 文件，并将其与 `.ipa` 文件一并发送给 VTVLive 团队：
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_update_sdk_5_0_0_image2.png)
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_update_sdk_5_0_0_image3.png)
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_update_sdk_5_0_0_image4.png)
-
-请将 dSYM 文件和 .ipa 文件发送给我。
-
