@@ -1,0 +1,25 @@
+---
+title: Update SDK fixbug Notification
+description: Guide for updating iTapSdk 5.1.0 to fix a notification-receiving bug on iOS.
+---
+
+# Update SDK fixbug Notification
+
+1. Update iTapSdk 5.1.0
+
+2. Please add the following code snippet to AppDelegate.
+
+```Plain Text
+- (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
+    [FIRMessaging messaging].APNSToken = deviceToken;
+}
+
+- (void)messaging:(FIRMessaging *)messaging didReceiveRegistrationToken:(NSString *)fcmToken {
+    
+}
+-(void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
+    completionHandler(UIBackgroundFetchResultNewData);
+}
+```
+
+![](BASE_STORAGE/v2.0.0/update_sdk_fixbug_notification_image.png)

@@ -1,0 +1,61 @@
+---
+title: Requirement to update user information when entering the game
+description: Proposal to update the SDK and ID site to require players to complete personal information upon login, including a login-blocking popup and a guide popup for updating information.
+---
+
+## Problem statement
+
+To ensure the company's games comply with regulations on players' personal information when creating an account to use the G1 online game service, the VplayHN1 team proposes updating the SDK and ID site with the following features:
+
+1. **Personal information provided by customers includes:**
+
+This section already exists; however, the team still proposes merging the Security and Account tabs on the ID site into one, so customers can update their information more conveniently.
+
+| No. | Information field | Required/Not required |
+| --- | --- | --- |
+| 1 | Full name | Required |
+| 2 | Date of birth | Required |
+| 3 | ID card/Citizen ID/Passport number | Required |
+| 4 | Date and place of issue | Required |
+| 5 | Permanent residential address | Required |
+| 6 | Phone number | Not required |
+| 7 | Email | Not required |
+
+2. **Popup blocking SDK login when the account has not filled in personal information**
+
+For customers logging in to the SDK, if the account has not updated the required personal information (marked with * above, a warning popup will appear). The warning popup has 3 levels that can be toggled from the CMS for each service's SDK:
+
+- Level 1: Popup disabled (skip the check of whether the account has updated its information, go straight into the game).
+
+- Level 2: Allow closing the popup (shown at every login, the customer can close the popup and continue playing the game).
+
+- Level 3: Do not allow closing the popup (shown at every login, the account is required to go to [id.vplay.vn](http://id.vplay.vn/) or [id.onlive.vn](http://id.onlive.vn/) to update the information).
+
+
+| No. | Display condition | Content |
+| --- | --- | --- |
+| 1 | Account has not updated the required information | Title: Update information [Error code]<br/>Content: Your account has not updated its personal information as required. Please visit the homepage to do so or contact the hotline for support. |
+| 2 | Account has updated its information, but based on date of birth, the customer is not yet 18 years old | Title: Update information [Error code]<br/>Content: Your age is not suitable for this game's content. Please visit the homepage for details or contact the hotline for support. |
+
+3. **Guide popup for updating information on the ID site and the top-up site**
+
+For customers logging in on the ID site, if the account has not updated the required personal information, a guide popup will appear to instruct the customer on updating their information. The guide popup has 3 levels that can be toggled from the CMS:
+
+- Level 1: Popup disabled
+
+- Level 2: Show the guide popups, but they can be skipped
+
+- Level 3: Show the guide popup and require personal information to be updated before any transaction actions can be performed
+
+## Requirements
+
+- Business document: [TLNV_VplayID Upgrade (Popup requesting user information update)](https://vtvlivevn.larksuite.com/docx/QrPidasukob68Exk74Ou920jsQb?from=from_copylink)
+
+- Flow: [Flowchart - Information update popup](https://vtvlivevn.larksuite.com/docx/UHWMdTt4uoyhloxFSviuw5P6sce?from=from_copylink)
+
+- Figma: [https://www.figma.com/design/Vi8KLZrexEt9lq9VrxQyp3/popup-Vplay?node-id=0-1&t=0sgmRdfR6W4UIQvZ-1](https://www.figma.com/design/Vi8KLZrexEt9lq9VrxQyp3/popup-Vplay?node-id=0-1&t=0sgmRdfR6W4UIQvZ-1)
+
+## API Documentation
+
+https://documenter.getpostman.com/view/18060251/2s93XzxNbZ#b83e9ce6-9ec8-41c6-8fef-ee7dac8c07cb
+

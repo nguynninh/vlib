@@ -1,0 +1,92 @@
+---
+title: BE APIおよびFirebase Remote Configによる動的設定
+description: BE APIを通じてSDKの動的設定を取得し、Firebase Remote Configにフォールバックする仕組み。アプリを再ビルドすることなくドメインや設定をカスタマイズできます。
+---
+
+## 概要
+
+1. 目的
+
+    1. パートナーとの連携時における設定ミスを最小限に抑える
+
+    2. 緊急時にドメインや設定をカスタマイズできるようにし、SDKの再ビルド -> アプリの再審査を回避する
+
+2. 補足情報
+
+    SDKはまずBE APIから設定を取得することを優先します。APIの呼び出しが失敗するか、返却されたデータをデコードできない場合、SDKは自動的にFirebase Remote Configへフォールバックします。両方のソースが失敗した場合、SDKは以前にSharedPreferencesへ保存しておいた設定を使用します（初回インストール時はFirebase XMLファイル内のデフォルト設定を使用）。
+
+## API
+
+1. フローチャート
+
+    - Android
+
+```mermaid
+%% width: 1100
+flowchart LR
+    Start((起動)) --> FirstInstall{初回<br/>インストール}
+    FirstInstall -- true --> SaveDefault[Firebase XML<br/>デフォルトファイルの<br/>設定を<br/>SharedPreferencesへ<br/>保存]
+    SaveDefault --> RemoteApi[Remote Config API]
+    FirstInstall -- false --> RemoteApi
+
+    RemoteApi --> ApiState{API<br/>ステータス}
+    ApiState -- "成功" --> DecodeApi{デコード}
+    ApiState -- "失敗" --> DecodeApi
+
+    DecodeApi -- "失敗" --> FirebaseRemote[Firebase Remote<br/>Config]
+    ApiState -- "失敗" --> FirebaseRemote
+    FirebaseRemote --> FirebaseState{Firebase<br/>ステータス}
+    FirebaseState -- "成功" --> DecodeFirebase{デコード}
+    FirebaseState -- "失敗" --> InitAppInfo[SharedPreferencesから<br/>AppInfoを初期化]
+
+    DecodeFirebase -- "成功" --> SaveConfig[SharedPreferencesへ<br/>設定を保存]
+    DecodeApi -- "成功" --> SaveConfig
+
+    SaveConfig --> CheckDomain{ドメインIDの<br/>変更を確認}
+    CheckDomain -- true --> Logout[ログアウト]
+
+    SaveConfig --> InitAppInfo
+    InitAppInfo --> Done((完了))
+```
+
+    - IOS
+
+```mermaid
+%% width: 1100
+flowchart LR
+    Start((アプリ起動)) --> A[動的設定を取得するAPIを呼び出し]
+    A --> B{APIの返却ステータス}
+    B -->|true| C{データを確認}
+    B -->|false| D[Firebase Configから設定を取得]
+    D --> E{Firebaseからの返却ステータス}
+    E -->|true| C
+    E -->|false| F[アプリ設定のデフォルト値を取得]
+    C -->|false| F
+    C -->|true| G{userDefaultのデータと比較}
+    F --> G
+    G -->|userDefault # nil| H{ドメインを比較}
+    G -->|userDefault nil| K[userDefaultへ保存]
+    H -->|異なる| I[ログアウト]
+    H -->|同じ| K
+    I --> K
+    K --> End((終了))
+```
+
+2. 詳細
+
+    - 本番ドメイン: [https://config.vapi24.vn](https://config.vapi24.vn/)
+
+    - ベータドメイン: https://beta-config.vapi24.vn
+
+## Firebase Remote Config
+
+1. フローチャート
+
+2. 詳細
+
+## バージョン
+
+| **Platform** | **Inventory** | **Tag version** | **CommitID** | **Release date** |
+| --- | --- | --- | --- | --- |
+| Android | | | | |
+| IOS | | | | |

@@ -1,0 +1,151 @@
+---
+title: 06 — Common Errors & Diagnostics
+description: Guide to enabling logs and diagnosing common issues when integrating the Interactive Android SDK.
+---
+
+## 1. Enabling SDK logs
+
+The SDK logs via the `logcat {}` function — this only works when **the AAR is built with buildType `debug`**
+(`BuildConfig.DEBUG = true` in the `:interactive` module). Default tag: `Interactive`.
+
+```bash
+adb logcat -s System.out | grep Interactive
+```
+
+Notable log strings:
+
+| Log | Meaning |
+|---|---|
+| `overlay manager: Khởi tạo mới Innteractive` | Constructor ran |
+| `socket io management initialization: socketUrl = ...` | Preparing the connection |
+| `overlay manager socket: connected socket` / `join room success` | Successfully joined the room |
+| `socket io management addEvents: received overlay` | An overlay was received from the server |
+| `<-- check point: showOverlay -->` | Starting to build the WebView |
+| `VLive: Website onPageFinished url: ...` | Template finished loading |
+| `overlay web view manager: add caches` | Overlay was deferred because `isVisible = false` |
+| `socket io management prevent ex-overlay: user answered` | Blocked because it was already answered |
+
+---
+
+## 2. Overlay not showing — diagnostic tree
+
+```mermaid
+flowchart TD
+    A["Overlay not showing"] --> B{"Does the log contain 'received overlay'?"}
+    B -->|"no"| C{"Does the log contain 'join room success'?"}
+    C -->|"no"| C1["Check: has joinRoom been called,<br/>is the mediaId correct, network/tenantId/token,<br/>does the DEV/STG/PROD environment match the server"]
+    C -->|"yes"| C2["The server hasn't pushed an overlay for this media<br/>→ check the scenario on the operations side"]
+    B -->|"yes"| D{"Does the log contain 'showOverlay'?"}
+    D -->|"no"| E["Blocked at the business logic layer — see section 3"]
+    D -->|"yes"| F{"Does the log contain 'onPageFinished'?"}
+    F -->|"no"| F1["The WebView failed to load the template:<br/>check the network, SSL certificate,<br/>usesCleartextTraffic if the URL is http"]
+    F -->|"yes"| G["The overlay rendered but isn't visible<br/>→ layout issue, see section 4"]
+```
+
+---
+
+## 3. Blocked at the business logic layer
+
+Cross-reference the log against the reason table (details in [05 — Tracking](05-tracking-emit-ack.md#5-cancelreason-table)):
+
+| Symptom | Cause | Resolution |
+|---|---|---|
+| `user haven't logged in yet` | Tenant `vtvlive`, `initToken` not called, overlay does not allow anonymous access | Call `initToken()` after logging in |
+| `timelineId not found` | Payload is missing `timelineId` | Report it to the server side |
+| `socket is not connect` | Socket dropped right at the moment of processing | Check the network; the SDK will auto-reconnect after 5s |
+| `duplicate predict overlay` / `duplicate miniGame overlay` | Duplicate `timelineId` with an overlay already being shown | Expected behavior by design |
+| `prevent ex-overlay: user answered` | This milestone was already answered (pref `ex_*`) | Clear the app's data if you want to retest |
+| `ex-overlay duration < 10s` | The catch-up overlay is too short | Expected behavior by design |
+| Cancel `target_mismatch` | `targets` doesn't match `DEVICE_TYPE` | Build the correct variant (`androidmobile` / `androidtv`) or fix the scenario |
+| Cancel `expired_duration` | The overlay's duration, computed from `missTime`, has run out | Expected behavior by design |
+| `add caches` but never shows up | `isVisible = false` (not yet `Connected`) | The overlay will show once the socket connects; if it never connects → see section 5 |
+
+---
+
+## 4. Overlay renders but is not visible / positioned incorrectly
+
+| Cause | Symptom | Fix |
+|---|---|---|
+| `OverlayView` has size `0` | Rendering logs look normal, screen is empty | Set explicit `layout_width/height` constraints; verify by temporarily setting `setBackgroundColor(Color.YELLOW)` |
+| `OverlayView` is drawn over by the player | The overlay "flashes" then disappears | Declare `OverlayView` **after** the player in the layout, or increase `elevation`/`translationZ` |
+| `OverlayView` is larger than the video frame | The overlay extends outside the video area | Constrain `OverlayView` to exactly match the player's 16:9 frame |
+| `OverlayView` is `INVISIBLE` | After a disconnection | The SDK calls `temporaryLock()` on disconnect; it becomes `visible()` again on reconnect |
+| The player's `SurfaceView` covers the WebView overlay | Only happens with certain players | Use a `TextureView` for the player, or place `OverlayView` in a separate ViewGroup on top |
+
+---
+
+## 5. Socket fails to connect
+
+Checklist:
+
+1. **Environment**: `EnvInteractive` must match the server system (DEV/STG/PROD) — the URL comes from native code and cannot be changed from the app.
+2. **`tenantId`**: a wrong tenant → the server rejects the room.
+3. **Permissions**: missing `INTERNET` → no clear error log, only a `connect error`.
+4. **Expired token**: an incorrect `Authorization` header → may be rejected depending on server config.
+5. **`liboverlay.so` stripped out**: if the app uses `abiFilters` or ABI splits that omit an architecture, `Utils` will throw an `UnsatisfiedLinkError` right at initialization → `INTERACTIVE_SOCKET_URL` ends up empty.
+   Check with `unzip -l app-release.apk | grep liboverlay`.
+
+The log `socket io management initialization: url value uninitialized` is exactly the signature of case 5.
+
+---
+
+## 6. Build / runtime errors after integrating the AAR
+
+| Error | Cause | Fix |
+|---|---|---|
+| `NoClassDefFoundError: io/socket/client/IO` | Missing transitive dependency | Declare all the libraries listed in [02 §3](02-cai-dat-va-tich-hop.md#3-khai-báo-phụ-thuộc) |
+| `ClassCastException` / crash when opening a dialog | Activity is not a `FragmentActivity` | Use `AppCompatActivity` |
+| Dialog doesn't open, log shows `showPredictDialog error` | `activity as? FragmentActivity` returns `null` | Same as above |
+| No callback received from the WebView when R8 is enabled | The JS interface got obfuscated | Add the `@JavascriptInterface` rule from [02 §14](02-cai-dat-va-tich-hop.md#14-proguard--r8) |
+| The overlay doesn't receive data (`GET_DATA_INTERACTIVE`) | The template hasn't sent `LOADED_OVERLAY` | Coordinate with the web template team |
+| `UnsatisfiedLinkError: liboverlay.so` | Missing ABI | Check `ndk.abiFilters`, don't strip out the native library |
+
+---
+
+## 7. VOD: overlay not appearing at the right milestone
+
+| Cause | Fix |
+|---|---|
+| The app never calls `receiveTrackingTime()` | Add a 1-second loop after `joinRoom(type = 2)` |
+| Wrong unit is fed in (milliseconds instead of seconds) | Divide `player.currentPosition` by 1000 |
+| The user seeks past the milestone | The SDK matches on the **exact second**; the overlay for that milestone is skipped — this is a current limitation |
+| Not logged in, overlay is not `allowAnonymous` | `checkShowQuestion` skips it; log in and call `joinRoom` again |
+| The scenario response is empty | Check the `response vod failed` log, confirm the `mediaId` and token |
+
+---
+
+## 8. Frequently asked questions
+
+**Does the SDK automatically hook into the Activity lifecycle?**
+No. `LifecycleOverlay` is currently empty. The app must call `releaseAll()` itself. The socket's
+LiveData, however, is observed following the `LifecycleOwner`, so it automatically stops emitting
+when the Activity is not in an active state.
+
+**Can multiple overlays be shown at the same time?**
+No. `OverlayView.addViewCommon*` calls `clearViews()` before adding → there is always only one
+overlay WebView. The Predict/Lucky buttons are separate views, so they can coexist alongside an
+overlay (the SDK proactively disables them when a mini game appears).
+
+**What happens when switching accounts mid-session?**
+Call `initToken(newToken, newUserId)`. If a Live session is active, the SDK automatically rejoins
+the room with the new token.
+
+**Is the viewer count accurate?**
+`onHandleLiveViews` returns `count + 230` (a constant added in the current code). If the raw number
+is needed, the app must subtract it back out itself.
+
+**Do I need to call `releaseAll()` before every `joinRoom()`?**
+No — `joinRoom()` already calls `cleanUp()` internally.
+
+**Does rotating the screen lose the overlay?**
+No, as long as the Activity declares `configChanges="orientation|screenSize"`. If the Activity gets
+recreated, `OverlayManager` must be rebuilt and `joinRoom()` called again.
+
+**Does the SDK use the system WebView?**
+Yes — `OverlayWebView` extends `android.webkit.WebView`, enables JavaScript and DOM storage,
+transparent background, `cacheMode = LOAD_NO_CACHE`, and blocks outbound navigation
+(`shouldOverrideUrlLoading` returns `true`).
+
+---
+
+[← Tracking emit-ack](05-tracking-emit-ack.md) · [Back to index](README.md)

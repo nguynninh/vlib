@@ -252,9 +252,16 @@ const t = labels[lang] ?? labels.vi;
 			const expressiveCode = pre.closest('.expressive-code');
 			const rawSource = frame?.querySelector('.copy button')?.getAttribute('data-code')?.replaceAll('\u007f', '\n') ?? pre.textContent ?? '';
 			const titleMatch = rawSource.match(/^\s*%%\s*title:\s*(.+)\s*$/m);
-			const source = rawSource.replace(/^\s*%%\s*title:\s*.+\s*\n?/m, '');
+			const zoomMatch = rawSource.match(/^\s*%%\s*zoom:\s*([\d.]+)\s*$/m);
+			const widthMatch = rawSource.match(/^\s*%%\s*width:\s*(\d+)\s*$/m);
+			const source = rawSource
+				.replace(/^\s*%%\s*title:\s*.+\s*\n?/m, '')
+				.replace(/^\s*%%\s*zoom:\s*.+\s*\n?/m, '')
+				.replace(/^\s*%%\s*width:\s*.+\s*\n?/m, '');
 			const frameTitle = frame?.querySelector('.header .title')?.textContent?.trim() || 'Mermaid';
 			const title = titleMatch?.[1]?.trim() || findMermaidTitle(expressiveCode, frameTitle);
+			const zoom = zoomMatch ? Math.min(5, Math.max(0.5, parseFloat(zoomMatch[1]))) : 1;
+			const widthPx = widthMatch ? Math.max(200, parseInt(widthMatch[1], 10)) : null;
 			const diagramId = `mermaid-diagram-${index}-${Math.random().toString(36).slice(2)}`;
 			const wrapper = document.createElement('figure');
 			const header = document.createElement('figcaption');
@@ -295,8 +302,17 @@ const t = labels[lang] ?? labels.vi;
 				diagram.innerHTML = svg;
 				const svgElement = diagram.querySelector('svg');
 				const viewBox = svgElement?.viewBox?.baseVal;
-				if (viewBox && viewBox.width / Math.max(1, viewBox.height) > 4) {
+				const isScaled = zoom !== 1 || widthPx;
+				if (!isScaled && viewBox && viewBox.width / Math.max(1, viewBox.height) > 4) {
 					diagram.classList.add('is-wide');
+				}
+				if (svgElement && isScaled) {
+					const baseWidth = widthPx || (viewBox?.width ?? svgElement.getBoundingClientRect().width);
+					svgElement.style.maxHeight = 'none';
+					svgElement.style.maxWidth = 'none';
+					svgElement.style.width = `${Math.round(baseWidth * zoom)}px`;
+					svgElement.style.height = 'auto';
+					body.classList.add('mermaid-frame-body-scaled');
 				}
 			} catch (error) {
 				diagram.innerHTML = '<span>Không render được Mermaid diagram.</span>';

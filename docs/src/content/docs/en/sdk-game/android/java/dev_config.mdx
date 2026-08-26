@@ -1,0 +1,207 @@
+---
+title: Game configuration guide for developers
+description: Guide to receiving game configuration information, the configuration process on the Hub and Firebase Remote Config, and the list of configuration parameters.
+---
+
+## Receiving game configuration information
+
+1. Receive configuration information via email
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image1.png)
+
+2. Receive information already configured on the hub from the backend
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image2.png)
+
+3. Receive the full configuration information from the department head
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image3.png)
+
+## Configuration process
+
+1. Configuration on the Hub
+
+    After configuring on the hub successfully and verifying by copying this data into the SDK to check whether the fields are correct, configure it on Firebase Remote Config just like other games.
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image4.png)
+
+    1. Global
+
+        Applies to all applications; created automatically and does not need to be edited unless there is an error, in which case report it to BE for a fix. Default value is 0.
+
+    2. App
+
+        Applies to all packages, including iOS, with the parameter taken from appId.
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image5.png)
+
+    1. Package
+
+        Applies to a single package, taken from packageId.
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image6.png)
+
+    2. List of configuration parameters
+
+| No. | Field name | Copy from old project | Data type | Required | Field description |
+| --- | --- | --- | --- | --- | --- |
+| 1 | hub_api_base_url | Yes | String | Required | Hub Base Url |
+| 2 | authen_api_base_url | Yes | String | Required | Auth Base Url |
+| 3 | payment_api_base_url | Yes | String | Required | Payment Base Url |
+| 4 | translate_api_base_url | Yes | String | Required | Translate Base Url |
+| 5 | client_id | No | String | Required | Client Id of the application issued by BE via email |
+| 6 | client_secret | No | String | Required | Client Secret of the application issued by BE via email |
+| 7 | google_web_client | No | String | Required | Google web client id (not the android client id), obtained from Google Cloud; must be correctly linked to the keystore's sha1 for Google login to work |
+| 8 | achieved_levels | Yes | Array | Required | Value used to track the user's level |
+| 9 | achieved_vips | Yes | Array | Required | Value used to track the user's VIP tier |
+| 10 | af_dev_key | Yes | String | Required | AppsFlyer key |
+| 11 | scope | Yes | String | Required | API access scope |
+| 12 | app_id | No | String | Required | appId, equivalent to the App value above |
+| 13 | apple_client_id | No | String | Optional | Used for Apple login (currently removed, kept only to avoid redundancy) |
+| 14 | api_key_recapcha | Yes | String | Required | reCAPTCHA v3 key |
+| 15 | package_id | No | String | Required | Package Id of the application |
+| 16 | tik_tok_app_id | No | String | Optional | TikTok app id; can only be configured after the app is on the store and downloadable |
+| 17 | access_token_tik_tok | No | String | Optional | TikTok access token; can only be configured after the app is on the store and downloadable |
+| 18 | multilingual | No | String | Required | Show/hide language selection on the login UI. 1 shows it, any other value hides it |
+| 19 | language_list | No | Array | Required | Array of data for the list of supported languages; default to a single language. The first language will be the default language |
+| 20 | app_code | No | String | Required | App name of the application, e.g.: R001, T026, T028 |
+| 21 | event_countdown | No | Json | Optional | JSON containing countdown information for the release date, for apps about to launch |
+| 22 | version_store | No | String | Required | The new version information after a successful review submission and release on the store. Must be updated when the newest version is released |
+| 23 | show_floating | Yes | String | Required | Show/hide the floating button displayed after login: 0 hides it, 1 shows it |
+| 24 | hidden_floating_version | No | String | Required | This is the version in which the floating button is hidden when submitting for store review; must be cleared to empty after the review is complete |
+| 25 | reward_profile_event | Yes | Json | Required | Must replace the image before going to prod and releasing the app; this feature must go together with the in-game reward-claim feature |
+
+    3. Configuration of events fired from the server to Firebase
+
+        Requires the department head to update these two parameters before the new event can be sent to Firebase.
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image7.png)
+
+    4. Configuration of top-up packages based on the list of top-up calls sent. This needs to be handled carefully, or you'll end up having to compensate for it.
+
+2. Configuration on Firebase
+
+    1. Application configuration
+
+        Go to: Setting -> General -> Add app -> Enter the package Id
+
+        After creating the app, **have the department head** update the configuration on Google Cloud to add information to google-service.json.
+
+        Check the json at: https://dandar3.github.io/android/google-services-json-to-xml.html
+
+        It must match the image below.
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image8.png)
+
+    2. Server notification configuration
+
+        After correctly configuring google-server.json into the sample app, notifications should be received; you can test beforehand using a Firebase message.
+
+        Project Setting -> Services account
+
+        Make sure to create this only once and keep this file.
+
+        After creating the configuration for both Android and iOS on the Hub, retest notifications using the package configuration on the hub.
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image9.png)
+
+        Set it on the hub.
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image10.png)
+
+3. Configuration on Facebook
+
+    1. App configuration
+
+        App Settings -> Basic Info -> Add Platform -> Google Play
+
+        Key Hash:
+
+        Get the SHA1 from the store after the store signs it to generate the link, then paste it here: https://tomeko.net/online_tools/hex_to_base64.php
+
+        Package Name: Package Name
+
+        Class Name: MainActivity
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image11.png)
+
+4. Example configuration
+
+    Please refer to another project.
+
+    - Change the package name
+    - Change the project name
+    - Change the information in string.xml
+    - Change google-service.json
+    - Change the vtvlive_config_sdk_game_defaults file -> information taken from the hub
+    - Change the key used to download the libraries in both the game SDK and game tracking SDK; create an access token key -> developer -> read-api and save it
+
+5. Sample test procedure
+
+    1. Regular login
+
+        Failure -> Recheck the hub configuration and the sample project to verify the package and provided information are correct -> If correct, ask BE whether login has been configured
+
+    2. Registration and Forgot Password
+
+        Failure -> Open the log and see an error that the package name does not exist in reCAPTCHA -> **have the department head** configure it
+
+        Failure -> A dialog shows an error from BE -> The device and network are being spam-flagged by reCAPTCHA; use a different device and 3G network
+
+    3. Google login
+
+        Authentication fails.
+
+        Cause:
+
+        -> The build is unsigned, or the signature on Google Cloud is wrong. Check that the APK, Google Cloud, and store all share the same SHA1 signature
+
+        ! The GG login client ID on the hub might be set incorrectly
+
+    4. Facebook login
+
+        Login error reported.
+
+        In development mode:
+
+        Recheck the Facebook app information.
+
+        Verify you're using the correct test account to log in.
+
+        In public mode:
+
+        Check whether Facebook has granted profile permission -> If not, **have the department head** request the permission from Facebook for the project
+
+    5. Checking events sent to AppsFlyer
+
+        Open the log with the tag appsflyer; if it fires an error that the package name does not exist, **have the department head handle it**
+
+    6. Checking payments
+
+        To be able to test payments, a build must be pushed to internal testing, then the top-up packages must be configured on the store and the hub.
+
+        If payment fails with an unknown error,
+
+        Check that the APK is sending the correct top-up package name.
+
+        If the game side has sent the correct top-up package name but the BE API returns an unknown error,
+
+        **Have the department head** ask the Payment team to enable production and enable the service configuration on Google Cloud.
+
+        Enabling this configuration can take up to 1 day before payments start working.
+
+## Store configuration
+
+1. App registration
+
+    Registration must be done right away since package name registration review can take up to 48 hours.
+
+    After completing the sample project, create a file at the path below.
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image12.png)
+
+    The code is obtained from the store when registering the package name.
+
+    Use the correct keystore, build the APK, and upload it to the store to register the package name.
+
+    Only after the package name is registered can the app be created on the store.

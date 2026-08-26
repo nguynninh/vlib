@@ -6,5 +6,6 @@
 .DS_Store
 
 # Never commit
+deploy/.env
 AGENTS.md
 CLAUDE.md

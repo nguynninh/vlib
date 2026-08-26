@@ -1,0 +1,407 @@
+---
+title: 04 — API 参考
+description: SDK Interactive iOS 中 ISdk 模块的完整 API 参考文档。
+---
+
+以下所有 API 均属于 **`ISdk`** 模块（`import ISdk`）。
+
+---
+
+## 1. `InteractiveControllerView`
+
+主协调类 — app 的入口点。
+
+```swift
+@objc public class InteractiveControllerView : NSObject {
+    public override init()   // 创建 SocketIOManagementImpl + OverlayManagementImpl
+}
+```
+
+### 1.1. 公开属性
+
+| 属性 | 类型 | 说明 |
+|---|---|---|
+| `overlayManagement` | `OverlayManagement?` | minigame overlay 的 Manager（通过它挂接 delegate） |
+| `predictManagement` | `PredictManagementImpl!` | predict/lucky 按钮 + 对话框的 Manager |
+| `socketIO` | `SocketIOManagement?` | socket 对象（仅供读取信息） |
+| `interactivePlayerDelegate` | `InteractivePlayerDelegate?` | player 状态 / 观看人数 delegate |
+| `interactiveLoginDelegate` | `InteractiveLoginDelegate?` | 登录请求 delegate |
+| `interactivePredictDelegate` | `InteractivePredictDelegate?` | predict 按钮布局 delegate |
+
+### 1.2. 方法
+
+| 函数 | 说明 |
+|---|---|
+| `initOverlay(uiView: UIView, predictView: UIView)` | 挂接 2 个宿主 view（overlay + predict）、注册屏幕旋转监听、创建 `PredictManagementImpl` |
+| `initAuthenToken(authenToken: String, userId: String, bjName: String)` | 声明/清除登录会话。登出：传入空字符串。若正处于 Live 中 → 自动重新进入房间 |
+| `joinRoom(mediaId: String, type: Int)` | 开始会话。`type = 1` 为 LIVE，`type = 2` 为 VOD。自动清理旧会话 |
+| `getTimeVideo(time: TimeInterval)` | **（VOD）** 注入播放时间（秒）。与 `timeShow` 匹配以显示 overlay |
+| `leaveRoom()` | 对当前 media 发出 `leave-room` 事件 |
+| `releaseAll()` | 释放：leaveRoom + 移除 delegate + 断开 socket |
+| `removeAllView()` | 移除当前显示的 overlay（不影响 socket） |
+| `resizeVideoView(width: CGFloat, height: CGFloat)` | 更新 overlay 视频框架的尺寸 |
+| `fetchInteractiveStatus(mediaId: String, completion: @escaping (Bool) -> Void)` | 询问服务器该 media 是否有互动内容（出错 → `false`） |
+| `showChartsInteractive(viewRoot: UIView, mediaId: String, userid: String?, backgroundColorHeaderView: UIColor = #489BE6)` | 打开排行榜（iframe） |
+| `setInteractivePlayerDelegate(interactivePlayerDelegate:)` | 挂接 player delegate |
+| `setupPredictViewDelegate(interactivePredictDelegate:)` | 挂接 predict 布局 delegate |
+| `setuPredictLoginDelegate(interactiveLoginDelegate:)` | 挂接 predict 的登录 delegate（注意拼写 `setuPredict`） |
+| `embededInteractiveContentView()` | 主动打开 predict/lucky 内容对话框 |
+| `setHiddenInteractiveButton(_ isHidden: Bool)` | 隐藏/显示 predict/lucky 悬浮按钮 |
+| `leaveRoom()` / `disconnection()` | 离开房间 / 断开 socket |
+
+通过 `overlayManagement` 为 minigame overlay 挂接 delegate：
+
+```swift
+interactive.overlayManagement?.setupDelegate(interactiveViewDelegate: self)
+interactive.overlayManagement?.setupDelegate(interactiveLoginDelegate: self)
+interactive.overlayManagement?.setupDelegate(fanClubDelegate: self)
+interactive.overlayManagement?.setupAnswerDelegate(interactiveAnswerDelegate: self)
+```
+
+---
+
+## 2. `InteractiveSetting`
+
+```swift
+@objc public class InteractiveSetting: NSObject {
+    public static let KEY_ENABLE_PROD_ENV = "KEY_ENABLE_PROD_ENV"
+    public static let KEY_X_TENANT_ID     = "KEY_X_TENANT_ID"
+
+    public func setEnableProdEnv(enableProdEnv: String)   // Enviroment.rawValue
+    public func setXTenantId(xTenantId: String)           // TenantIdType.rawValue
+}
+```
+
+> 两者都必须在任何 `joinRoom` **之前**调用。值会保存到 `UserDefaults.standard` 中，并在多处
+> 被读取（force-unwrap）。
+
+```swift
+public enum Enviroment: String { case DEV = "dev"; case STG = "stg"; case PROD = "prod" }
+
+public enum TenantIdType: String {
+    case vtvlive                          // OnPlus
+    case onliveLiveStream = "onlivev2"    // SOOP
+    case onliveTV = "onlivetv"            // OnLive TV
+    case VTVprime = "VTVprime"            // SeeNow
+}
+```
+
+---
+
+## 3. Delegate 协议列表
+
+除 `PlayerChangeListener` 外，全部为 `@objc public protocol … : AnyObject`。
+
+### `InteractivePlayerDelegate`
+```swift
+func getPlayerState() -> Int        // player 状态码，用于 ckst 事件
+func showLiveView(liveView: Int)    // 实时观看人数（已加 +230）
+```
+
+### `InteractiveLoginDelegate`
+```swift
+func showInteractiveLogin()         // 用户互动但尚未登录时调用
+```
+
+### `InteractivePredictDelegate`
+```swift
+func showLayoutViewPredictRoot()    // 显示承载 predict/lucky 按钮的区域
+func hideLayoutViewPredictRoot()
+func endLayoutViewPredictRoot()
+```
+
+### `InteractiveAnswerDelegate`
+```swift
+func confirmDeduction()             // 同意扣除 OnG
+func confirmNotEnoughMoney()        // OnG 不足（PM402）
+func confirmAnswerSuccess()         // 回答成功
+func showSubscibeView()             // 打开充值/订阅界面（拼写 "Subscibe"）
+```
+
+### `InteractiveViewDelegate`
+```swift
+func shrinkScreenInteractive(show: Bool, direction: Int, withXScale x: CGFloat, withYScale y: CGFloat)
+func resetLayoutInteractive()
+func preloadVideoActionBranching(url: String, timeToNext: TimeInterval)
+func nextVideoActionBranching()
+func showLayoutViewRoot()
+func hideLayoutViewRoot()
+func locationLayoutViewRoot(location: Int, width: CGFloat, height: CGFloat)  // 位置 0..8
+func hidePlayerControl()
+func showPlayerControl()
+func viewForPresentDialogDedution() -> UIView?   // 默认值为 nil（可选）
+```
+
+### `FanClubDelegate`
+```swift
+func btnConfirmFanClub()            // 用户点击确认加入 fanclub
+```
+
+### `InteractiveConnectDelegate`
+```swift
+func connectedSocket()
+```
+
+### `PlayerChangeListener`（纯 Swift）
+```swift
+func currentPosition() -> CLong?
+```
+
+`locationLayoutViewRoot` 中的 `location`：`0 LeftTop, 1 CenterTop, 2 RightTop, 3 LeftCenter,
+4 Center, 5 RightCenter, 6 LeftBottom, 7 CenterBottom, 8 RightBottom`。
+
+---
+
+## 4. `OverlayManagement`（协议）
+
+```swift
+@objc public protocol OverlayManagement {
+    var isReadyToShowVodOverlay: Bool { get set }
+    func initialization(overlayView: UIOverlay)
+    func setupDataToPrepareShowVOD(timeLineList: [Timelines])
+    func prepareShowOverlayForVod(overlayList: [Overlay])
+    func showOverlayLive(overlay: Overlay, authenToken: String, mediaContentId: String,
+                         socketId: String?, bjName: String, buttonPredict: UIImageView)
+    func showOverlayVod(overlay: Overlay, authenToken: String, mediaContentId: String)
+    func stopShowOverlayPlayback()
+    func hiddenOverlay()
+    func onDestroy()
+    func removeAllView()
+    func setupDelegate(interactiveViewDelegate: InteractiveViewDelegate)
+    func setupDelegate(interactiveLoginDelegate: InteractiveLoginDelegate?)
+    func setupAnswerDelegate(interactiveAnswerDelegate: InteractiveAnswerDelegate)
+    func setupDelegate(fanClubDelegate: FanClubDelegate)
+    func resizeVideoView(width: CGFloat, height: CGFloat)
+    func webviewPublic() -> WKWebView?
+    func killDelegate()
+    func recallOverlay(timelineId: String)
+}
+```
+
+App 主要使用各种 `setupDelegate*`，`recallOverlay` 由 SDK 内部调用。
+
+---
+
+## 5. `SocketIOManagement`（协议）— 参考信息
+
+应用通常不会直接调用；由 SDK 负责调度。
+
+```swift
+func connection(url: String, authenToken: String?)
+func addCallback(callBack: @escaping (String, Any) -> ())
+func joinRoom(data: JoinRoomData)
+func leaveRoom(data: JoinRoomData)
+func ckstRoom(data: CkstData)
+func sendEmitAck(trackingId: String, event: String, stage: String, clientContext: [String: Any])
+func isConnected() -> Bool
+func getSocketId() -> String
+func disconnection()
+func onDestroy()
+```
+
+---
+
+## 6. Socket.IO 事件
+
+### 6.1. Server → SDK（监听）
+
+| Wire 名称 | 常量 | 处理内容 |
+|---|---|---|
+| `overlay` | `SocketEvents.OVERLAY` | 实时 Overlay |
+| `ex-overlay` | `SocketEvents.EX_OVERLAY` | 补偿 Overlay |
+| `overlay-recall` | `SocketEvents.OVERLAY_RECALL` | 按 `timelineId` 撤回 overlay |
+| `predict-timeline` | `SocketEvents.PREDICT_TIMELINE` | predict 按钮的 `ACTIVE`/`INACTIVE`/`POWER`/`END` |
+| `lucky-event` | `SocketEvents.LUCKY_EVENT` | lucky 的相应事件 |
+| `predict-result` | `SocketEvents.PREDICT_RESULT` | `answer1`/`answer2` |
+| `update-result` | `SocketEvents.UPDATE_RESULT` | 通过 `UPDATE_DATA_INTERACTIVE` 推送到 web |
+| `liveviews` | `SocketEvents.LIVE_VIEW` | 观看人数 |
+| `data` | `SocketEvents.FANCLUB` | fanclub 状态 |
+| `ckst` | `SocketEvents.CKST` | 服务器询问 player 状态 |
+| `branching` | `SocketEvents.BRANCHING` | 分支视频（branching） |
+
+内部客户端事件：`.connect` → `CONNECTED`，`.disconnect` → `DISCONNECTED`，`.reconnect` →
+`RECONNECT`，`.error` → `ERROR`。
+
+### 6.2. SDK → Server（发出）
+
+| 名称 | 触发时机 | Payload |
+|---|---|---|
+| `join-room` | socket 连接成功后 | `JoinRoomData` = `{deviceId, mediaContentId, os, tenantId, versionSDK}` |
+| `leave-room` | `leaveRoom()` | 同上 |
+| `receive-message` | overlay payload 中 `traceLock == true` | 原始 payload 的二进制版本（ArrayBuffer） |
+| `emit-ack` | 各个 tracking 节点 | `{trackingId, event, stage, deviceId, clientContext}` |
+| `ckst` | 响应 `ckst` 事件 | `CkstData` = `{action: "CHECK_PLAYER_STATUS", sessionId, os: {…Ckst}}` |
+
+### 6.3. 连接 socket 时的 Header 与配置
+
+| Header | 值 |
+|---|---|
+| `x-tenant-id` | `KEY_X_TENANT_ID` |
+| `v` | `ApiConst.VERSION_SDK`（`"2025-05-25"`） |
+| `os` | `ApiConst.OS`（`"iphone"`） |
+| `deviceId` | `UIDevice.identifierForVendor` |
+| `Authorization` | **原样**传递的 token（socket 不会自动添加 `Bearer`） |
+
+配置：`forceWebsockets(true)`、`compress`、`reconnects(true)`、`reconnectWait(5)`、
+`randomizationFactor(0.4)`。
+
+---
+
+## 7. HTTP Endpoint
+
+Base URL 根据 `KEY_ENABLE_PROD_ENV` 选择：
+
+| Env | REST base | WSK base |
+|---|---|---|
+| DEV | `https://dev-api.onplay.live/` | `https://dev-wsk.onplay.live/` |
+| STG | `https://beta-api.onplay.live/` | `https://beta-wsk.onplay.live/` |
+| PROD | `https://api.onplay.live/` | `https://wsk.onplay.live/` |
+
+| Method | 路径 | Header | 用途 |
+|---|---|---|---|
+| `GET` | `/api/ctc/scenario/v2/vod/{mediaId}/{os}` | `X-TENANT-ID` | 加载 VOD 剧本 |
+| `POST` | `/api/actions` | `X-TENANT-ID`、`Authorization`（若为 JWT 则带 Bearer） | 发送动作 / 回答 |
+| `GET` | `/api/public/vip-status` | `X-TENANT-ID`、`Authorization` | 扣除 OnG 前检查 VIP（telco） |
+| `GET` | `/api/media/interactive-status/{mediaId}` | `X-TENANT-ID` | 该 media 是否有互动内容 |
+| `GET` | `/api/scenario/getActiveOverlay/{mediaId}` | — | 当前活跃的 overlay（补偿）— 该函数目前存在同步返回的问题，参见 [06](06-loi-thuong-gap.md) |
+
+**`/api/actions` 请求体**（SDK 在发送到服务器的 JSON 上补充）：
+
+```jsonc
+{
+  "type": "INTERACTIVE_ACTION_REPORT",
+  "deviceId": "<identifierForVendor>",   // SDK 补充
+  "os": "iphone",                          // SDK 补充
+  "data": {
+    "answer": ...,                         // 来自模板
+    "content": ...,                        // 来自模板
+    "media": "<mediaId>",                  // SDK 补充
+    "socket_id": "<socket id>",            // SDK 补充（仅 Live）
+    "versionSDK": "2025-05-25"             // SDK 补充
+    // ...其余字段由模板发送
+  }
+}
+```
+
+---
+
+## 8. JS Bridge 协议
+
+Interface 名称：**`IOS`**（`userContentController.add(callBack, name: "IOS")`）。
+
+### Web → SDK
+```javascript
+window.webkit.messageHandlers.IOS.postMessage(JSON.stringify({ type: "INTERACTIVE_ACTION_REPORT", data: {...} }));
+```
+
+| `type`（`TypeInteractive`） | 含义 |
+|---|---|
+| `INTERACTIVE_SHOW_ANALYTICS` | Overlay 已显示 |
+| `INTERACTIVE_HIDE_ANALYTICS` | Overlay 关闭 → 移除 WebView |
+| `INTERACTIVE_ACTION_REPORT` | 回答 / 动作（广告场景 `data.action = "CLICK_ADS"`，打开 `urlLinkAds`） |
+| `INTERACTIVE_OPEN_ANALYTICS` / `INTERACTIVE_CLOSE_ANALYTICS` | 打开/关闭 predict/lucky 对话框 |
+| `INTERACTIVE_PING_ANALYTICS` | 仅用于过滤 |
+
+### SDK → Web
+```javascript
+window.addEventListener("message", (e) => { /* e.data 包含 key + data */ });
+```
+
+| `key` | 内容 |
+|---|---|
+| `UPDATE_DATA_INTERACTIVE` | 更新实时结果（来自 `update-result`） |
+| `UPDATE_COUTER` *（原文如此）* | predict 数据 `answer1`/`answer2` |
+| `UPDATE_NUMBER_LUCKY` | 幸运号码结果 |
+| `UPDATE_CONFIRM` | 确认回答成功（bet/VIP 分支） |
+
+---
+
+## 9. 附加到 URL 模板的查询参数
+
+| 参数 | 触发时机 |
+|---|---|
+| `&logged=false` / `&logged=true` | 根据登录状态与 `allowAnonymous` |
+| `&fanclub=false` | Tenant 为 `onlivev2`、`requiredFanClub` 且尚未加入 fanclub |
+| `&duration=<剩余时间>` | 当 `countdown > 0`（从 `ts` 计算） |
+| `&u=<userId>` | 仅限 lucky（`typeTimeline = 5`） |
+| `timelineId`、`tenantId`、`deviceType=IOS` | 仅限 VOD overlay |
+
+---
+
+## 10. 主要 Model
+
+### `OverlayLive` — 实时 overlay（Live）
+| 字段 | 类型 | 含义 |
+|---|---|---|
+| `src` | `String` | URL 模板 |
+| `metadata` | `Metadata(size, pos, duration?, targets?)` | 位置 + 尺寸 |
+| `ts` | `Int` | 时间戳（毫秒），用于计算剩余 duration |
+| `timelineID`（`timelineId`） | `String` | 节点标识（防重复 / 防重复回答） |
+| `mediaContentID`（`mediaContentId`） | `String` | 适用内容 |
+| `targets` | `String` | 平台（`iphone`、`all`……） |
+| `duration`、`frequencyLimit`、`countdown` | `Int?` | 时长 / 频率限制 |
+| `status` | `String?` | `ACTIVE` / `INACTIVE`…… |
+| `typeTimeline` | `Int?` | `3` predict，`5` lucky，`2`（bet），其余为 minigame |
+| `allowAnonymous`、`requiredFanClub`、`isPopupOverlay` | `Bool?` | 显示/回答条件 |
+| `betAmount` | `Int?` | 押注的 OnG 数量 |
+| `imageNormal`、`imagePower` | `String?` | predict/lucky 按钮图片 |
+| `trackingId`（`_trackingId`）、`emitTimestamp`（`_emitTimestamp`） | | 追踪 metadata |
+
+### `Overlay` — 已构建、待渲染的 overlay
+`id, src, ttl, ts, pos: OverlayPosition, size: OverlaySize, isPopupOverlay, allowAnonymous,
+compensatory: Compensatory, userId, requiredFanClub, betAmount, typeTimeline, imageNormal,
+imagePower, countdown`，以及 `trackingSession`（内部使用）。
+
+### `OverlayPosition` / `OverlaySize`
+```swift
+class OverlayPosition { var x: Int; var y: Int; var alignment: OverlayAlignment? }  // x/y ∈ {0,1,2}
+class OverlaySize { var w: Float; var h: Float }   // 相对于框架的比例
+```
+`x`：0 左 / 1 中 / 2 右。`y`：0 上 / 1 中 / 2 下。→
+`OverlayAlignment.{LeftTop … RightBottom}`。
+
+### `Timelines`（VOD）
+`time: String`（`"SS"`/`"MM:SS"`/`"HH:MM:SS"`）、`interactive: VODInteractive?`、`showStatus: String?`、
+`id`（`_id`）、计算属性 `timeShow: Int`（秒）。
+
+### `VODInteractive`
+`id, allowAnonymous, isPopupOverlay, requiredFocus, frequencyLimit, metadata: MetadataVod, betAmount,
+duration, targets, tenantId, src, timelineId, mediaContentId, ts`。
+
+### `Compensatory` — 防止重复互动
+`mediaId, duration, frequencyLimit, interactiveId, unlockedTime`。保存到
+`UserDefaults(suiteName: "INTERACTIVE_<userId|DEFAULT>")`，键为 `mediaId`。
+
+### `PredictResult`（socket `predict-result`）
+`tenantId, timlineId` *（原文如此 — 缺少字母 e）*、`data: { answer1: Int?, answer2: Int? }`。
+
+### `FanClub`（socket `data`）
+`roomName, isFanClub?, mediaId?`；写入 `KEY_FAN_CLUB` 到 `UserDefaults`。
+
+### `JoinRoomData` / `CkstData`
+- `JoinRoomData`：`{deviceId, mediaContentId, os, tenantId, versionSDK}`。
+- `CkstData`：`action = "CHECK_PLAYER_STATUS"`、`sessionId`、`data: Ckst`（映射 JSON key **`os`**）。
+  `Ckst`：`{deviceId, os, mediaContentId, playerStatus: Int?, tenantId}`。
+
+---
+
+## 11. 常用常量
+
+```swift
+ApiConst.TYPE_LIVE   // = 1
+ApiConst.TYPE_VOD    // = 2
+ApiConst.OS          // = "iphone"
+ApiConst.VERSION_SDK // = "2025-05-25"
+```
+
+按钮图片 CDN：
+```swift
+PredictConst.CDN_PREDICT_IDLE   // btnpredictidle.gif（动态）
+PredictConst.CDN_PREDICT_POWER  // btnpredictpower.gif（动态）
+PredictConst.CDN_LUCKY_IDLE     // lucky-normal.png（静态）
+PredictConst.CDN_LUCKY_POWER    // lucky-power.png（静态）
+```
+
+---
+
+[← 运行流程](03-luong-hoat-dong.md) · [返回目录](README.md) · [下一篇：Tracking emit-ack →](05-tracking-emit-ack.md)

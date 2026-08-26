@@ -1,0 +1,692 @@
+---
+title: iOS SDK 5.3.0 統合ガイド
+description: iTapSDK iOS バージョン5.3.0をプロジェクトに統合するために必要なファイル一覧と手順の案内。
+---
+
+## Necessary documents for sdk integration
+
+1. AFNetworking.xcframework
+
+2. FBAEMKit.xcframework
+
+3. FBSDKCoreKit_Basics.xcframework
+
+4. FBSDKCoreKit.xcframework
+
+5. FBSDKLoginKit.xcframework
+
+6. FBSDKShareKit.xcframework
+
+7. iTapSdk.xcframework
+
+8. ISdkTrackier.xcframework
+
+9. RecapchaSdk.xcframework
+
+10. RXSwift.xcframework
+
+11. Gooogle-Facebook-plist
+
+12. AppConfigDefault.plist
+
+13. Gooogle-Facebook-plist.txt
+
+14. Podfile
+
+15. Example demo
+
+16. Mobileprovision
+
+:::caution
+上記のファイルを受け取れない場合や、ご質問がある場合は、VTVLiveチームまでお問い合わせください。
+:::
+
+dev環境でのテストが完了しましたら、production環境用のkeyを提供いたします。
+
+## SDK integration steps
+
+SDKを統合するには、以下のインストール手順に従うことをお勧めします。
+
+プロジェクトに追加するframeworksとlibrariesを選択します。
+
+- projectでは、libraryに**Embed & Sign**を使用してください。
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image1.png)
+
+- UnityFrameworkでは、libraryに**Do Not Embed**を使用してください。
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image2.png)
+
+## Add Notification Service Extension
+
+1. **Xcode**でiOSプロジェクトを開きます
+
+2. File > New > Target... へ移動します
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image3.png)
+
+3. テンプレート選択画面で**Notification Service Extension**を探して選択します
+
+4. **Next**をクリックし、例えば`FirebaseNotificationServiceExtension`のような名前を付けてから**Finish**をクリックします
+
+5. 確認を求められたら、**Activate** schemeを選択します。
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image4.png)
+
+## Install Firebase SDK for the Extension
+
+1. `Podfile`を開き、extension用の**新しいtargetを追加**します。
+
+```Swift
+source 'https://mirrors.tuna.tsinghua.edu.cn/git/CocoaPods/Specs.git'
+
+platform :ios,'15.0'
+target 'Unity-iPhone' do
+  use_frameworks!
+  pod 'GoogleSignIn', '7.1.0'
+  pod 'Firebase', '12.0.0'
+  pod 'FirebaseMessaging', '12.0.0'
+  pod 'FirebaseRemoteConfig', '12.0.0'
+  pod 'AppsFlyerFramework', '6.17.7'
+  pod 'JWT', '2.2.0'
+  pod 'TikTokBusinessSDK', '1.5.0'
+  pod 'FirebaseRemoteConfig', '12.0.0'
+  pod 'FirebaseCrashlytics', '12.0.0'
+end
+target 'UnityFramework' do
+  use_frameworks!
+  pod 'GoogleSignIn', '7.1.0'
+  pod 'Firebase', '12.0.0'
+  pod 'FirebaseMessaging', '12.0.0'
+  pod 'FirebaseRemoteConfig', '12.0.0'
+  pod 'AppsFlyerFramework', '6.17.2'
+  pod 'JWT', '2.2.0'
+  pod 'TikTokBusinessSDK', '1.5.0'
+  pod 'FirebaseRemoteConfig', '12.0.0'
+  pod 'FirebaseCrashlytics', '12.0.0'
+end
+
+target 'FirebaseNotificationServiceExtension' do
+  use_frameworks!
+ pod 'Firebase', '12.0.0'
+ pod 'FirebaseMessaging', '12.0.0'
+end
+
+post_install do |lib|
+    lib.pods_project.targets.each do |target|
+        if target.name == 'GoogleSignIn' || target.name == 'Firebase' || target.name == 'FirebaseRemoteConfig' || target.name == 'FirebaseMessaging' || target.name == 'AppsFlyerFramework' ||  target.name == 'JWT' ||  target.name == 'TikTokBusinessSDK'
+            target.build_configurations.each do |config|
+                config.build_settings['BUILD_LIBRARY_FOR_DISTRIBUTION'] = 'YES'
+            end
+        end
+        
+        target.build_configurations.each do |config|
+            config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+        end
+    end
+end
+```
+
+2. 次のコマンドを実行してdependenciesをインストールします。
+
+```Swift
+pod cache clean --all 
+pod deintegrate
+pod install
+```
+
+## FirebaseNotificationServiceExtension
+
+1. `.xcworkspace`ファイルを開きます
+
+2. 次に、`NotificationService.m`ファイルを以下のように編集します。
+
+```Swift
+#import "NotificationService.h"
+@import Firebase;
+@import FirebaseMessaging;
+@interface NotificationService ()
+@property (nonatomic, strong) void (^contentHandler)(UNNotificationContent *contentToDeliver);
+@property (nonatomic, strong) UNMutableNotificationContent *bestAttemptContent;
+@end
+@implementation NotificationService
+- (void)didReceiveNotificationRequest:(UNNotificationRequest *)request withContentHandler:(void (^)(UNNotificationContent * _Nonnull))contentHandler {
+    self.contentHandler = contentHandler;
+    self.bestAttemptContent = [request.content mutableCopy];
+    self.bestAttemptContent.title = [NSString stringWithFormat:@"%@", self.bestAttemptContent.title];
+    [[FIRMessaging extensionHelper] populateNotificationContent:self.bestAttemptContent
+                                                withContentHandler:contentHandler];
+}
+- (void)serviceExtensionTimeWillExpire {
+    [[FIRMessaging extensionHelper] populateNotificationContent:self.bestAttemptContent
+                                                withContentHandler:self.contentHandler];
+}
+@end
+```
+
+この時点で、Xcodeの画面は以下のように表示されます。
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image5.png)
+
+Appleでのログインを有効にするには、**Sign in with Apple**を統合する必要があります。
+
+通知を受け取るには、**Push Notifications**を追加し、**Background Modes**の中で**Background Fetch**と**Remote Notifications**が有効になっていることを確認してください。
+
+## Add Facebook Config to info.plist
+
+facebook idとfacebook clientの情報を取得したら、プロジェクトの`Info.plist`に以下のコードを追加してください（facebook idの設定方法の詳細はこちらを参照）。
+
+```Swift
+<key>CFBundleURLTypes</key>
+        <array>
+                <dict>
+                        <key>CFBundleURLSchemes</key>
+                        <array>
+                                <string>fb24125138790480742</string>
+                        </array>
+                </dict>
+                <dict>
+                        <key>CFBundleURLSchemes</key>
+                        <array>
+                                <string>com.googleusercontent.apps.630962979382-dko6grp0h2m3qnka8tndbj20rtcm495f</string>
+                        </array>
+                </dict>
+        </array>
+        <key>CFBundleVersion</key>
+        <string>1.3.4</string>
+        <key>FacebookAppID</key>
+        <string>24125138790480742</string>
+        <key>FacebookClientToken</key>
+        <string>5a78f323394b24d1f97c425876c24aca</string>
+        <key>FacebookDisplayName</key>
+        <string>Sdk Test Facebook</string>
+        <key>LSApplicationQueriesSchemes</key>
+        <array>
+                <string>fbapi</string>
+                <string>fbapi20130214</string>
+                <string>fbapi20130410</string>
+                <string>fbapi20130702</string>
+                <string>fbapi20131010</string>
+                <string>fbapi20131219</string>
+                <string>fbapi20140410</string>
+                <string>fbapi20140116</string>
+                <string>fbapi20150313</string>
+                <string>fbapi20150629</string>
+                <string>fbapi20160328</string>
+                <string>fbauth</string>
+                <string>fb-messenger-share-api</string>
+                <string>fbauth2</string>
+                <string>fbshareextension</string>
+        </array>
+        <key>NSAdvertisingAttributionReportEndpoint</key>
+        <string>https://appsflyer-skadnetwork.com/</string>
+        <key>NSUserTrackingUsageDescription</key>
+        <string>This identifier will be used to deliver personalized ads to you.</string>
+```
+
+## Firebase Crashlytics
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image6.png)
+
+```Bash
+echo "Symbols Directory"
+echo "${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}"
+#Firebase
+"${PODS_ROOT}/FirebaseCrashlytics/upload-symbols" -gsp "${PROJECT_DIR}/SdkExample/GoogleService-Info.plist" -p ios "${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}"
+```
+
+注意：`GoogleService-Info.plist`ファイルの実際のパスを正しく指定していることを確認してください。
+
+`${PROJECT_DIR}/SdkExample/GoogleService-Info.plist`は例であり、これは私のGoogleService-Infoファイルの実際のパスです。
+
+ご自身のファイルの実際の物理的な場所を正しく指すようにパスを修正してください。
+
+## SDK Integrate
+
+1. SDKの初期化
+
+`AppDelegate.h`ファイルで、以下のようにSDKをimportできます。
+
+```Swift
+#import <UIKit/UIKit.h>
+#import <iTapSdk/iTapSdk.h>
+@interface AppDelegate : UIResponder <UIApplicationDelegate,SdkDelegate>
+
+@property (strong, nonatomic) UIWindow *window;
+@end
+```
+
+`AppDelegate.m`ファイルで、以下のようにSdkDelegateのcallbackをimplementします。
+
+```Swift
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+    [[Sdk sharedInstance] initWithDelegate:self application:application launchOptions:launchOptions isProdEnv:TRUE];
+    [[Sdk sharedInstance] setLocationFloatingButton:20 with:100];
+    [[Sdk sharedInstance] setGrantEnv:YES];
+    return YES;
+}
+```
+
+統合時には、以下のコードでdev環境に切り替えることをお勧めします。
+
+```Swift
+[[Sdk sharedInstance] initWithDelegate:self application:application launchOptions:launchOptions isProdEnv:FALSE];
+```
+
+権限確認のpopupを表示するには、`setGrantEnv`を`YES`に設定します。表示したくない場合は、`setGrantEnv`を`NO`に設定します。
+
+2. Login
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image7.png)
+
+ゲーム開始前に必ずこの関数を呼び出してください。ユーザーが初めてゲームに入る場合はdialogが表示され、ユーザーが再度戻ってきた場合はSDKがtokenをrefreshします。loginについての詳細は下記のflowchartを参照してください。
+
+```Swift
+[[Sdk sharedInstance] login];
+```
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image8.png)
+
+すべてが成功すると、以下のようなlogin dialogが表示されます。
+
+ログインが成功すると、user情報はSDKに登録されたSdkDelegateの`loginSuccess`関数に返されます。
+
+3. Logout
+
+ログアウトが成功すると、user情報はSDKに登録されたSdkDelegateの`logout`関数に返されます。
+
+```Swift
+[[Sdk sharedInstance] logout];
+```
+
+4. List products
+
+storeから商品リストを取得します（Play StoreまたはApple Store）。ユーザーが決済する際にtrackingシステムへ送る商品価格を取得する必要があるため、この関数を呼び出す必要があります。
+
+注意：ログイン成功後にのみ実行されるコード内にラップすることをお勧めします。
+
+```Swift
+-(void)loginSuccess:(User *)user withAccessToken:(NSString *)accessToken andRefreshToken:(NSString *)refreshToken{
+    
+    [[Sdk sharedInstance] listProducts:^(NSError *error, NSArray<IAPProduct*> * _Nullable result) {
+        
+    }];
+    [[Sdk sharedInstance] showOrHideFloatingButton];
+    
+}
+```
+
+5. Update language（アプリが複数言語をサポートしている場合）
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image9.png)
+
+言語を変更する際は、対応するパラメータで**`[[Sdk sharedInstance] setLanguage:@"vi"];`**関数を呼び出してください。
+
+`vi`はベトナム語、
+
+`en`は英語、
+
+`th`はタイ語、
+
+`zh`は中国語です。
+
+6. Show countdown
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image10.png)
+
+上記のようなcountdown画面を表示するには、AppDelegateでログイン完了後に**`[[Sdk sharedInstance] showCountdown]`**を呼び出すだけです。
+
+> `-(void)loginSuccess:(User *)user withAccessToken:(NSString *)accessToken andRefreshToken:(NSString *)refreshToken{`
+>
+> `[[Sdk sharedInstance] listProducts:^(NSError *error, NSArray<IAPProduct*> * `**`_Nullable`**` result) {`
+>
+> `}];`
+>
+> `[[Sdk sharedInstance] showOrHideFloatingButton];`
+>
+> `[[Sdk sharedInstance] showCountdown];`
+>
+> `}`
+
+7. Receive Gift
+
+ユーザーがgift boxボタンをクリックしたら、この関数を呼び出してください。
+`[[Sdk sharedInstance] showReceiveGift:@"1111111" withCharacterId:@"11112"];`
+
+serverId: Server の Id
+
+characterId: Character の Id
+
+8. Make payment
+
+注意：productIdは`listProducts`から取得します
+
+forCharacterId: ゲーム内の Character ID
+
+onServerId: Server ID
+
+```Swift
+[[Sdk sharedInstance] payProduct:itemProduct.productId forCharacterId:@"17782088632480" onServerId:@"s6003"];
+```
+
+決済の成功または失敗は、SDKに登録されたSdkDelegateの`didPurchaseSuccess`または`didPurchaseFailed`関数に情報が返されます。
+
+6. Set Language
+
+以下の関数を呼び出すことで、希望する言語に変更できます。
+
+```Swift
+[[Sdk sharedInstance] setLanguage: @"vi"];
+```
+
+言語が変更された際に通知するdelegateを提供しています：`getLangaugeSdk`
+
+7. Show dashboard
+
+```Swift
+[[Sdk sharedInstance] showOrHideFloatingButton];
+```
+
+8. Map User
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image11.png)
+
+```Swift
+-(void) mappingUser:(NSString*)characterName
+        characterId:(NSString*)characterId
+     characterLevel:(NSString*)characterLevel
+        serverName:(NSString*)serverName
+          serverId:(NSString*)serverId;
+          
+ example. : 
+ [[SdkTracking sharedInstance] mappingUser: @"name" characterId : @1 characterLevel : @1 serverName : @"test" serverId : @"1"];
+```
+
+characterName: Character の名前
+
+characterId: Character の Id
+
+characterLevel: Character の Level
+
+serverName: Server の名前
+
+serverId: Server の Id
+
+## Receive Gift
+
+（showReceiveGiftを呼び出す前にcharacterIdとserverIdを初期化しておく必要があります）
+
+ユーザーがgift boxボタンをクリックしたら、この関数を呼び出してください。
+`[[Sdk sharedInstance] showReceiveGift];`
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image12.png)
+
+## Log Function
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image13.png)
+
+注意：
+
+灰色：Game内のステップ
+
+黄色：GameがSDKを呼び出すステップ
+
+これらの関数をゲームのどこに配置するかについては、Flowchartの「Login or Start Game」セクションを参照してください。
+
+```Java
+-(void) logStartGameScreen;
+-(void) logEnterGamePlay;
+-(void) logStartTutorial;
+-(void) logCompleteTutorial;
+```
+
+`logEnterGamePlay`
+
+「Enter Game」ボタンを押した後、ユーザーがGame Play画面に入ったことをトラッキングします
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image14.png)
+
+リソースのダウンロードを開始します。
+
+```Swift
+// Bắt đầu tải tài nguyên
+-(void) logPatchStart: (NSNumber * _Nullable) sizeMB withVerrsion:(NSString * _Nullable)version withNetworkType: (NSString * _Nullable) networkType;
+
+sizeMB : 更新が必要なpatchファイルの容量（Mb単位で表示）
+version : インストールパッケージのversion
+
+example. : 
+ [[SdkTracking sharedInstance] logPatchStart: @"500" withVerrsion : @"1.0.1" withNetworkType : @"wifi"];
+```
+
+リソースのダウンロードが完了しました。
+
+```Swift
+-(void) logPatchSuccess: (NSNumber * _Nullable) durationSec withAvgSpeedKbps: (NSNumber * _Nullable) avgSpeedKbps withCdnNode :(NSString * _Nullable) cdnNode;
+
+durationSec : ダウンロード開始からダウンロード完了までの時間。update_typeがStoreの場合に取得できるか確認してください。
+avgSpeedKbps : 更新が必要なpatchファイルの容量（Mb単位で表示）
+cdnNode : cdn note 
+
+example. : 
+ [[SdkTracking sharedInstance] logPatchSuccess: @"500" withAvgSpeedKbps : @"111" avgSpeedKbps : @"450" withCdnNode: @"192.168.0.2"];
+```
+
+リソースのダウンロードに失敗しました。
+
+```Swift
+//Khi việc tải tài nguyên bị gián đoạn hoặc thất bại.
+-(void) logPatchError:(NSString * _Nullable) errorCode withRetryCount:(NSNumber * _Nullable) retryCount withFailedUrl:(NSString * _Nullable) failedUrl withCdnNode :(NSString * _Nullable) cdnNode;
+
+errorCode : エラーコード
+retryCount : エラーによるリトライ回数
+failedUrl : エラーが発生したurl
+cdnNode : エラーが発生したcdn note
+
+example. : 
+ [[SdkTracking sharedInstance] logPatchError: @"500" withRetryCount: @1 withFailedUrl: @"https://cdn.game.com/patch/v120.zip" withCdnNode : @"192.168.0.2"];
+```
+
+リソースの解凍を開始します。
+
+```Swift
+//Ngay sau khi tải xong, bắt đầu giải nén/cài đặt.
+-(void) logExtractStarted:(NSString * _Nullable) totalSizeMb withTotalSize: (NSString * _Nullable) totalSize;
+
+totalSizeMb : 解凍後の容量（mb単位）
+totalSize : 解凍が必要なpatch内のファイル数。取得できない場合はスキップします
+
+example. : 
+ [[SdkTracking sharedInstance] logExtractStarted: @"500" withTotalSize : @"400"];
+```
+
+ダウンロードしたデータの解凍が完了しました。
+
+```Swift
+//Khi giải nén xong, sẵn sàng vào màn hình Login.
+-(void) logExtractFinished:(NSNumber * _Nullable) durationSec withResultCode:(NSString * _Nullable) resultCode;
+durationSec : 解凍開始から成功までの時間
+resultCode : duration_sec, result_code (0: OK, 1: Disk Full)
+
+example. : 
+ [[SdkTracking sharedInstance] logExtractFinished: @100 withResultCode : @"ok"];
+```
+
+キャラクター作成を開始します。
+
+```Swift
+-(void) logCharCreateStart: (NSString * _Nullable) serverId;
+
+serverId : server id 
+
+example. : 
+ [[SdkTracking sharedInstance] logCharCreateStart: @"100"];
+```
+
+注意：キャラクター作成開始から完了までの時間を測定するtimerを設定してください。
+
+キャラクター作成に成功しました。
+
+```Objective-C
+-(void) logCharCreateSuccess: (NSString * _Nullable) serverId withCharId:(NSString * _Nullable) charId withCharName:(NSString * _Nullable) charName withCharClass:(NSString * _Nullable) charClass withDurationSec: (NSNumber * _Nullable) durationSec;
+
+serverId : Id of Server
+charId : id of Character
+charName : name of Character
+charClass : Class_id 
+durationSec : キャラクター作成開始から成功までの時間
+
+example. : 
+ [[SdkTracking sharedInstance] logCharCreateSuccess: @"500" withVerrsion : @"1.0.1" withNetworkType : @"wifi"];
+```
+
+キャラクター作成に失敗しました。
+
+```Objective-C
+-(void) logCharCreateError:(NSString * _Nullable) errorCode withCharName:(NSString * _Nullable) charName withServerId:(NSString * _Nullable) serverId;
+
+errorCode : error code 
+charName : name of Character
+serverId : Id of Server
+
+example. : 
+ [[SdkTracking sharedInstance] logCharCreateError: @"NAME_DUPLICATED" withCharName : @"test" withServerId :@"1"];
+```
+
+serverを選択した後、この関数を呼び出してください。
+
+```Objective-C
+-(void) logCharSelect: (NSString * _Nullable) charId withCharacterName :(NSString* _Nonnull) characterName withCharLevel:(NSString * _Nullable) charLevel;
+serverId : Id of Server
+charId : id of Character
+example. : 
+ [[SdkTracking sharedInstance] logCharSelect: @"1" withCharacterName : @"name " withCharLevel : @"1"];
+```
+
+## Update event 147
+
+```Swift
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    BOOL needShow = [[Sdk sharedInstance] isNeedShowEventProfileSync];
+    if (needShow) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [[Sdk sharedInstance] showEventProfile];   // showEventProfile chắc chắn cần chạy trên main thread vì có UI
+        });
+    }
+});
+```
+
+`isNeedShowEventProfile()`がtrueを返す場合、Event Profile画面を開きます。
+
+`isNeedShowEventProfile()`がfalseを返す場合、ユーザーを直接ゲームに入らせます。
+
+## Review App
+
+この機能を使ってApple reviewを促すことができます。
+
+```Objective-C
+[[Sdk sharedInstance] requestReview];
+```
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image15.png)
+
+## Class in SDK
+
+| **IAPProduct** | |
+| --- | --- |
+| productId | 商品Id、google store上のproduct id |
+| localizedPrice | localeに応じた商品価格 |
+| appAmount | この商品を購入した際にユーザーが受け取るgold数 |
+
+| accountID | User Id |
+| --- | --- |
+| accountName | Username |
+
+| **Sdk** | |
+| --- | --- |
+| sharedInstance | objectのsingletonを取得 |
+| showOrHideFloatingButton() | floating buttonを表示または非表示にする |
+| accessToken | ログイン成功後にaccess tokenを取得 |
+
+## Flowchart
+
+1. Flowchart
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image16.png)
+
+2. Login or Start game
+
+3. Payment
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image17.png)
+
+## Import certificates to keychain
+
+apn_certificate、dev_certificate、dis_certificate、development provision、production provisionを含むcertificateをipaビルド用に提供いたします。
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image18.png)
+
+
+p12ファイルをクリックしてkeychainに追加します。
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image19.png)
+
+
+その後、以下のようにkeychain上にcertificateが表示されます。
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image20.png)
+
+
+provisionをXcodeにimportします。
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image21.png)
+
+
+Client IdとClient Secretの誤り
+
+client idとclient secretが間違っている場合、画像のようなエラーメッセージが表示されます。Code Signを選択してください。
+
+provisioning keyが原因でIPAファイルのビルドにエラーが発生した場合は、よくご確認ください。
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image22.png)
+
+
+storeにアップロードするためのIPAファイルのエクスポート方法
+
+以下の手順に従ってください。
+
+1.
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image23.png)
+
+
+2. 次に Product > Archive を選択します
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image24.png)
+
+3.
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image25.png)
+
+4.
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image26.png)
+
+5. aps-environmentがproductionであることを必ず確認してください
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image27.png)
+
+
+6. Show in finder
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image28.png)
+
+7. Show package Contents
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image29.png)
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image30.png)
+
+dSYMファイルと.ipaファイルを私に送ってください。
+
+ありがとうございます！

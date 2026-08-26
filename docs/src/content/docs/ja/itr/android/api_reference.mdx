@@ -1,0 +1,532 @@
+---
+title: 04 — API リファレンス
+description: SDK Interactive Android の vn.interactive パッケージに属する全 API の完全なリファレンス資料。
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+以下の全 API はルートパッケージ `vn.interactive` に属します。
+
+## 1. `OverlayManager`
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+class OverlayManager(
+    activity: Activity,                              // FragmentActivity/AppCompatActivity である必要がある
+    overlayView: OverlayView,                        // レイアウト内の view、動画領域に重ねる
+    overlayData: OverlayData,                        // 環境 + テナントの設定
+    overlayEventListener: OverlayEventListener? = null
+) : OnOverlayListener, LifecycleOverlay
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+class OverlayManager implements OnOverlayListener, LifecycleOverlay {
+    public OverlayManager(
+        Activity activity,                              // FragmentActivity/AppCompatActivity である必要がある
+        OverlayView overlayView,                        // レイアウト内の view、動画領域に重ねる
+        OverlayData overlayData,                        // 環境 + テナントの設定
+        OverlayEventListener overlayEventListener        // null 可
+    ) {
+        // ...
+    }
+}
+```
+  </TabItem>
+</Tabs>
+
+### 1.1. 公開プロパティ
+
+| 要素 | 型 | 説明 |
+|---|---|---|
+| `valueTimePlay` | `Int`（読み取り専用） | app が `receiveTrackingTime` 経由で最後に注入した再生秒数 |
+| `receiveTrackingTime` | `(Int) -> Unit` | **VOD ストリームの再生時間（秒）を注入する。** 関数として呼び出す: `overlayManager.receiveTrackingTime(12)` |
+
+### 1.2. メソッド
+
+| 関数 | 説明 | 備考 |
+|---|---|---|
+| `initToken(token: String, userId: String, bjName: String = "")` | ログインセッションを宣言/削除する | `joinRoom` の前に呼び出す。ログアウト: `initToken("", "")`。Live 中なら自動的に再入室する |
+| `joinRoom(mediaId: String, type: Int)` | あるコンテンツのインタラクティブセッションを開始する | `type = 1` LIVE、`type = 2` VOD。既存セッションを自動 `cleanUp()` する |
+| `releaseAll()` | すべて解放する: socket、WebView、dialog、tracking | `onDestroy()` またはコンテンツ終了時に呼び出す |
+| `fetchInteractiveStatus(mediaId: String, callback: (Boolean) -> Unit)` | このコンテンツにインタラクティブ機能があるかサーバーに問い合わせる | ネットワークエラー時は `false` を返す |
+| `showChartsInteractive(mediaId: String, userId: String, backgroundColorHeader: String? = null)` | ランキングを開く（全画面 DialogFragment） | `backgroundColorHeader` は 16 進コード、例 `"#139DED"` |
+| `hideChartsInteractive()` | ランキングを閉じる | |
+| `isDialogCharShowing(): Boolean` | ランキングが現在表示中かどうか | |
+| `addPlayerListener(listener: PlayerChangeListener)` | プレイヤーの状態を SDK に提供する（`ckst` イベント用） | listener が socket にも紐付くよう `joinRoom` の**後**に呼び出す |
+| `sendAction(data: JSONObject)` | *（`OnOverlayListener` の実装）* WebView からのアクションを処理する | SDK が自動的に呼び出す、app は呼び出す**必要なし** |
+| `onClickAdsOverlay(url: String)` | *（`OnOverlayListener` の実装）* 外部ブラウザで広告 URL を開く | SDK が自動的に呼び出す |
+
+> `LifecycleOverlay` は現在空のインターフェースです（`onResume/onStop/onDestroy` 関数はコードで
+> コメントアウトされています）— SDK は LiveData の observe を除き、Activity のライフサイクルに**自動的には**追従しません。
+
+## 2. `OverlayData` + `OverlayData.Builder`
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+val overlayData = OverlayData.Builder()
+    .setEnvironment(EnvInteractive.PROD)   // デフォルト PROD
+    .setTenantId("vtvlive")                // デフォルト "" — 常に設定すべき
+    .setDebug(false)                       // デフォルト false
+    .build()
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+OverlayData overlayData = new OverlayData.Builder()
+    .setEnvironment(EnvInteractive.PROD)   // デフォルト PROD
+    .setTenantId("vtvlive")                // デフォルト "" — 常に設定すべき
+    .setDebug(false)                       // デフォルト false
+    .build();
+```
+  </TabItem>
+</Tabs>
+
+| プロパティ | 型 | デフォルト | 影響 |
+|---|---|---|---|
+| `envInteractive` | `EnvInteractive` | `PROD` | socket URL、REST URL、ランキング URL |
+| `tenantId` | `String` | `""` | `X-TENANT-ID` ヘッダー（socket + REST）、ランキングのクエリ、テナント `vtvlive` のログインルール |
+| `debug` | `Boolean` | `false` | 予備フラグ、現時点ではログ動作を変更しない（ログは SDK の `BuildConfig.DEBUG` に依存） |
+| `mediaId`, `userId` | `String?` | `null` | ランキングを開く際に SDK が設定する |
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+enum class EnvInteractive { DEV, STG, PROD }
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+enum EnvInteractive { DEV, STG, PROD }
+```
+  </TabItem>
+</Tabs>
+
+## 3. `OverlayEventListener` / `DefaultOverlayEventListener`
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+interface OverlayEventListener {
+    fun onHandleMessage(msg: EventOverlay)
+    fun onHandleLiveViews(liveViews: Int)
+    fun onShowITR(show: Boolean)
+    fun onFocusOverlay(
+        takeControl: Boolean = false,
+        webViewError: Boolean = false,
+        overlayConfig: OverlayConfig? = null
+    )
+}
+
+interface DefaultOverlayEventListener : OverlayEventListener   // エイリアス、関数追加なし
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+interface OverlayEventListener {
+    void onHandleMessage(EventOverlay msg);
+    void onHandleLiveViews(int liveViews);
+    void onShowITR(boolean show);
+    void onFocusOverlay(boolean takeControl, boolean webViewError, OverlayConfig overlayConfig);
+    // デフォルト: takeControl = false, webViewError = false, overlayConfig = null
+}
+
+interface DefaultOverlayEventListener extends OverlayEventListener {   // エイリアス、関数追加なし
+}
+```
+  </TabItem>
+</Tabs>
+
+| コールバック | 呼ばれるタイミング | app が行うべきこと |
+|---|---|---|
+| `onHandleMessage(NEED_LOGIN)` | ユーザーがログインを要求するオーバーレイを操作した | ログイン画面を開き、その後 `initToken()` を呼び出す |
+| `onHandleMessage(NEED_PAY_ONG)` | サーバーが `PM402`（OnG 不足）を返した | チャージ画面を開く |
+| `onHandleLiveViews(n)` | socket の `liveviews` | 視聴者数を表示する（**230 が加算済み**） |
+| `onShowITR(true)` | オーバーレイが統計/ダイアログ部分を開いた | 必要に応じて app の UI を隠す |
+| `onFocusOverlay(takeControl = true, …)` | WebView の読み込み完了（`onPageFinished`） | オーバーレイが popup の場合レイアウトを調整する |
+| `onFocusOverlay(webViewError = true, …)` | ページ読み込みエラー / HTTP / SSL エラー | ログを記録、必要ならユーザーに通知する |
+| `onFocusOverlay(takeControl = false, …)` | オーバーレイが除去された（`INTERACTIVE_HIDE_ANALYTICS`） | レイアウトを復元する |
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+enum class EventOverlay {
+    NEED_LOGIN,                  // SDK が発行する
+    NEED_PAY_ONG,                // SDK が発行する
+    TOURNAMENT_BET,              // 宣言済み、未使用
+    SUCCESSFUL_REPLY_SUBMITTED,  // 宣言済み、未使用
+    FAILED_REPLY_SUBMITTED,      // 宣言済み、未使用
+    TAKE_FOCUS                   // 宣言済み、未使用
+}
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+enum EventOverlay {
+    NEED_LOGIN,                  // SDK が発行する
+    NEED_PAY_ONG,                // SDK が発行する
+    TOURNAMENT_BET,              // 宣言済み、未使用
+    SUCCESSFUL_REPLY_SUBMITTED,  // 宣言済み、未使用
+    FAILED_REPLY_SUBMITTED,      // 宣言済み、未使用
+    TAKE_FOCUS                   // 宣言済み、未使用
+}
+```
+  </TabItem>
+</Tabs>
+
+## 4. `PlayerChangeListener`
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+interface PlayerChangeListener {
+    suspend fun currentPosition(): Long
+    fun onPlayerStateChanged(): Pair<Boolean, Int>   // (isPlaying, playbackState)
+}
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+interface PlayerChangeListener {
+    long currentPosition();
+    android.util.Pair<Boolean, Integer> onPlayerStateChanged();   // (isPlaying, playbackState)
+}
+```
+  </TabItem>
+</Tabs>
+
+`playbackState` は ExoPlayer の規約に従います: `1 = IDLE`, `2 = BUFFERING`, `3 = READY`, `4 = ENDED`。
+SDK のマッピング: `1 → "idle"`, `3 → isPlaying ? "playing" : "paused"`, それ以外 → `""`。
+
+## 5. `OverlayView`
+
+カスタマイズされた `ConstraintLayout` で、すべてのオーバーレイの**コンテナ**となります。
+
+| 公開要素 | 説明 |
+|---|---|
+| `overlayList: HashMap<OverlayWebView, OverlayConfig>` | 現在アタッチされている WebView 群 |
+| `addListener(eventListener, overlayListener)` | SDK が `OverlayManager.init` 内で自動的に呼び出す |
+| `getCurrentOrientation(): Int` | 現在の画面の向き |
+| `getLastOverlay(): OverlayWebView?` | 最後にアタッチされた WebView |
+| `getOverlayConfig(): OverlayConfig?` | popup 形式のオーバーレイの config（存在する場合） |
+| `removeWebView(view)`, `removeWebViews()`, `clearViews()` | view を除去し対応する tracking を破棄する |
+
+app はこの view を XML 内で宣言するだけでよく、その他の関数は SDK が使用します。
+
+## 6. 主要モデル
+
+### `Overlay` — オーバーレイの記述
+
+| フィールド | 型 | 意味 |
+|---|---|---|
+| `src` | `String` | web テンプレートの URL |
+| `metadata` | `Metadata(pos, size)` | 位置 + 割合によるサイズ |
+| `duration` | `Long` | 表示時間（秒） |
+| `targets` | `String?` | 適用プラットフォーム（`all`、`androidmobile`、`androidtv`…） |
+| `timelineId` | `String?` | シナリオのマイルストーン識別子（重複防止・再回答防止のキー） |
+| `mediaContentId` | `String?` | 適用対象コンテンツ |
+| `typeTimeline` | `Int?` | 0/1/2 ミニゲーム、3 predict、4 headline、5 lucky |
+| `isPopupOverlay` | `Boolean` | `true` → 9 方向の popup 制約を使用、`false` → 上/下 inline |
+| `allowAnonymous` | `Boolean` | 未ログインユーザーの閲覧/操作を許可する |
+| `requiredFanClub` | `Boolean?` | fanclub 加入必須 |
+| `startTimeShowOverlay` | `Long?` | （VOD）表示開始秒 |
+| `requiredFocus`, `frequencyLimit`, `ts`, `sendTime`, `serverTime` | | サーバー由来の補助フィールド |
+
+### `Metadata` / `OverlayPosition` / `OverlaySize`
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+data class Metadata(val pos: OverlayPosition, val size: OverlaySize)
+data class OverlayPosition(val x: Int, val y: Int, var alignment: OverlayAlignment? = null)
+data class OverlaySize(val w: Float, val h: Float)   // 0..1 — OverlayView に対する比率
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+class Metadata {
+    private final OverlayPosition pos;
+    private final OverlaySize size;
+
+    public Metadata(OverlayPosition pos, OverlaySize size) {
+        this.pos = pos;
+        this.size = size;
+    }
+
+    public OverlayPosition getPos() { return pos; }
+    public OverlaySize getSize() { return size; }
+}
+
+class OverlayPosition {
+    private final int x;
+    private final int y;
+    private OverlayAlignment alignment;   // デフォルト null
+
+    public OverlayPosition(int x, int y) {
+        this(x, y, null);
+    }
+
+    public OverlayPosition(int x, int y, OverlayAlignment alignment) {
+        this.x = x;
+        this.y = y;
+        this.alignment = alignment;
+    }
+
+    public int getX() { return x; }
+    public int getY() { return y; }
+    public OverlayAlignment getAlignment() { return alignment; }
+    public void setAlignment(OverlayAlignment alignment) { this.alignment = alignment; }
+}
+
+class OverlaySize {
+    private final float w;
+    private final float h;   // 0..1 — OverlayView に対する比率
+
+    public OverlaySize(float w, float h) {
+        this.w = w;
+        this.h = h;
+    }
+
+    public float getW() { return w; }
+    public float getH() { return h; }
+}
+```
+  </TabItem>
+</Tabs>
+
+`x`: `0` 左, `1` 中央, `2` 右。`y`: `0` 上, `1` 中央, `2` 下 →
+`OverlayAlignment.{LeftTop, LeftCenter, LeftBottom, CenterTop, Center, CenterBottom, RightTop, RightCenter, RightBottom}`。
+
+### `OverlayConfig` — コールバック `onFocusOverlay` に付随する情報
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+data class OverlayConfig(
+    val popupOverlay: Boolean = false,  // 上/下の帯状 inline オーバーレイなら true
+    val alignment: String? = null,      // "top" | "bottom" | "left" | "right"
+    val ratio: Float = 0F               // OverlayView に対する高さの比率
+)
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+class OverlayConfig {
+    private final boolean popupOverlay;  // 上/下の帯状 inline オーバーレイなら true
+    private final String alignment;      // "top" | "bottom" | "left" | "right"
+    private final float ratio;           // OverlayView に対する高さの比率
+
+    public OverlayConfig() {
+        this(false, null, 0F);
+    }
+
+    public OverlayConfig(boolean popupOverlay, String alignment, float ratio) {
+        this.popupOverlay = popupOverlay;
+        this.alignment = alignment;
+        this.ratio = ratio;
+    }
+
+    public boolean isPopupOverlay() { return popupOverlay; }
+    public String getAlignment() { return alignment; }
+    public float getRatio() { return ratio; }
+}
+```
+  </TabItem>
+</Tabs>
+
+### `ActionReportResponse`
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+data class ActionReportResponse(
+    var success: Boolean = false,
+    var result: ActionResponseMessage = ActionResponseMessage(),  // message, status, description, data
+    var failureReason: String? = null,
+    var failureStep: String? = null,
+    var error: String? = null,
+)
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+class ActionReportResponse {
+    private boolean success = false;
+    private ActionResponseMessage result = new ActionResponseMessage();  // message, status, description, data
+    private String failureReason = null;
+    private String failureStep = null;
+    private String error = null;
+
+    public boolean isSuccess() { return success; }
+    public void setSuccess(boolean success) { this.success = success; }
+
+    public ActionResponseMessage getResult() { return result; }
+    public void setResult(ActionResponseMessage result) { this.result = result; }
+
+    public String getFailureReason() { return failureReason; }
+    public void setFailureReason(String failureReason) { this.failureReason = failureReason; }
+
+    public String getFailureStep() { return failureStep; }
+    public void setFailureStep(String failureStep) { this.failureStep = failureStep; }
+
+    public String getError() { return error; }
+    public void setError(String error) { this.error = error; }
+}
+```
+  </TabItem>
+</Tabs>
+
+## 7. Socket.IO イベント
+
+### 7.1. サーバー → SDK（受信）
+
+| イベント名 | 定数 | データ型 | 処理 |
+|---|---|---|---|
+| `overlay` | `Const.OVERLAY` | `JSONObject` | リアルタイムオーバーレイ |
+| `ex-overlay` | `Const.EX_OVERLAY` | `JSONObject` | 補填オーバーレイ（`duration <= 10` なら破棄） |
+| `overlay-recall` | `Const.OVERLAY_RECALL` | `JSONObject` \| `ByteArray` | `timelineId` によるオーバーレイの取り消し |
+| `predict-timeline` | `Const.PREDICT_TIMELINE` | `ByteArray` | `ACTIVE` / `INACTIVE` / `POWER` / `END` |
+| `lucky-event` | `Const.LUCKY_EVENT` | `ByteArray` | `ACTIVE` / `INACTIVE` / `POWER` / `END` |
+| `predict-result` | `Const.PREDICT_RESULT` | `ByteArray` | `answer1` / `answer2` の集計値 |
+| `update-result` | `Const.UPDATE_RESULT` | `ByteArray` | `UPDATE_DATA_INTERACTIVE` 経由で web に送信 |
+| `liveviews` | `Const.LIVE_VIEWS` | `JSONObject` | 視聴者数 |
+| `data` | `Const.FAN_CLUB` | `ByteArray` | fanclub の状態 |
+| `ckst` | `Const.CKST` | `JSONObject` | サーバーがプレイヤーの状態を問い合わせる |
+
+### 7.2. SDK → サーバー（emit）
+
+| 名前 | いつ | ペイロード |
+|---|---|---|
+| `join-room` | socket 接続後 | `{deviceId, mediaContentId, os, versionSDK, tenantId, isActivelyDisconnectSocket}` |
+| `leave-room` | `leaveRoom()` | 上記と同じ |
+| `receive-message` | ペイロードに `traceLock = true` がある場合 | 元のペイロード（ByteArray UTF-8） |
+| `emit-ack` | 各 tracking マイルストーン | [05 — Tracking](05-tracking-emit-ack.md) を参照 |
+| `ckst` | `ckst` イベントへの応答 | `{action: "CHECK_PLAYER_STATUS", sessionId, data: {deviceId, os, mediaContentId, playerStatus}}` |
+
+### 7.3. socket 接続時のヘッダー
+
+| ヘッダー | 値 |
+|---|---|
+| `X-TENANT-ID` | `tenantId` |
+| `v` | `BuildConfig.BUILD_VERSION`（SDK のビルド日） |
+| `os` | `BuildConfig.DEVICE_TYPE`（`androidmobile` / `androidtv`） |
+| `deviceId` | `Settings.Secure.ANDROID_ID` |
+| `Authorization` | `Bearer <jwt>` または cookie そのまま |
+
+接続オプション: `websocket` のみ使用、自動再接続、遅延 5000ms（`reconnectionDelay` と
+`reconnectionDelayMax` の両方）、`randomizationFactor = 0.4`。
+
+## 8. HTTP エンドポイント
+
+Base URL = `Const.INTERACTIVE_URL`（`EnvInteractive` から導出）。
+`BaseRequest` のインターセプターが自動的に `X-TENANT-ID` ヘッダーを追加します。
+
+| Method | パス | ヘッダー | 用途 |
+|---|---|---|---|
+| `GET` | `/api/ctc/scenario/v2/vod/{mediaContentId}/{os}` | `Authorization` | VOD シナリオを取得 |
+| `GET` | `/api/scenario/getActiveOverlay/{mediaContentId}` | — | 現在有効なオーバーレイ（補填）を取得 |
+| `POST` | `/api/actions` | `Authorization` | アクション/回答を送信 |
+| `GET` | `/api/public/vip-status` | `Authorization` | 回答前に VIP を確認 |
+| `GET` | `/api/media/interactive-status/{mediaId}` | `x-tenant-id`, `Cookie` | コンテンツにインタラクティブ機能があるか |
+
+**`/api/actions` のリクエストボディ**（SDK が web から送られた JSON に追加する）:
+
+```jsonc
+{
+  "type": "INTERACTIVE_ACTION_REPORT",
+  "deviceId": "<android-id>",      // SDK が追加
+  "os": "(os, androidmobile)",     // SDK が追加
+  "data": {
+    "timelineId": "...",
+    "typeTimeline": 1,
+    "betAmount": 0,
+    "allowAnonymous": false,
+    "requiredFanClub": false,
+    "media": "<mediaId>",          // SDK が追加
+    "socket_id": "<socket id>"     // SDK が追加（Live の場合のみ）
+    // ...その他 web テンプレートが送るフィールド
+  }
+}
+```
+
+## 9. JS ブリッジプロトコル
+
+インターフェース名: **`Android`**（`Const.JS_INTERFACE_NAME`）。
+
+### Web → SDK
+
+```javascript
+Android.postMessage(JSON.stringify({ key: "LOADED_OVERLAY" }));
+Android.postMessage(JSON.stringify({ type: "INTERACTIVE_ACTION_REPORT", data: {...} }));
+```
+
+| 値 | 定数 | 意味 |
+|---|---|---|
+| `key = LOADED_OVERLAY` | `Const.LOADED_OVERLAY` | テンプレートがデータ受信準備完了 |
+| `type = INTERACTIVE_SHOW_ANALYTICS` | | オーバーレイが表示された |
+| `type = INTERACTIVE_HIDE_ANALYTICS` | | オーバーレイが閉じられた |
+| `type = INTERACTIVE_ACTION_REPORT` | | 回答/アクション（広告の場合は `data.action = "CLICK_ADS"`） |
+| `type = INTERACTIVE_OPEN_ANALYTICS` | | predict/lucky ダイアログを開く |
+| `type = INTERACTIVE_CLOSE_ANALYTICS` | | predict/lucky ダイアログを閉じる |
+
+### SDK → Web
+
+```javascript
+window.addEventListener("message", (e) => { /* e.data に key + data が含まれる */ });
+```
+
+| `key` | 内容 |
+|---|---|
+| `GET_DATA_INTERACTIVE` | 初期オーバーレイデータ |
+| `UPDATE_DATA_INTERACTIVE` | リアルタイム結果の更新 |
+| `UPDATE_CONFIRM` | 回答成功の確認 |
+| `UPDATE_COUTER` | predict の集計値（`answer1`, `answer2`） |
+| `UPDATE_NUMBER_LUCKY` | lucky の結果 |
+
+---
+
+## 10. テンプレート URL に付与されるクエリパラメータ
+
+| パラメータ | 追加されるタイミング |
+|---|---|
+| `os=<deviceType>` | `src` にまだ `&os` がない場合 |
+| `logged=false` | 未ログイン **かつ** オーバーレイが `allowAnonymous` でない場合 |
+| `duration=<残り秒数>` | 常に（`missTime` から計算） |
+| `fanclub=false` | オーバーレイが fanclub を要求するがユーザーが fanclub に未加入の場合 |
+| `u=<userId>` | `PredictDialog` / `LuckyDialog` 専用 |
+| `timelineId`, `tenantId`, `deviceType`, `os` | VOD オーバーレイ専用（`parseTimeLineListForVOD` で構築） |
+
+## 11. app で使える便利な定数
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+Const.VIDEO_LIVE  // = 1
+Const.VIDEO_VOD   // = 2
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+Const.VIDEO_LIVE;  // = 1
+Const.VIDEO_VOD;   // = 2
+```
+  </TabItem>
+</Tabs>
+
+SDK が管理するグローバル変数（app は**直接書き込むべきではない**）: `Const.USER_COOKIE`,
+`Const.USER_ID`, `Const.BJ_NAME`, `Const.IS_FAN_CLUB`, `Const.IS_VIP`, `Const.BET_AMOUNT`,
+`Const.INTERACTIVE_URL`, `Const.INTERACTIVE_SOCKET_URL`。
+
+## 12. 提案ダイアログ（`SuggestType`） — SDK が自動表示
+
+| 種類 | 表示内容 | トリガー |
+|---|---|---|
+| `SUGGEST_FAN_CLUB` | fanclub 加入が必要という警告（`Const.BJ_NAME` を含む） | オーバーレイの `requiredFanClub` |
+| `SUGGEST_BET` | 「N OnG を使用して回答することに同意しますか？」 | `betAmount > 0` かつ VIP でない |
+| `SUGGEST_ANSWER_REJECT` | API 由来の `description`、デフォルトは「回答に失敗しました！」 | API が `success = false` を返す |
+| `SUGGEST_ANSWER_PAYMENT_REJECT` | 「OnG をチャージしてください！」 | コード `PM402` |
+| `SUGGEST_PREDICT_END` | 「予測は終了しました！」 | predict の `END` イベント |
+| `SUGGEST_LUCKY_END` | 「イベントは終了しました！」 | lucky 終了 |
+| `SUGGEST_ANSWER_SUCCESS`, `SUGGEST_ERROR_OCCUR`, `SUGGEST_LOGIN` | 定義済みだが現行フローでは未使用 | |

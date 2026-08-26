@@ -3,6 +3,7 @@
 @import './code_block_mermaid.css';
 @import './table.css';
 @import './media_file.css';
+@import './about.css';
 
 :root {
 	/* Giảm khoảng trống bên phải của toàn trang */

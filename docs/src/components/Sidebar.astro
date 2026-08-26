@@ -1,0 +1,38 @@
+---
+import MobileMenuFooter from 'virtual:starlight/components/MobileMenuFooter';
+import SidebarPersister from '@astrojs/starlight/components/SidebarPersister.astro';
+import SidebarSublist from '@astrojs/starlight/components/SidebarSublist.astro';
+
+const { sidebar } = Astro.locals.starlightRoute;
+
+function collectHrefs(entries) {
+	const hrefs = [];
+	for (const entry of entries) {
+		if (entry.type === 'link') hrefs.push(entry.href);
+		else hrefs.push(...collectHrefs(entry.entries));
+	}
+	return hrefs;
+}
+
+// URL shape is always /<locale>/<section>/... since every locale (including
+// the default `vi`) is configured explicitly in astro.config.mjs.
+const segments = Astro.url.pathname.split('/').filter(Boolean);
+const section = segments[1];
+
+const filtered = section
+	? sidebar.filter((entry) => {
+			const hrefs = entry.type === 'link' ? [entry.href] : collectHrefs(entry.entries);
+			return hrefs.some((href) => href.split('/').filter(Boolean)[1] === section);
+		})
+	: [];
+
+const visibleSidebar = filtered.length > 0 ? filtered : sidebar;
+---
+
+<SidebarPersister>
+	<SidebarSublist sublist={visibleSidebar} />
+</SidebarPersister>
+
+<div class="md:sl-hidden">
+	<MobileMenuFooter />
+</div>

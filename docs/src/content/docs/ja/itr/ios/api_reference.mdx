@@ -1,0 +1,407 @@
+---
+title: 04 — API リファレンス
+description: Interactive iOS SDK の ISdk モジュールに属する全 API の完全なリファレンス。
+---
+
+以下の API はすべて **`ISdk`** モジュール（`import ISdk`）に属します。
+
+---
+
+## 1. `InteractiveControllerView`
+
+主要な制御クラス — アプリの入口。
+
+```swift
+@objc public class InteractiveControllerView : NSObject {
+    public override init()   // SocketIOManagementImpl + OverlayManagementImpl を生成
+}
+```
+
+### 1.1. 公開プロパティ
+
+| プロパティ | 型 | 説明 |
+|---|---|---|
+| `overlayManagement` | `OverlayManagement?` | minigame オーバーレイのマネージャー（delegate をここから設定） |
+| `predictManagement` | `PredictManagementImpl!` | predict/lucky のボタン + ダイアログのマネージャー |
+| `socketIO` | `SocketIOManagement?` | socket オブジェクト（情報の読み取り専用） |
+| `interactivePlayerDelegate` | `InteractivePlayerDelegate?` | プレイヤー状態 / 視聴者数の delegate |
+| `interactiveLoginDelegate` | `InteractiveLoginDelegate?` | ログイン要求の delegate |
+| `interactivePredictDelegate` | `InteractivePredictDelegate?` | predict ボタンレイアウトの delegate |
+
+### 1.2. メソッド
+
+| 関数 | 説明 |
+|---|---|
+| `initOverlay(uiView: UIView, predictView: UIView)` | 2つのホスト view（overlay + predict）をアタッチし、画面回転の監視を登録し、`PredictManagementImpl` を生成 |
+| `initAuthenToken(authenToken: String, userId: String, bjName: String)` | ログインセッションの宣言/削除。ログアウト: 空文字列を渡す。Live 中の場合 → 自動的にルームに再参加 |
+| `joinRoom(mediaId: String, type: Int)` | セッションを開始。`type = 1` LIVE、`type = 2` VOD。旧セッションは自動整理 |
+| `getTimeVideo(time: TimeInterval)` | **(VOD)** 再生時間（秒）を送り込む。`timeShow` と照合してオーバーレイを表示 |
+| `leaveRoom()` | 現在の media に対して `leave-room` を emit |
+| `releaseAll()` | 解放処理: leaveRoom + delegate 解除 + socket 切断 |
+| `removeAllView()` | 表示中のオーバーレイを削除（socket には触れない） |
+| `resizeVideoView(width: CGFloat, height: CGFloat)` | オーバーレイ用の動画枠サイズを更新 |
+| `fetchInteractiveStatus(mediaId: String, completion: @escaping (Bool) -> Void)` | この media にインタラクティブ要素があるかサーバーに問い合わせる（エラー時 → `false`） |
+| `showChartsInteractive(viewRoot: UIView, mediaId: String, userid: String?, backgroundColorHeaderView: UIColor = #489BE6)` | ランキング表（iframe）を開く |
+| `setInteractivePlayerDelegate(interactivePlayerDelegate:)` | player delegate を設定 |
+| `setupPredictViewDelegate(interactivePredictDelegate:)` | predict レイアウト delegate を設定 |
+| `setuPredictLoginDelegate(interactiveLoginDelegate:)` | predict 用の login delegate を設定（スペルミス `setuPredict` に注意） |
+| `embededInteractiveContentView()` | predict/lucky コンテンツのダイアログを能動的に開く |
+| `setHiddenInteractiveButton(_ isHidden: Bool)` | predict/lucky の浮動ボタンを表示/非表示 |
+| `leaveRoom()` / `disconnection()` | ルームを離れる / socket を切断 |
+
+minigame オーバーレイの delegate は `overlayManagement` 経由で設定します。
+
+```swift
+interactive.overlayManagement?.setupDelegate(interactiveViewDelegate: self)
+interactive.overlayManagement?.setupDelegate(interactiveLoginDelegate: self)
+interactive.overlayManagement?.setupDelegate(fanClubDelegate: self)
+interactive.overlayManagement?.setupAnswerDelegate(interactiveAnswerDelegate: self)
+```
+
+---
+
+## 2. `InteractiveSetting`
+
+```swift
+@objc public class InteractiveSetting: NSObject {
+    public static let KEY_ENABLE_PROD_ENV = "KEY_ENABLE_PROD_ENV"
+    public static let KEY_X_TENANT_ID     = "KEY_X_TENANT_ID"
+
+    public func setEnableProdEnv(enableProdEnv: String)   // Enviroment.rawValue
+    public func setXTenantId(xTenantId: String)           // TenantIdType.rawValue
+}
+```
+
+> 両方とも、あらゆる `joinRoom` の**前に**呼ぶ必要があります。値は `UserDefaults.standard` に保存され、
+> 多くの箇所で（force-unwrap で）再度読み取られます。
+
+```swift
+public enum Enviroment: String { case DEV = "dev"; case STG = "stg"; case PROD = "prod" }
+
+public enum TenantIdType: String {
+    case vtvlive                          // OnPlus
+    case onliveLiveStream = "onlivev2"    // SOOP
+    case onliveTV = "onlivetv"            // OnLive TV
+    case VTVprime = "VTVprime"            // SeeNow
+}
+```
+
+---
+
+## 3. delegate プロトコル一覧
+
+（`PlayerChangeListener` を除き）すべて `@objc public protocol … : AnyObject` です。
+
+### `InteractivePlayerDelegate`
+```swift
+func getPlayerState() -> Int        // player 状態コード、ckst イベントに使用
+func showLiveView(liveView: Int)    // リアルタイム視聴者数（すでに +230 済み）
+```
+
+### `InteractiveLoginDelegate`
+```swift
+func showInteractiveLogin()         // ユーザーが未ログインで操作した際に呼ばれる
+```
+
+### `InteractivePredictDelegate`
+```swift
+func showLayoutViewPredictRoot()    // predict/lucky ボタンの領域を表示
+func hideLayoutViewPredictRoot()
+func endLayoutViewPredictRoot()
+```
+
+### `InteractiveAnswerDelegate`
+```swift
+func confirmDeduction()             // OnG 消費に同意
+func confirmNotEnoughMoney()        // OnG 不足（PM402）
+func confirmAnswerSuccess()         // 回答成功
+func showSubscibeView()             // 課金/登録画面を開く（スペル "Subscibe" に注意）
+```
+
+### `InteractiveViewDelegate`
+```swift
+func shrinkScreenInteractive(show: Bool, direction: Int, withXScale x: CGFloat, withYScale y: CGFloat)
+func resetLayoutInteractive()
+func preloadVideoActionBranching(url: String, timeToNext: TimeInterval)
+func nextVideoActionBranching()
+func showLayoutViewRoot()
+func hideLayoutViewRoot()
+func locationLayoutViewRoot(location: Int, width: CGFloat, height: CGFloat)  // 位置 0..8
+func hidePlayerControl()
+func showPlayerControl()
+func viewForPresentDialogDedution() -> UIView?   // デフォルト = nil（任意実装）
+```
+
+### `FanClubDelegate`
+```swift
+func btnConfirmFanClub()            // ユーザーが fanclub への確認ボタンを押した
+```
+
+### `InteractiveConnectDelegate`
+```swift
+func connectedSocket()
+```
+
+### `PlayerChangeListener`（純粋な Swift）
+```swift
+func currentPosition() -> CLong?
+```
+
+`locationLayoutViewRoot` の `location`: `0 LeftTop, 1 CenterTop, 2 RightTop, 3 LeftCenter,
+4 Center, 5 RightCenter, 6 LeftBottom, 7 CenterBottom, 8 RightBottom`。
+
+---
+
+## 4. `OverlayManagement`（プロトコル）
+
+```swift
+@objc public protocol OverlayManagement {
+    var isReadyToShowVodOverlay: Bool { get set }
+    func initialization(overlayView: UIOverlay)
+    func setupDataToPrepareShowVOD(timeLineList: [Timelines])
+    func prepareShowOverlayForVod(overlayList: [Overlay])
+    func showOverlayLive(overlay: Overlay, authenToken: String, mediaContentId: String,
+                         socketId: String?, bjName: String, buttonPredict: UIImageView)
+    func showOverlayVod(overlay: Overlay, authenToken: String, mediaContentId: String)
+    func stopShowOverlayPlayback()
+    func hiddenOverlay()
+    func onDestroy()
+    func removeAllView()
+    func setupDelegate(interactiveViewDelegate: InteractiveViewDelegate)
+    func setupDelegate(interactiveLoginDelegate: InteractiveLoginDelegate?)
+    func setupAnswerDelegate(interactiveAnswerDelegate: InteractiveAnswerDelegate)
+    func setupDelegate(fanClubDelegate: FanClubDelegate)
+    func resizeVideoView(width: CGFloat, height: CGFloat)
+    func webviewPublic() -> WKWebView?
+    func killDelegate()
+    func recallOverlay(timelineId: String)
+}
+```
+
+アプリは主に `setupDelegate*` を使用します。`recallOverlay` は SDK が内部で呼び出します。
+
+---
+
+## 5. `SocketIOManagement`（プロトコル）— 参考情報
+
+アプリが直接呼ぶことは通常なく、SDK が制御します。
+
+```swift
+func connection(url: String, authenToken: String?)
+func addCallback(callBack: @escaping (String, Any) -> ())
+func joinRoom(data: JoinRoomData)
+func leaveRoom(data: JoinRoomData)
+func ckstRoom(data: CkstData)
+func sendEmitAck(trackingId: String, event: String, stage: String, clientContext: [String: Any])
+func isConnected() -> Bool
+func getSocketId() -> String
+func disconnection()
+func onDestroy()
+```
+
+---
+
+## 6. Socket.IO イベント
+
+### 6.1. Server → SDK（受信）
+
+| wire 名 | 定数 | 処理 |
+|---|---|---|
+| `overlay` | `SocketEvents.OVERLAY` | リアルタイムオーバーレイ |
+| `ex-overlay` | `SocketEvents.EX_OVERLAY` | 補填用オーバーレイ |
+| `overlay-recall` | `SocketEvents.OVERLAY_RECALL` | `timelineId` によるオーバーレイの取り消し |
+| `predict-timeline` | `SocketEvents.PREDICT_TIMELINE` | predict ボタンの `ACTIVE`/`INACTIVE`/`POWER`/`END` |
+| `lucky-event` | `SocketEvents.LUCKY_EVENT` | lucky も同様 |
+| `predict-result` | `SocketEvents.PREDICT_RESULT` | `answer1`/`answer2` |
+| `update-result` | `SocketEvents.UPDATE_RESULT` | `UPDATE_DATA_INTERACTIVE` 経由で Web に送信 |
+| `liveviews` | `SocketEvents.LIVE_VIEW` | 視聴者数 |
+| `data` | `SocketEvents.FANCLUB` | fanclub の状態 |
+| `ckst` | `SocketEvents.CKST` | サーバーが player 状態を問い合わせる |
+| `branching` | `SocketEvents.BRANCHING` | 分岐動画（branching） |
+
+内部クライアントイベント: `.connect` → `CONNECTED`、`.disconnect` → `DISCONNECTED`、`.reconnect` →
+`RECONNECT`、`.error` → `ERROR`。
+
+### 6.2. SDK → Server（送信）
+
+| 名前 | タイミング | Payload |
+|---|---|---|
+| `join-room` | socket 接続成功後 | `JoinRoomData` = `{deviceId, mediaContentId, os, tenantId, versionSDK}` |
+| `leave-room` | `leaveRoom()` | 上記と同様 |
+| `receive-message` | オーバーレイ payload に `traceLock == true` がある場合 | 元 payload のバイナリ表現（ArrayBuffer） |
+| `emit-ack` | 各種トラッキングのタイミング | `{trackingId, event, stage, deviceId, clientContext}` |
+| `ckst` | `ckst` イベントへの応答 | `CkstData` = `{action: "CHECK_PLAYER_STATUS", sessionId, os: {…Ckst}}` |
+
+### 6.3. Socket 接続時のヘッダーと設定
+
+| ヘッダー | 値 |
+|---|---|
+| `x-tenant-id` | `KEY_X_TENANT_ID` |
+| `v` | `ApiConst.VERSION_SDK`（`"2025-05-25"`） |
+| `os` | `ApiConst.OS`（`"iphone"`） |
+| `deviceId` | `UIDevice.identifierForVendor` |
+| `Authorization` | トークン**原文のまま**（socket は自動で `Bearer` を付与しない） |
+
+設定: `forceWebsockets(true)`、`compress`、`reconnects(true)`、`reconnectWait(5)`、
+`randomizationFactor(0.4)`。
+
+---
+
+## 7. HTTP エンドポイント
+
+`KEY_ENABLE_PROD_ENV` に応じてベース URL が選択されます。
+
+| Env | REST base | WSK base |
+|---|---|---|
+| DEV | `https://dev-api.onplay.live/` | `https://dev-wsk.onplay.live/` |
+| STG | `https://beta-api.onplay.live/` | `https://beta-wsk.onplay.live/` |
+| PROD | `https://api.onplay.live/` | `https://wsk.onplay.live/` |
+
+| Method | パス | ヘッダー | 用途 |
+|---|---|---|---|
+| `GET` | `/api/ctc/scenario/v2/vod/{mediaId}/{os}` | `X-TENANT-ID` | VOD シナリオの取得 |
+| `POST` | `/api/actions` | `X-TENANT-ID`、`Authorization`（JWT の場合 Bearer） | アクション/回答の送信 |
+| `GET` | `/api/public/vip-status` | `X-TENANT-ID`、`Authorization` | OnG 消費前の VIP（telco）確認 |
+| `GET` | `/api/media/interactive-status/{mediaId}` | `X-TENANT-ID` | media にインタラクティブ要素があるか |
+| `GET` | `/api/scenario/getActiveOverlay/{mediaId}` | — | 現在有効なオーバーレイ（補填用）— この関数は同期的に返す不具合あり。[06](/ja/itr/ios/error/) を参照 |
+
+**`/api/actions` のリクエストボディ**（SDK が Web から送られた JSON に追加する内容）:
+
+```jsonc
+{
+  "type": "INTERACTIVE_ACTION_REPORT",
+  "deviceId": "<identifierForVendor>",   // SDK が追加
+  "os": "iphone",                          // SDK が追加
+  "data": {
+    "answer": ...,                         // テンプレート由来
+    "content": ...,                        // テンプレート由来
+    "media": "<mediaId>",                  // SDK が追加
+    "socket_id": "<socket id>",            // SDK が追加（Live のみ）
+    "versionSDK": "2025-05-25"             // SDK が追加
+    // ...その他テンプレートが送るフィールド
+  }
+}
+```
+
+---
+
+## 8. JS ブリッジプロトコル
+
+インターフェース名: **`IOS`**（`userContentController.add(callBack, name: "IOS")`）。
+
+### Web → SDK
+```javascript
+window.webkit.messageHandlers.IOS.postMessage(JSON.stringify({ type: "INTERACTIVE_ACTION_REPORT", data: {...} }));
+```
+
+| `type`（`TypeInteractive`） | 意味 |
+|---|---|
+| `INTERACTIVE_SHOW_ANALYTICS` | オーバーレイ表示 |
+| `INTERACTIVE_HIDE_ANALYTICS` | オーバーレイを閉じる → WebView を破棄 |
+| `INTERACTIVE_ACTION_REPORT` | 回答/アクション（`data.action = "CLICK_ADS"` の場合は広告用、`urlLinkAds` を開く） |
+| `INTERACTIVE_OPEN_ANALYTICS` / `INTERACTIVE_CLOSE_ANALYTICS` | predict/lucky ダイアログの開閉 |
+| `INTERACTIVE_PING_ANALYTICS` | フィルタ用のみ |
+
+### SDK → Web
+```javascript
+window.addEventListener("message", (e) => { /* e.data に key + data が含まれる */ });
+```
+
+| `key` | 内容 |
+|---|---|
+| `UPDATE_DATA_INTERACTIVE` | リアルタイム結果の更新（`update-result` から） |
+| `UPDATE_COUTER` *(原文ママ)* | predict の集計値 `answer1`/`answer2` |
+| `UPDATE_NUMBER_LUCKY` | ラッキーナンバーの結果 |
+| `UPDATE_CONFIRM` | 回答成功の確認（bet/VIP 分岐） |
+
+---
+
+## 9. テンプレート URL に付与されるクエリパラメータ
+
+| パラメータ | タイミング |
+|---|---|
+| `&logged=false` / `&logged=true` | ログイン状態 & `allowAnonymous` に応じて |
+| `&fanclub=false` | テナント `onlivev2`、`requiredFanClub` かつ未 fanclub の場合 |
+| `&duration=<残り時間>` | `countdown > 0` の場合（`ts` から算出） |
+| `&u=<userId>` | lucky 専用（`typeTimeline = 5`） |
+| `timelineId`、`tenantId`、`deviceType=IOS` | VOD オーバーレイ専用 |
+
+---
+
+## 10. 主なモデル
+
+### `OverlayLive` — リアルタイムオーバーレイ（Live）
+| フィールド | 型 | 意味 |
+|---|---|---|
+| `src` | `String` | テンプレート URL |
+| `metadata` | `Metadata(size, pos, duration?, targets?)` | 位置 + サイズ |
+| `ts` | `Int` | 残り duration を算出するための時刻（ms） |
+| `timelineID`（`timelineId`） | `String` | 時点の識別子（重複防止/再回答防止） |
+| `mediaContentID`（`mediaContentId`） | `String` | 適用対象のコンテンツ |
+| `targets` | `String` | プラットフォーム（`iphone`、`all` など） |
+| `duration`、`frequencyLimit`、`countdown` | `Int?` | 表示時間 / 頻度制限 |
+| `status` | `String?` | `ACTIVE` / `INACTIVE` など |
+| `typeTimeline` | `Int?` | `3` predict、`5` lucky、`2`（bet）、それ以外は minigame |
+| `allowAnonymous`、`requiredFanClub`、`isPopupOverlay` | `Bool?` | 表示/回答の条件 |
+| `betAmount` | `Int?` | 賭ける OnG の数量 |
+| `imageNormal`、`imagePower` | `String?` | predict/lucky ボタンの画像 |
+| `trackingId`（`_trackingId`）、`emitTimestamp`（`_emitTimestamp`） | | トラッキング用メタデータ |
+
+### `Overlay` — レンダリング用に構築されたオーバーレイ
+`id, src, ttl, ts, pos: OverlayPosition, size: OverlaySize, isPopupOverlay, allowAnonymous,
+compensatory: Compensatory, userId, requiredFanClub, betAmount, typeTimeline, imageNormal,
+imagePower, countdown`、および `trackingSession`（内部用）。
+
+### `OverlayPosition` / `OverlaySize`
+```swift
+class OverlayPosition { var x: Int; var y: Int; var alignment: OverlayAlignment? }  // x/y ∈ {0,1,2}
+class OverlaySize { var w: Float; var h: Float }   // 枠に対する比率
+```
+`x`: 0 左 / 1 中央 / 2 右。`y`: 0 上 / 1 中央 / 2 下。→
+`OverlayAlignment.{LeftTop … RightBottom}`。
+
+### `Timelines`（VOD）
+`time: String`（`"SS"`/`"MM:SS"`/`"HH:MM:SS"`）、`interactive: VODInteractive?`、`showStatus: String?`、
+`id`（`_id`）、算出される `timeShow: Int`（秒）。
+
+### `VODInteractive`
+`id, allowAnonymous, isPopupOverlay, requiredFocus, frequencyLimit, metadata: MetadataVod, betAmount,
+duration, targets, tenantId, src, timelineId, mediaContentId, ts`。
+
+### `Compensatory` — 再回答の防止
+`mediaId, duration, frequencyLimit, interactiveId, unlockedTime`。
+`UserDefaults(suiteName: "INTERACTIVE_<userId|DEFAULT>")` に `mediaId` をキーとして保存されます。
+
+### `PredictResult`（socket `predict-result`）
+`tenantId, timlineId` *(原文ママ — e が抜けている)*、`data: { answer1: Int?, answer2: Int? }`。
+
+### `FanClub`（socket `data`）
+`roomName, isFanClub?, mediaId?`。`UserDefaults` に `KEY_FAN_CLUB` を書き込みます。
+
+### `JoinRoomData` / `CkstData`
+- `JoinRoomData`: `{deviceId, mediaContentId, os, tenantId, versionSDK}`。
+- `CkstData`: `action = "CHECK_PLAYER_STATUS"`、`sessionId`、`data: Ckst`（JSON key **`os`** にマッピング）。
+  `Ckst`: `{deviceId, os, mediaContentId, playerStatus: Int?, tenantId}`。
+
+---
+
+## 11. 便利な定数
+
+```swift
+ApiConst.TYPE_LIVE   // = 1
+ApiConst.TYPE_VOD    // = 2
+ApiConst.OS          // = "iphone"
+ApiConst.VERSION_SDK // = "2025-05-25"
+```
+
+ボタン画像の CDN:
+```swift
+PredictConst.CDN_PREDICT_IDLE   // btnpredictidle.gif（動く）
+PredictConst.CDN_PREDICT_POWER  // btnpredictpower.gif（動く）
+PredictConst.CDN_LUCKY_IDLE     // lucky-normal.png（静止）
+PredictConst.CDN_LUCKY_POWER    // lucky-power.png（静止）
+```
+
+---
+
+[← 動作フロー](/ja/itr/ios/detailed_workflow/) · [目次へ](/ja/itr/getting-started/overview/) · [次へ: Tracking emit-ack →](/ja/itr/ios/tracking_emit_ack/)

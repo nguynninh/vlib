@@ -1,0 +1,34 @@
+---
+title: 概要
+description: Interactive SDKの紹介、動画プレーヤー上にインタラクティブなオーバーレイを埋め込む機能、およびプラットフォームごとの統合ドキュメントに進む前の出発点。
+---
+
+**Interactive SDK** を使うと、アプリ内の動画プレーヤーの上にインタラクティブなレイヤー（オーバーレイ、ミニゲーム、アンケート、投票など）を埋め込み、
+Socket.IO経由でInteractiveサーバーとリアルタイムに接続し、
+クライアントとバックエンド間でインタラクションの状態を同期できます。
+
+:::note
+ここは **Getting Started（はじめに）** セクションです — Android/iOS それぞれのプラットフォーム別統合ドキュメントに進む前の出発点です。
+:::
+
+## このドキュメントは誰向けか？
+
+- 既にプレーヤーを備えたアプリにInteractive SDKを統合するAndroid/iOSエンジニア。
+- 統合前に全体アーキテクチャ（client ⇄ Socket.IO ⇄ REST ⇄ CDN）を理解したい人。
+- オーバーレイ、トラッキングのemit-ack、ログイン/ログアウトのフローに関連する問題を調査する人。
+
+## ドキュメント構成
+
+| 項目 | 内容 |
+|---|---|
+| **はじめに** | 概要とクイックスタートガイド（本ページ）。 |
+| **Android** | SDKアーキテクチャ、インストールと統合、動作フロー、APIリファレンス、よくあるエラー、トラッキング。 |
+| **iOS** | Androidと同様の内容を、iOS（Swift）プラットフォーム向けに提供。 |
+
+## 開始前の要件
+
+- アプリに動画プレーヤー（ExoPlayer、AVPlayer、または他の再生SDK）が既に組み込まれていること。
+- オーバーレイを配置するための `FragmentActivity`/`AppCompatActivity`（Android）または対応する `UIViewController`（iOS）があること。
+- Interactiveサーバーへの接続情報（Socket.IOエンドポイント、REST API、`X-TENANT-ID`）を持っていること。
+
+次に、[クイックスタート](/ja/itr/getting-started/quick_start) を参照し、SDKをアプリに素早く統合しましょう。

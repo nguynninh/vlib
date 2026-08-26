@@ -1,0 +1,117 @@
+---
+title: 姓名与出生日期更新流程
+description: 描述 SDK 通过 InformationView 和 UpdateBirthday 两个画面更新姓名、出生日期及身份信息的流程。
+---
+
+本文档基于实际代码，描述 SDK 更新姓名和出生日期的流程。
+项目中有**两个相关画面**：
+
+- **`InformationView`** – 同时更新**姓名 + 出生日期**（附带身份
+  信息：身份证/护照号、签发日期、签发地点、地址），通过 endpoint `PATH_PROFILE_PASSPORT`。
+  这是完善账户信息 / 身份认证的画面（`requireSecurityLevel`）。
+- **`UpdateBirthday`** – 通过 endpoint `PATH_UPDATE_INFO_V2` **单独更新出生日期**。
+  从个人信息画面 `PersonalView` 打开（这里没有单独的姓名编辑框；
+  姓名仅作为标题显示）。
+
+两者都会附带 Bearer accessToken，并在遇到 `code = 86` 时自动刷新 token。
+
+## 方式 1 – `InformationView`（姓名 + 出生日期同时更新）
+
+```mermaid
+%% width: 1100
+flowchart TD
+    A["Mở InformationView<br/>Nhập họ tên, ngày sinh + thông tin định danh"] --> B["pressSave()"]
+
+    B --> C{Kiểm tra lần lượt từng trường}
+    C -- Họ tên rỗng --> C1([Báo lỗi ở ô Họ tên])
+    C -- Ngày sinh rỗng --> C2([Báo lỗi ở ô Ngày sinh])
+    C -- Ngày sinh sai định dạng dd/MM/yyyy --> C3([Báo lỗi ở ô Ngày sinh])
+    C -- CMND/CCCD/Hộ chiếu rỗng/sai --> C4([Báo lỗi ở ô Định danh])
+    C -- Ngày cấp rỗng --> C5([Báo lỗi ở ô Ngày cấp])
+    C -- Nơi cấp rỗng --> C6([Báo lỗi ở ô Nơi cấp])
+    C -- Địa chỉ rỗng --> C7([Báo lỗi ở ô Địa chỉ])
+    C -- Hợp lệ --> D["updateInfoUser()<br/>Chuyển ngày về yyyy-MM-dd"]
+
+    D --> E["POST PATH_PROFILE_PASSPORT<br/>fullName, birthday, passport,<br/>passportDate, passportPlateOfIssue, address"]
+    E --> F{Kết quả}
+    F -- Lỗi mạng --> F1([Toast: Cập nhật thất bại])
+    F -- code != 0 --> F2([Toast: Cập nhật thất bại])
+    F -- code = 0 --> G["Toast: Cập nhật thành công<br/>loginSuccess + registerTimerTask<br/>showOrHideFloatingButton"]
+    G --> H([Đóng màn hình])
+```
+
+### 说明 – 方式 1
+
+用户输入姓名（`tfName`）、出生日期（`tfBirthDay`，通过 UIDatePicker 选择）以及各项
+身份信息字段。点击保存时，`pressSave()` 会依次检查：
+
+- 姓名不能为空。
+- 出生日期不能为空，且格式必须为 `dd/MM/yyyy`。
+- 身份证/护照号不能为空且必须合法（`^[0-9]{9,12}$` 或护照格式 `^[A-Z][0-9]{8}$`）。
+- 签发日期、签发地点、地址不能为空。
+
+校验通过后 → `updateInfoUser()` 将出生日期（以及签发日期）转换为 `yyyy-MM-dd` 格式，然后调用
+`PATH_PROFILE_PASSPORT`（POST），参数为 `fullName`、`birthday`、`passport`、`passportDate`、
+`passportPlateOfIssue`、`address`（附带 `deviceId`、`os`、`osVersion`、`ip`）。
+
+- `code = 0`：显示 "信息更新成功" 提示，调用 `loginSuccess()`（触发 delegate
+  `loginSuccess` + `registerTimerTask`）、`showOrHideFloatingButton()` 后关闭画面。
+- 网络错误或 `code != 0`：显示 "账户信息更新失败！" 提示。
+
+> 注意：此画面**同时更新姓名和出生日期**，但必须完整填写所有身份信息字段才能保存成功。
+
+## 方式 2 – `UpdateBirthday`（仅出生日期，从 `PersonalView` 打开）
+
+```mermaid
+%% width: 1100
+flowchart TD
+    A["PersonalView<br/>Danh sách: Email, SĐT, Định danh, Ngày sinh"] --> B{Chọn dòng}
+    B -- Ngày sinh id=4 --> C["Mở UpdateBirthday<br/>truyền userBirthDay"]
+    B -- Email id=1 chưa xác thực --> B1([Mở VerifyEmail])
+    B -- SĐT id=2 chưa xác thực --> B2([Mở VerifyPhone])
+    B -- Định danh id=3 --> B3([Mở UpdateID])
+
+    C --> D[Chọn ngày sinh qua UIDatePicker<br/>giới hạn 1950 - 2014] --> E["btnUpdateClick()"]
+    E --> F{Kiểm tra ngày sinh}
+    F -- Rỗng --> F1([Báo lỗi: nhập ngày sinh])
+    F -- Sai định dạng dd/MM/yyyy --> F2([Báo lỗi: định dạng không đúng])
+    F -- Hợp lệ --> G["doUpdateBirthday()<br/>Chuyển sang yyyy-MM-dd"]
+
+    G --> H["POST PATH_UPDATE_INFO_V2<br/>birthday, type = 1"]
+    H --> I{Mã lỗi}
+    I -- code 86 --> I1["doRefreshWithAction → bấm cập nhật lại"]
+    I1 --> H
+    I -- code != 0 --> I2([handleErrorCode → báo lỗi])
+    I -- code = 0 --> J([Alert: Cập nhật thành công<br/>callback CallbackSuccess → đóng<br/>PersonalView refreshDisplay])
+```
+
+### 说明 – 方式 2
+
+`PersonalView` 是以列表形式展示的个人信息画面（邮箱、手机号、身份认证、
+出生日期、退出登录）。账户姓名仅在标题处显示，此处不可编辑。选择
+**出生日期**行（`id = 4`，类型 `.edit`）会打开 `UpdateBirthday`（并传入当前出生日期）。
+
+在 `UpdateBirthday` 中，用户通过 `UIDatePicker` 选择日期（限制范围为 1950 年 1 月 1 日
+至 2014 年 1 月 1 日）。`btnUpdateClick()` 检查出生日期非空且符合 `dd/MM/yyyy` 格式，
+然后 `doUpdateBirthday()` 转换为 `yyyy-MM-dd` 格式并调用 `PATH_UPDATE_INFO_V2`（POST），参数为
+`birthday`、`type = 1`。
+
+- `code = 0`：显示 "更新成功" 提示，发出 `callback(CallbackSuccess)` → 关闭画面；
+  `PersonalView` 接收到回调后调用 `refreshDisplay()` 刷新列表显示。
+- `code = 86`（token 过期）：`doRefreshWithAction` 刷新 token 后自动重新更新。
+- 其他错误：`handleErrorCode`。
+
+## 使用的 endpoint
+
+- `PATH_PROFILE_PASSPORT` – 更新姓名 + 出生日期 + 身份信息（POST）– 用于 `InformationView`
+- `PATH_UPDATE_INFO_V2` – 更新出生日期（POST，`birthday`、`type = 1`）– 用于 `UpdateBirthday`
+
+## 说明
+
+- 出生日期在 UI 中始终以 `dd/MM/yyyy` 格式输入/显示，但发送到服务器时使用 `yyyy-MM-dd` 格式。
+- `InformationView` 是合并更新画面（要求填写完整身份信息），并与安全信息完善流程
+  （`requireSecurityLevel`）关联；成功后会通过 `loginSuccess()` 继续登录流程。
+- `UpdateBirthday` 仅修改出生日期，遇到 `code = 86` 时自动刷新 token，并通过回调将结果返回给
+  `PersonalView` 以刷新显示。
+- 目前 SDK 中**没有单独的 "姓名" 编辑画面**；姓名只能随 `InformationView` 一并更新。
+

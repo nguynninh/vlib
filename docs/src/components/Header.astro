@@ -1,0 +1,16 @@
+---
+import DefaultHeader from '@astrojs/starlight/components/Header.astro';
+import Navigation from './Navigation.astro';
+---
+
+<div class="custom-header">
+    <DefaultHeader />
+    <Navigation />
+</div>
+
+<style>
+    .custom-header {
+        position: relative;
+        z-index: 10;
+    }
+</style>

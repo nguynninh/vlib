@@ -1,0 +1,43 @@
+---
+title: "Công nghệ sử dụng"
+description: "Các công nghệ, ngôn ngữ và dịch vụ được sử dụng để xây dựng SDK Game trên Android và iOS."
+sidebar:
+  order: 3
+---
+
+SDK Game được xây dựng riêng theo từng nền tảng di động, đồng thời dùng chung một số dịch vụ Backend và bên thứ ba.
+
+## Bảng tổng quan
+
+| Thành phần            | Công nghệ                          | Vai trò                                                |
+| ---------------------- | ----------------------------------- | ------------------------------------------------------- |
+| Nền tảng Android        | Java                                 | Ngôn ngữ triển khai SDK cho Android                     |
+| Nền tảng iOS            | Objective-C / Swift                 | Ngôn ngữ triển khai SDK cho iOS                          |
+| Xác thực tài khoản      | OIDC V2                             | Chuẩn xác thực dùng cho đăng nhập và các API/IAP của SDK |
+| Cấu hình động           | BE API nội bộ                       | Cung cấp cấu hình theo thời gian thực cho game          |
+| Cấu hình động           | Firebase Remote Config              | Bổ sung nguồn cấu hình động, hỗ trợ theo từng phiên bản  |
+| Xác thực OTP            | BE API nội bộ                       | Xác thực email, số điện thoại người dùng                |
+| Tracking sự kiện        | BE API tracking                     | Ghi nhận sự kiện game hub, thông báo, play_time...       |
+
+## Nền tảng Android
+
+SDK Android được viết bằng **Java**, tích hợp trực tiếp vào project game thông qua thư viện SDK, với tài liệu chi tiết về cấu hình, tích hợp, mã lỗi Backend và luồng emit/ack sự kiện.
+
+## Nền tảng iOS
+
+SDK iOS được viết bằng **Objective-C** (kèm hỗ trợ Swift), cung cấp tài liệu tích hợp, hướng dẫn tracking, thư viện bên thứ ba sử dụng và ghi chú cập nhật qua từng phiên bản SDK.
+
+## Xác thực: OIDC V2
+
+Các API/IAP dùng trong SDK được xây dựng trên nền **OIDC V2**, đảm bảo cơ chế xác thực nhất quán giữa các game và các phiên bản SDK.
+
+## Cấu hình động
+
+Cấu hình động được kết hợp từ hai nguồn:
+
+* **BE API nội bộ** — do đội ngũ Backend VTV Live vận hành.
+* **Firebase Remote Config** — dịch vụ của Google, hỗ trợ điều chỉnh cấu hình theo thời gian thực mà không cần phát hành lại bản build.
+
+## Tracking sự kiện
+
+Các sự kiện (game hub, thông báo, play_time...) được gửi về BE API tracking, kèm theo tài liệu mô tả luồng của từng sự kiện và ghi chú sự kiện MKT dùng để tối ưu quảng cáo.

@@ -10,9 +10,7 @@ on:
 
 jobs:
   deploy:
-    # Không SSH/không self-hosted runner: gọi thẳng API deploy chạy
-    # trên VPS qua reverse proxy public (VPS đứng sau VPN nên phải
-    # đi qua endpoint HTTPS này thay vì kết nối trực tiếp).
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Call deploy API
