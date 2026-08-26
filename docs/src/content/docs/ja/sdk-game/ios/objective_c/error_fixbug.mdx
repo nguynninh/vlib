@@ -1,0 +1,23 @@
+---
+title: SDK 5.1.0 バグ修正
+description: iOSでnotification（通知）を受信できない不具合を修正するための、iTapSdkバージョン5.1.0へのアップデート手順。
+---
+
+1. iTapSdk 5.1.0にアップデートしてください
+
+2. AppDelegateに以下のコードを追加してください。
+
+```Plain Text
+- (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
+    [FIRMessaging messaging].APNSToken = deviceToken;
+}
+
+- (void)messaging:(FIRMessaging *)messaging didReceiveRegistrationToken:(NSString *)fcmToken {
+    
+}
+-(void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
+    completionHandler(UIBackgroundFetchResultNewData);
+}
+```
+
+![](BASE_STORAGE/v2.0.0/update_sdk_fixbug_notification_image.png)

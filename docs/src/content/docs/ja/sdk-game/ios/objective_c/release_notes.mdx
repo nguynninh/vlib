@@ -1,46 +1,50 @@
 ---
-title: iTapSDK iOS release notes
-description: SDKラインごとのiTapSDK iOS各バージョンのリリース履歴と、変更内容および対応ファイルのダウンロードリンク。
+title: iTapSDK iOS リリースノート
+description: SDKラインごとのiTapSDK iOSバージョンのリリース履歴、変更内容、および対応ファイルのダウンロードリンク。
 ---
+
+このページでは、iOS版iTapSDKのリリース履歴を、**SDKライン**（Game SDK、OIDC v2、ON Live、SeeNow）ごとに分けて記載しています。各SDKラインはそれぞれ独立してバージョンが増加していきます — 統合しているSDKラインに対応する表を選んでください。
+
+表の各列の意味:
+
+- **バージョン**: リリースの識別名。
+- **ファイル**: 該当バージョンの`.xcframework`ファイル（または設定ファイル）のダウンロードリンク。
+- **コミットID**: このビルドに対応するソースコード管理システム上のコミットID。
+- **MD5**: ダウンロードしたファイルが破損・改変されていないかを確認するためのチェックサム。
+- **リリース日**: このバージョンがリリースされた日時。
+- **変更内容**: 前バージョンからの主な変更点の要約。
+
+:::note
+リリース時点で開発チームが情報（コミットID、MD5、リリース日など）を完全に更新していないため、一部のセルは空欄になっています。不足している情報が必要な場合は、VTVLiveチームまでお問い合わせください。
+:::
 
 ## 1. Game SDK version 1
 
-| Version | File | CommitID | MD5 | Release date | Change logs |
+| バージョン | ファイル | コミットID | MD5 | リリース日 | 変更内容 |
 | --- | --- | --- | --- | --- | --- |
-| iTapSdk.ver.3.2.1 | [`iTapSdk.xcframework.3.2.1.zip`](BASE_STORAGE/v2.0.0/iTapSdk.xcframework.3.2.1.zip) | 67a2a19 | f4fef87e6822359b78cbbe339b84d71b | 30/05/2024 13:59 | - Update play time<br />- [`_UPDATE_SDK_GAME_3.2.1.pdf`](BASE_STORAGE/v2.0.0/_UPDATE.SDK.GAME.3.2.1.pdf) |
-| iTapSdk.ver.3.2 | [`iTapSdk.ver.3.2.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk.ver.3.2.xcframework.zip) | | | | - Update Firebase 10.25.0<br />- Update FB 17.0.0<br />- Update AppsFlyer 16.14.2 |
+| iTapSdk.ver.3.2.1 | [`iTapSdk.xcframework.3.2.1.zip`](BASE_STORAGE/v2.0.0/iTapSdk.xcframework.3.2.1.zip) | 67a2a19 | f4fef87e6822359b78cbbe339b84d71b | 30/05/2024 13:59 | - プレイ時間（play time）計測機能の更新<br />- 詳細: [`_UPDATE_SDK_GAME_3.2.1.pdf`](BASE_STORAGE/v2.0.0/_UPDATE.SDK.GAME.3.2.1.pdf) |
+| iTapSdk.ver.3.2 | [`iTapSdk.ver.3.2.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk.ver.3.2.xcframework.zip) | — | — | — | - Firebaseを10.25.0に更新<br />- Facebook SDKを17.0.0に更新<br />- AppsFlyerを16.14.2に更新 |
 
 ## 2. Game SDK OIDC v2
 
-| Version | File | CommitID | MD5 | Release date | Change logs |
+| バージョン | ファイル | コミットID | MD5 | リリース日 | 変更内容 |
 | --- | --- | --- | --- | --- | --- |
-| oidc_v2_4.5 | | | | 7/1/2025 | - update domain config |
-| oidc_v2_4.4 | [`iTapSdk_v2_4.4.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_v2_4.4.xcframework.zip) | e3cc4ef | | 7/1/2025 | - ブランド認識UIの更新<br />- Adservice追加<br />- email、phone、forgot passの更新<br />- 情報更新 |
-| oidc_v2_4.3 | [`4.3.zip`](BASE_STORAGE/v2.0.0/4.3.zip) | e753499 | | | - サードパーティlibのFB、GG、AFnetwork、RXSwift、Recachaを更新 |
-| oidc_v2_4.2 | [`iTapSdk_oidc_v2_4.2.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_oidc_v2_4.2.xcframework.zip) | | | | update sdk facebook 16.3.1<br />- [`Update_SDK_Game_08_10_2024.pdf`](BASE_STORAGE/v2.0.0/Update.SDK.Game.08_10_2024.pdf) |
-| oidc_v2_4.1 | [`iTapSdk_oidc_v2_4.1.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_oidc_v2_4.1.xcframework.zip) | | | | - Update event log |
-| oidc_v2_4.0 | [`iTapSdk_oidc_v2_4.0.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_oidc_v2_4.0.xcframework.zip) | | | | - Update playtime logic |
-| oidc_v2_3.9 | [`iTapSdk_oidc_v2_3.9.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_oidc_v2_3.9.xcframework.zip) | | | | - Fix event appsflyer |
-| oidc_v2_3.8 | | | | | |
-| oidc_v2_3.7 | [`iTapSdk_oidc_v2_3.7.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_oidc_v2_3.7.xcframework.zip) | | | | - Update AppsFlyer 16.14.2 |
-| oidc_v2_3.6 | [`iTapSdk_oidc_v2_3.6.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_oidc_v2_3.6.xcframework.zip) | | | | -update Firebase 10.25.0<br />-Update FB 17.0.0 |
+| oidc_v2_4.5 | — | — | — | 07/01/2025 | - domain設定を更新 |
+| oidc_v2_4.4 | [`iTapSdk_v2_4.4.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_v2_4.4.xcframework.zip) | e3cc4ef | — | 07/01/2025 | - ブランド認識UIの更新<br />- Adserviceの追加<br />- email、電話番号、パスワード再設定フローの更新<br />- アカウント情報の更新 |
+| oidc_v2_4.3 | [`4.3.zip`](BASE_STORAGE/v2.0.0/4.3.zip) | e753499 | — | — | - サードパーティライブラリの更新: Facebook、Google、AFNetworking、RXSwift、Recaptcha |
+| oidc_v2_4.2 | [`iTapSdk_oidc_v2_4.2.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_oidc_v2_4.2.xcframework.zip) | — | — | — | - Facebook SDKを16.3.1に更新<br />- 詳細: [`Update_SDK_Game_08_10_2024.pdf`](BASE_STORAGE/v2.0.0/Update.SDK.Game.08_10_2024.pdf) |
+| oidc_v2_4.1 | [`iTapSdk_oidc_v2_4.1.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_oidc_v2_4.1.xcframework.zip) | — | — | — | - event logを更新 |
+| oidc_v2_4.0 | [`iTapSdk_oidc_v2_4.0.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_oidc_v2_4.0.xcframework.zip) | — | — | — | - プレイ時間（playtime）計測ロジックを更新 |
+| oidc_v2_3.9 | [`iTapSdk_oidc_v2_3.9.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_oidc_v2_3.9.xcframework.zip) | — | — | — | - AppsFlyerイベントのバグ修正 |
+| oidc_v2_3.7 | [`iTapSdk_oidc_v2_3.7.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_oidc_v2_3.7.xcframework.zip) | — | — | — | - AppsFlyerを16.14.2に更新 |
+| oidc_v2_3.6 | [`iTapSdk_oidc_v2_3.6.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_oidc_v2_3.6.xcframework.zip) | — | — | — | - Firebaseを10.25.0に更新<br />- Facebook SDKを17.0.0に更新 |
 
 ## 3. ON Live SDK
 
-| Version | File | CommitID | MD5 | Release date | Change logs |
+| バージョン | ファイル | コミットID | MD5 | リリース日 | 変更内容 |
 | --- | --- | --- | --- | --- | --- |
-| iTapSdk_AFTV_ver3.2 | [`iTapSdk_AFTV_ver3.2.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_AFTV_ver3.2.xcframework.zip) | | | | Update Firebase 10.25.0<br />Update Facebook 17.0.0<br />Update Appsflyer 6.14.2 |
-| | | | | | |
-| | | | | | |
-| | | | | | |
-| | | | | | |
+| iTapSdk_AFTV_ver3.2 | [`iTapSdk_AFTV_ver3.2.xcframework.zip`](BASE_STORAGE/v2.0.0/iTapSdk_AFTV_ver3.2.xcframework.zip) | — | — | — | - Firebaseを10.25.0に更新<br />- Facebookを17.0.0に更新<br />- AppsFlyerを6.14.2に更新 |
 
 ## 4. SeeNow SDK
 
-| Version | File | CommitID | MD5 | Release date | Change logs |
-| --- | --- | --- | --- | --- | --- |
-| | | | | | |
-| | | | | | |
-| | | | | | |
-| | | | | | |
-| | | | | | |
+このSDKラインについては、現時点で記録されているリリースはありません。新しいリリースがあり次第、一覧を更新します。

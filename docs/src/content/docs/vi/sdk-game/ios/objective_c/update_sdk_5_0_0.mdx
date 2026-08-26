@@ -1,23 +1,21 @@
 ---
-title: Update SDK 5.0.0
+title: Cập nhật SDK 5.0.0
 description: Lịch sử thay đổi và cấu hình Podfile khi cập nhật iTapSDK iOS lên phiên bản 5.0.0.
 ---
 
-Lịch sử thay đổi:
+## 1. Tóm tắt thay đổi
 
-- Cập nhật platform iOS 15
+- Nâng deployment target lên iOS 15.
+- Cập nhật Firebase lên 12.0.0.
+- Cập nhật AppsFlyerFramework lên 6.17.2.
+- Cập nhật logic tracking.
+- Thêm FirebaseCrashlytics 12.0.0.
 
-- Cập nhật Firebase 12.0.0
+## 2. Cập nhật Podfile
 
-- Cập nhật AppsFlyerFramework 6.17.2
+Sửa lại `Podfile` như bên dưới, sau đó chạy lại `pod install`:
 
-- Cập nhật tracking
-
-- Thêm FirebaseCrashlytics 12.0.0
-
-1. PodFile
-
-```Swift
+```ruby
 platform :ios, '15.0'
 target 'SdkExample' do
   use_frameworks!
@@ -51,17 +49,18 @@ post_install do |lib|
 end
 ```
 
-2. Config lib
+## 3. Cấu hình lại library trong Xcode
+
+Sau khi `pod install` xong, mở lại project bằng file `.xcworkspace` và kiểm tra lại cấu hình **Embed & Sign** / **Do Not Embed** cho các library như hình dưới (xem chi tiết cách cấu hình ở [Hướng dẫn tích hợp](/sdk-game/ios/objective_c/integration_guide)):
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_update_sdk_5_0_0_image1.png)
 
-3. Update AppDelegate
+## 4. Cập nhật AppDelegate
 
-```Swift
+Cập nhật `AppDelegate.m` theo mẫu dưới đây để khớp với phiên bản SDK mới:
 
+```Objective-C
 @import Firebase;
-
-
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     [[Sdk sharedInstance] initWithDelegate:self application:application launchOptions:launchOptions isProdEnv:TRUE];
@@ -71,7 +70,7 @@ end
 }
 
 -(void) getLangaugeSdk: (NSString *) langauge {
-    // print  Langauge
+    // Xử lý khi ngôn ngữ SDK thay đổi
 }
 
 - (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
@@ -82,27 +81,24 @@ end
 }
 ```
 
-4. Update log
+## 5. Cập nhật hàm log tạo nhân vật
 
-Khi bạn gọi **logStartedCharacterCreation** hoặc **logFinishedCharacterCreation**, bạn cần bổ sung thêm các tham số:
+Từ bản này, khi gọi `logStartedCharacterCreation` hoặc `logFinishedCharacterCreation`, bạn cần truyền thêm tham số:
 
-- Với **logStartedCharacterCreation**, vui lòng cung cấp **serverId** và **serverName**.
+- `logStartedCharacterCreation`: bổ sung `serverId` và `serverName`.
+- `logFinishedCharacterCreation`: bổ sung `characterId` và `characterName`.
 
-- Với **logFinishedCharacterCreation**, vui lòng cung cấp **characterId** và **characterName**.
-
-```Swift
+```Objective-C
 -(void) logStartedCharacterCreation:(NSString *) serverId withSeverName: (NSString *) serverName;
 -(void) logFinishedCharacterCreation:(NSString *) characterId characterName :(NSString*)characterName;
 ```
 
-5. Firebase Crashlytics
+## 6. Upload dSYM cho Firebase Crashlytics
 
-Sau khi build file .ipa thành công, click "Show in Finder."
+Sau khi build file `.ipa` thành công, chọn **Show in Finder** để lấy file dSYM và gửi cho đội ngũ VTVLive cùng với file `.ipa`:
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_update_sdk_5_0_0_image2.png)
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_update_sdk_5_0_0_image3.png)
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_update_sdk_5_0_0_image4.png)
-
-Vui lòng gửi cho tôi file dSYM và file .ipa.

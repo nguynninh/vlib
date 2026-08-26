@@ -1,23 +1,21 @@
 ---
-title: Update SDK 5.0.0
-description: Change history and Podfile configuration when updating iTapSDK iOS to version 5.0.0.
+title: SDK 5.0.0 Update
+description: Change history and Podfile configuration when updating the iTapSDK iOS to version 5.0.0.
 ---
 
-Change history:
+## 1. Summary of changes
 
-- Updated to iOS 15 platform
+- Raised the deployment target to iOS 15.
+- Updated Firebase to 12.0.0.
+- Updated AppsFlyerFramework to 6.17.2.
+- Updated tracking logic.
+- Added FirebaseCrashlytics 12.0.0.
 
-- Updated Firebase to 12.0.0
+## 2. Podfile update
 
-- Updated AppsFlyerFramework to 6.17.2
+Update your `Podfile` as shown below, then run `pod install` again:
 
-- Updated tracking
-
-- Added FirebaseCrashlytics 12.0.0
-
-1. PodFile
-
-```Swift
+```ruby
 platform :ios, '15.0'
 target 'SdkExample' do
   use_frameworks!
@@ -51,17 +49,18 @@ post_install do |lib|
 end
 ```
 
-2. Config lib
+## 3. Reconfigure libraries in Xcode
+
+After `pod install` finishes, reopen the project using the `.xcworkspace` file and check the **Embed & Sign** / **Do Not Embed** configuration for the libraries as shown below (see configuration details in the [Integration Guide](/sdk-game/ios/objective_c/integration_guide)):
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_update_sdk_5_0_0_image1.png)
 
-3. Update AppDelegate
+## 4. AppDelegate update
 
-```Swift
+Update `AppDelegate.m` according to the template below to match the new SDK version:
 
+```Objective-C
 @import Firebase;
-
-
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     [[Sdk sharedInstance] initWithDelegate:self application:application launchOptions:launchOptions isProdEnv:TRUE];
@@ -71,7 +70,7 @@ end
 }
 
 -(void) getLangaugeSdk: (NSString *) langauge {
-    // print  Langauge
+    // Handle SDK language change
 }
 
 - (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
@@ -82,27 +81,24 @@ end
 }
 ```
 
-4. Update log
+## 5. Update to the character creation log function
 
-When you call **logStartedCharacterCreation** or **logFinishedCharacterCreation**, you need to provide additional parameters:
+Starting with this version, when calling `logStartedCharacterCreation` or `logFinishedCharacterCreation`, you need to pass additional parameters:
 
-- For **logStartedCharacterCreation**, please provide **serverId** and **serverName**.
+- `logStartedCharacterCreation`: add `serverId` and `serverName`.
+- `logFinishedCharacterCreation`: add `characterId` and `characterName`.
 
-- For **logFinishedCharacterCreation**, please provide **characterId** and **characterName**.
-
-```Swift
+```Objective-C
 -(void) logStartedCharacterCreation:(NSString *) serverId withSeverName: (NSString *) serverName;
 -(void) logFinishedCharacterCreation:(NSString *) characterId characterName :(NSString*)characterName;
 ```
 
-5. Firebase Crashlytics
+## 6. Upload dSYM for Firebase Crashlytics
 
-After successfully building the .ipa file, click "Show in Finder."
+After successfully building the `.ipa` file, select **Show in Finder** to get the dSYM file and send it to the VTVLive team together with the `.ipa` file:
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_update_sdk_5_0_0_image2.png)
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_update_sdk_5_0_0_image3.png)
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_update_sdk_5_0_0_image4.png)
-
-Please send me the dSYM file and the .ipa file.

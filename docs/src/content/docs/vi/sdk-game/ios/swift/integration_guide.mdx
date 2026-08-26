@@ -3,104 +3,109 @@ title: Hướng dẫn tích hợp SDK Swift cho iOS
 description: Danh sách file cần thiết và các bước hướng dẫn tích hợp SDK Swift cho iOS vào dự án.
 ---
 
-## Necessary documents for sdk integration
-
-1. AFNetworking.xcframework
-
-2. iTapSdk.xcframework
-
-3. ISdkTrackier.xcframework
-
-4. Gooogle-Facebook-plist
-
-5. AppConfigDefault.plist
-
-6. Gooogle-Facebook-plist.txt
-
-7. Example demo
-
-8. Mobileprovision
-
-:::caution
-Nếu bạn không nhận được các file trên hoặc có bất kỳ câu hỏi nào, vui lòng liên hệ với đội ngũ VTVLive.
+:::note
+Trang này đã được viết lại theo đúng mã nguồn Swift thật của `iTapSdk` (class `Sdk`, `SdkDelegate`, `SdkTracking`) — không còn dùng cú pháp Objective-C như trước.
 :::
 
-Khi test ở môi trường dev xong, chúng tôi sẽ cung cấp key cho môi trường production.
+## 1. Danh sách file cần thiết
 
-## SDK integration steps
+Trước khi tích hợp, bạn cần chuẩn bị đầy đủ các file sau (do đội ngũ VTVLive cung cấp):
 
-Để tích hợp SDK, chúng tôi khuyến nghị làm theo hướng dẫn cài đặt dưới đây.
+1. `AFNetworking.xcframework`
+2. `iTapSdk.xcframework`
+3. `ISdkTrackier.xcframework`
+4. Google-Facebook `.plist`
+5. `AppConfigDefault.plist`
+6. Google-Facebook `.plist.txt`
+7. Project demo mẫu (example)
+8. File `.mobileprovision`
 
-Chọn frameworks và libraries để thêm vào project.
+:::caution
+Nếu bạn không nhận được đủ các file trên, hoặc có bất kỳ câu hỏi nào trong quá trình tích hợp, vui lòng liên hệ đội ngũ VTVLive để được hỗ trợ.
+:::
 
-- Trong project, vui lòng dùng **Embed & Sign** cho các library.
+Sau khi test xong ở môi trường dev, chúng tôi sẽ cung cấp key riêng cho môi trường production.
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image1.png)
+## 2. Các bước tích hợp SDK
 
-- Trong UnityFramework, vui lòng dùng **Do Not Embed** cho các library.
+Để tích hợp SDK, bạn hãy làm theo đúng thứ tự các bước dưới đây.
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image2.png)
+### 2.1. Thêm framework và library vào project
 
-## Add Notification Service Extension
+- Trong **project chính** (target app), chọn chế độ **Embed & Sign** cho các library đã liệt kê ở trên.
 
-1. Mở project iOS của bạn trong **Xcode**
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image1.png)
 
-2. Vào File > New > Target...
+- Trong **UnityFramework** (nếu game build từ Unity), chọn chế độ **Do Not Embed** cho các library — vì các library này đã được embed ở target chính, tránh bị nhân đôi.
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image3.png)
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image2.png)
 
-3. Trong template chooser, tìm và chọn **Notification Service Extension**
+### 2.2. Thêm Notification Service Extension
 
-4. Click **Next**, đặt tên ví dụ như `FirebaseNotificationServiceExtension`, sau đó click **Finish**
+Extension này giúp SDK xử lý và hiển thị đúng nội dung push notification (kể cả khi có ảnh, dữ liệu tuỳ biến từ Firebase).
 
-5. Khi được hỏi, chọn **Activate** scheme.
+1. Mở project iOS trong **Xcode**.
+2. Vào **File > New > Target...**
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image4.png)
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image3.png)
 
-## Add package dependencies
+3. Trong danh sách template, tìm và chọn **Notification Service Extension**.
+4. Bấm **Next**, đặt tên target — ví dụ `FirebaseNotificationServiceExtension` — rồi bấm **Finish**.
+5. Khi Xcode hỏi có muốn kích hoạt scheme mới không, chọn **Activate**.
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image5.png)
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image4.png)
 
-## FirebaseNotificationServiceExtension
+### 2.3. Thêm package dependencies
 
-Mở file `NotificationService.m` và sửa như bên dưới:
+Thêm các package cần thiết (ví dụ Firebase) vào project qua **Swift Package Manager**:
 
-```Swift
-#import "NotificationService.h"
-@import Firebase;
-@import FirebaseMessaging;
-@interface NotificationService ()
-@property (nonatomic, strong) void (^contentHandler)(UNNotificationContent *contentToDeliver);
-@property (nonatomic, strong) UNMutableNotificationContent *bestAttemptContent;
-@end
-@implementation NotificationService
-- (void)didReceiveNotificationRequest:(UNNotificationRequest *)request withContentHandler:(void (^)(UNNotificationContent * _Nonnull))contentHandler {
-    self.contentHandler = contentHandler;
-    self.bestAttemptContent = [request.content mutableCopy];
-    self.bestAttemptContent.title = [NSString stringWithFormat:@"%@", self.bestAttemptContent.title];
-    [[FIRMessaging extensionHelper] populateNotificationContent:self.bestAttemptContent
-                                                withContentHandler:contentHandler];
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image5.png)
+
+### 2.4. Cấu hình FirebaseNotificationServiceExtension
+
+Mở file `NotificationService.swift` của extension và sửa nội dung như sau:
+
+```swift
+import UserNotifications
+import Firebase
+import FirebaseMessaging
+
+class NotificationService: UNNotificationServiceExtension {
+
+    var contentHandler: ((UNNotificationContent) -> Void)?
+    var bestAttemptContent: UNMutableNotificationContent?
+
+    override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
+        self.contentHandler = contentHandler
+        bestAttemptContent = (request.content.mutableCopy() as? UNMutableNotificationContent)
+
+        if let bestAttemptContent = bestAttemptContent {
+            FIRMessaging.extensionHelper().populateNotificationContent(bestAttemptContent, withContentHandler: contentHandler)
+        }
+    }
+
+    override func serviceExtensionTimeWillExpire() {
+        if let contentHandler = contentHandler, let bestAttemptContent = bestAttemptContent {
+            contentHandler(bestAttemptContent)
+        }
+    }
 }
-- (void)serviceExtensionTimeWillExpire {
-    [[FIRMessaging extensionHelper] populateNotificationContent:self.bestAttemptContent
-                                                withContentHandler:self.contentHandler];
-}
-@end
 ```
 
-Lúc này, giao diện Xcode sẽ hiển thị như sau.
+Sau bước này, cấu trúc project trên Xcode sẽ hiển thị như hình dưới:
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image6.png)
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image6.png)
 
-Để bật đăng nhập bằng Apple, bạn cần tích hợp **Sign in with Apple**.
+Ngoài ra:
 
-Để nhận notification, bạn cần thêm **Push Notifications** và đảm bảo bật **Background Fetch** và **Remote Notifications** trong mục **Background Modes**.
+- Để bật đăng nhập bằng Apple, bạn cần bật capability **Sign in with Apple** cho target chính.
+- Để nhận được push notification, bạn cần thêm capability **Push Notifications**, đồng thời bật **Background Fetch** và **Remote Notifications** trong mục **Background Modes**.
 
-## Add Facebook Config to info.plist
+### 2.5. Thêm cấu hình Facebook vào `Info.plist`
 
-Sau khi có thông tin facebook id và facebook client, bạn nên thêm đoạn code bên dưới vào `Info.plist` của project (xem chi tiết cách cấu hình facebook id tại đây):
+Sau khi đã có Facebook App ID và Facebook Client Token (liên hệ VTVLive để lấy thông tin cho ứng dụng của bạn), thêm đoạn cấu hình sau vào file `Info.plist` của project. Các giá trị bên dưới chỉ là ví dụ minh hoạ — hãy thay bằng thông tin thực tế của bạn:
 
-```Swift
+```xml
 <key>CFBundleURLTypes</key>
         <array>
                 <dict>
@@ -148,453 +153,482 @@ Sau khi có thông tin facebook id và facebook client, bạn nên thêm đoạn
         <string>This identifier will be used to deliver personalized ads to you.</string>
 ```
 
-## Firebase Crashlytics
+### 2.6. Cấu hình Firebase Crashlytics
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image7.png)
+Thêm một **Run Script Phase** vào Build Phases của target chính để Crashlytics tự động upload debug symbol (dSYM) mỗi khi build:
 
-Lưu ý: hãy đảm bảo bạn trỏ đúng đường dẫn thực tế của file `GoogleService-Info.plist` trên ổ đĩa.
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image7.png)
 
-`${PROJECT_DIR}/SdkExample/GoogleService-Info.plist` là ví dụ, đây là đường dẫn thực tế đến file GoogleService-Info của tôi.
+:::note
+Hãy đảm bảo bạn trỏ đúng đường dẫn thực tế của file `GoogleService-Info.plist` trên máy — ví dụ `${PROJECT_DIR}/SdkExample/GoogleService-Info.plist` chỉ đúng với cấu trúc project mẫu, bạn cần sửa lại cho khớp với project của mình.
+:::
 
-Vui lòng sửa đường dẫn sao cho trỏ đúng đến vị trí vật lý thực tế của file bạn.
+## 3. Tích hợp các hàm SDK
 
-## SDK Integrate
+SDK cung cấp một singleton `Sdk.sharedInstance` cho toàn bộ tính năng chính, và một singleton riêng `SdkTracking.shared` cho các hàm tracking sự kiện. Phần này hướng dẫn theo đúng vòng đời sử dụng: khởi tạo → đăng nhập → các thao tác trong game → đăng xuất.
 
-1. Khởi tạo SDK
+### 3.1. Khởi tạo SDK
 
-Trong file `AppDelegate.h`, bạn có thể import SDK như bên dưới:
+Trong `AppDelegate.swift`, import SDK, khai báo `AppDelegate` tuân thủ protocol `SdkDelegate`, và khởi tạo SDK ngay khi app khởi động:
 
-```Swift
-#import <UIKit/UIKit.h>
-#import <iTapSdk/iTapSdk.h>
-@interface AppDelegate : UIResponder <UIApplicationDelegate,SdkDelegate>
+```swift
+import UIKit
+import iTapSdk
 
-@property (strong, nonatomic) UIWindow *window;
-@end
-```
+@main
+class AppDelegate: UIResponder, UIApplicationDelegate, SdkDelegate {
 
-Trong file `AppDelegate.m`, implement callback cho `SdkDelegate` như bên dưới:
-
-```Swift
-- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-    [[Sdk sharedInstance] initWithDelegate:self application:application launchOptions:launchOptions isProdEnv:TRUE];
-    [[Sdk sharedInstance] setLocationFloatingButton:20 with:100];
-    [[Sdk sharedInstance] setGrantEnv:YES];
-    return YES;
-}
-```
-
-Khi tích hợp, bạn nên đổi sang môi trường dev bằng đoạn code này:
-
-```Swift
-[[Sdk sharedInstance] initWithDelegate:self application:application launchOptions:launchOptions isProdEnv:FALSE];
-```
-
-Để hiện popup xin quyền, set `setGrantEnv` thành `YES`. Nếu không muốn hiện, set `setGrantEnv` thành `NO`.
-
-2. Login
-
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image8.png)
-
-Luôn nhớ gọi hàm này trước khi game bắt đầu. Bên trong sẽ hiện dialog nếu người dùng vào game lần đầu, hoặc SDK sẽ refresh token khi người dùng quay lại. Bạn có thể xem thêm về login ở phần flowchart bên dưới.
-
-```Swift
-[[Sdk sharedInstance] login];
-```
-
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image9.png)
-
-Nếu mọi thứ thành công, bạn sẽ thấy login dialog như bên dưới.
-
-Nếu đăng nhập thành công, thông tin user sẽ được trả về hàm `loginSuccess` của `SdkDelegate` đã đăng ký với SDK.
-
-3. Logout
-
-Nếu đăng xuất thành công, thông tin user sẽ được trả về hàm `logout` của `SdkDelegate` đã đăng ký với SDK.
-
-```Swift
-[[Sdk sharedInstance] logout];
-```
-
-4. List products
-
-Lấy danh sách sản phẩm từ store (Play Store hoặc Apple Store). Bạn nên gọi hàm này vì cần lấy giá sản phẩm để gửi lên hệ thống tracking khi người dùng thanh toán.
-
-Lưu ý: nên bọc trong đoạn code chỉ chạy sau khi login thành công.
-
-```Swift
--(void)loginSuccess:(User *)user withAccessToken:(NSString *)accessToken andRefreshToken:(NSString *)refreshToken{
-    
-    [[Sdk sharedInstance] listProducts:^(NSError *error, NSArray<IAPProduct*> * _Nullable result) {
-        
-    }];
-    [[Sdk sharedInstance] showOrHideFloatingButton];
-    
-}
-```
-
-5. Update language (nếu app hỗ trợ nhiều ngôn ngữ)
-
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image10.png)
-
-Khi đổi ngôn ngữ, vui lòng gọi hàm **`[[Sdk sharedInstance] setLanguage:@"vi"];`** với tham số tương ứng:
-
-`vi` cho tiếng Việt,
-
-`en` cho tiếng Anh,
-
-`th` cho tiếng Thái,
-
-`zh` cho tiếng Trung.
-
-6. Show countdown
-
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image11.png)
-
-Để hiện giao diện countdown như trên, bạn chỉ cần gọi **`[[Sdk sharedInstance] showCountdown]`** sau khi login hoàn tất trong AppDelegate.
-
-> `-(void)loginSuccess:(User *)user withAccessToken:(NSString *)accessToken andRefreshToken:(NSString *)refreshToken{`
->
-> `[[Sdk sharedInstance] listProducts:^(NSError *error, NSArray<IAPProduct*> * `**`_Nullable`**` result) {`
->
-> `}];`
->
-> `[[Sdk sharedInstance] showOrHideFloatingButton];`
->
-> `[[Sdk sharedInstance] showCountdown];`
->
-> `}`
-
-7. Receive Gift
-
-Khi người dùng click nút gift box, vui lòng gọi hàm này:
-`[[Sdk sharedInstance] showReceiveGift:@"1111111" withCharacterId:@"11112"];`
-
-serverId: Id của Server
-
-characterId: Id của Character
-
-8. Make payment
-
-Lưu ý: productId lấy từ `listProducts`
-
-forCharacterId: Character ID trong game
-
-onServerId: Server ID
-
-```Swift
-[[Sdk sharedInstance] payProduct:itemProduct.productId forCharacterId:@"17782088632480" onServerId:@"s6003"];
-```
-
-Thanh toán thành công hoặc thất bại thì thông tin sẽ được trả về hàm `didPurchaseSuccess` hoặc `didPurchaseFailed` của `SdkDelegate` đã đăng ký với SDK.
-
-6. Set Language
-
-Bạn có thể đổi ngôn ngữ mong muốn bằng cách gọi hàm sau:
-
-```Swift
-[[Sdk sharedInstance] setLanguage: @"vi"];
-```
-
-Chúng tôi cung cấp delegate thông báo khi ngôn ngữ thay đổi: `getLangaugeSdk`
-
-7. Show dashboard
-
-```Swift
-[[Sdk sharedInstance] showOrHideFloatingButton];
-```
-
-8. Map User
-
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image12.png)
-
-```Swift
--(void) mappingUser:(NSString*)characterName
-        characterId:(NSString*)characterId
-     characterLevel:(NSString*)characterLevel
-        serverName:(NSString*)serverName
-          serverId:(NSString*)serverId;
-          
- example. : 
- [[SdkTracking sharedInstance] mappingUser: @"name" characterId : @1 characterLevel : @1 serverName : @"test" serverId : @"1"];
-```
-
-characterName: Tên character
-
-characterId: Id của Character
-
-characterLevel: Level của Character
-
-serverName: Tên Server
-
-serverId: Id của Server
-
-## Receive Gift
-
-(Bạn cần khởi tạo `characterId` và `serverId` trước khi gọi `showReceiveGift`)
-
-Khi người dùng click nút gift box, vui lòng gọi hàm này:
-`[[Sdk sharedInstance] showReceiveGift];`
-
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image13.png)
-
-## Log Function
-
-Lưu ý:
-
-Màu xám: Các bước trong Game
-
-Màu vàng: Game gọi SDK
-
-Vui lòng xem mục "Login or Start Game" trong Flowchart để biết cách đặt các hàm này vào game.
-
-```Java
--(void) logStartGameScreen;
--(void) logEnterGamePlay;
--(void) logStartTutorial;
--(void) logCompleteTutorial;
-```
-
-`logEnterGamePlay`
-
-Tracking user vào màn hình Game Play sau khi bấm nút "Enter Game"
-
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image14.png)
-
-Bắt đầu tải tài nguyên.
-
-```Swift
-// Bắt đầu tải tài nguyên
--(void) logPatchStart: (NSNumber * _Nullable) sizeMB withVerrsion:(NSString * _Nullable)version withNetworkType: (NSString * _Nullable) networkType;
-
-sizeMB : Dung lượng file patch cần update (Hiển thị theo Mb)
-version : version gói cài
-
-example. : 
- [[SdkTracking sharedInstance] logPatchStart: @"500" withVerrsion : @"1.0.1" withNetworkType : @"wifi"];
-```
-
-Tải tài nguyên hoàn tất.
-
-```Swift
--(void) logPatchSuccess: (NSNumber * _Nullable) durationSec withAvgSpeedKbps: (NSNumber * _Nullable) avgSpeedKbps withCdnNode :(NSString * _Nullable) cdnNode;
-
-durationSec : Thời gian từ khi bắt đầu download đến khi download hoàn tất. Kiểm tra với update_type là Store thì có lấy được không.
-avgSpeedKbps : Dung lượng file patch cần update (Hiển thị theo Mb)
-cdnNode : cnd note 
-
-example. : 
- [[SdkTracking sharedInstance] logPatchSuccess: @"500" withAvgSpeedKbps : @"111" avgSpeedKbps : @"450" withCdnNode: @"192.168.0.2"];
-```
-
-Tải tài nguyên thất bại.
-
-```Swift
-//Khi việc tải tài nguyên bị gián đoạn hoặc thất bại.
--(void) logPatchError:(NSString * _Nullable) errorCode withRetryCount:(NSNumber * _Nullable) retryCount withFailedUrl:(NSString * _Nullable) failedUrl withCdnNode :(NSString * _Nullable) cdnNode;
-
-errorCode : mã lỗi
-retryCount : số cần retry do lỗi 
-failedUrl : url lỗi 
-cdnNode : cnd note lỗi 
-
-example. : 
- [[SdkTracking sharedInstance] logPatchError: @"500" withRetryCount: @1 withFailedUrl: @"https://cdn.game.com/patch/v120.zip" withCdnNode : @"192.168.0.2"];
-```
-
-Bắt đầu giải nén tài nguyên.
-
-```Swift
-//Ngay sau khi tải xong, bắt đầu giải nén/cài đặt.
--(void) logExtractStarted:(NSString * _Nullable) totalSizeMb withTotalSize: (NSString * _Nullable) totalSize;
-
-totalSizeMb : Dung lượng sau khi giải nén, tính theo mb
-totalSize : Số lượng files trong patch cần giải nén. Nếu không lấy được thì bỏ qua
-
-example. : 
- [[SdkTracking sharedInstance] logExtractStarted: @"500" withTotalSize : @"400"];
-```
-
-Giải nén xong dữ liệu đã tải.
-
-```Swift
-//Khi giải nén xong, sẵn sàng vào màn hình Login.
--(void) logExtractFinished:(NSNumber * _Nullable) durationSec withResultCode:(NSString * _Nullable) resultCode;
-durationSec : thời gian tính từ lúc giả nén đến khi thành công 
-resultCode : duration_sec, result_code (0: OK, 1: Disk Full)
-
-example. : 
- [[SdkTracking sharedInstance] logExtractFinished: @100 withResultCode : @"ok"];
-```
-
-Bắt đầu tạo nhân vật.
-
-```Swift
--(void) logCharCreateStart: (NSString * _Nullable) serverId;
-
-serverId : server id 
-
-example. : 
- [[SdkTracking sharedInstance] logCharCreateStart: @"100"];
-```
-
-LƯU Ý: cài đặt một timer để đo thời gian từ lúc bắt đầu đến khi tạo nhân vật xong.
-
-Tạo nhân vật thành công.
-
-```Objective-C
--(void) logCharCreateSuccess: (NSString * _Nullable) serverId withCharId:(NSString * _Nullable) charId withCharName:(NSString * _Nullable) charName withCharClass:(NSString * _Nullable) charClass withDurationSec: (NSNumber * _Nullable) durationSec;
-
-serverId : Id of Server
-charId : id of Character
-charName : name of Character
-charClass : Class_id 
-durationSec : tính từ lúc bắt đầu tạo nhân vật đến khi tạo thành công.
-
-example. : 
- [[SdkTracking sharedInstance] logCharCreateSuccess: @"500" withVerrsion : @"1.0.1" withNetworkType : @"wifi"];
-```
-
-Tạo nhân vật thất bại.
-
-```Objective-C
--(void) logCharCreateError:(NSString * _Nullable) errorCode withCharName:(NSString * _Nullable) charName withServerId:(NSString * _Nullable) serverId;
-
-errorCode : error code 
-charName : name of Character
-serverId : Id of Server
-
-example. : 
- [[SdkTracking sharedInstance] logCharCreateError: @"NAME_DUPLICATED" withCharName : @"test" withServerId :@"1"];
-```
-
-Sau khi chọn server, gọi hàm này.
-
-```Objective-C
--(void) logCharSelect: (NSString * _Nullable) charId withCharacterName :(NSString* _Nonnull) characterName withCharLevel:(NSString * _Nullable) charLevel;
-serverId : Id of Server
-charId : id of Character
-example. : 
- [[SdkTracking sharedInstance] logCharSelect: @"1" withCharacterName : @"name " withCharLevel : @"1"];
-```
-
-## Update event 147
-
-```Swift
-dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-    BOOL needShow = [[Sdk sharedInstance] isNeedShowEventProfileSync];
-    if (needShow) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [[Sdk sharedInstance] showEventProfile];   // showEventProfile chắc chắn cần chạy trên main thread vì có UI
-        });
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        Sdk.sharedInstance.initWithDelegate(self, application: application, launchOptions: launchOptions, environment: .prod)
+        Sdk.sharedInstance.setLocationFloatingButton(width: 20, height: 100)
+        return true
     }
-});
+
+    // Bắt buộc: chuyển tiếp URL callback cho Facebook / Google Sign-In
+    func application(_ application: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
+        return Sdk.sharedInstance.application(application, open: url, options: options)
+    }
+}
 ```
 
-Nếu `isNeedShowEventProfile()` trả về true, mở màn hình Event Profile.
+- Trong lúc tích hợp và test, hãy đổi `environment` sang `.dev`:
 
-Nếu `isNeedShowEventProfile()` trả về false, cho phép người dùng vào game trực tiếp.
-
-## Review App
-
-Bạn có thể dùng tính năng này để gợi ý Apple review.
-
-```Objective-C
-[[Sdk sharedInstance] requestReview];
+```swift
+Sdk.sharedInstance.initWithDelegate(self, application: application, launchOptions: launchOptions, environment: .dev)
 ```
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image15.png)
+Cài đặt các callback của `SdkDelegate` (tất cả đều optional, chỉ implement những cái bạn cần) trong một extension của `AppDelegate`:
 
-## Class in SDK
+```swift
+extension AppDelegate {
 
-| **IAPProduct** | |
+    func sdk(_ sdk: Sdk, loginSuccess user: User, accessToken: String, refreshToken: String) {
+        // Đăng nhập thành công — user.accountID, user.accountName
+    }
+
+    func sdk(_ sdk: Sdk, logout user: User) {
+        // Đăng xuất thành công
+    }
+
+    func sdk(_ sdk: Sdk, didPurchaseSuccess transactionInfo: TransactionInfo) {
+        // Thanh toán thành công — transactionInfo.productId, transactionInfo.transId...
+    }
+
+    func sdk(_ sdk: Sdk, didPurchaseFailed transactionInfo: TransactionInfo, purchaseError: String?) {
+        // Thanh toán thất bại
+    }
+
+    func sdk(_ sdk: Sdk, getLanguage language: String) {
+        // Ngôn ngữ SDK vừa thay đổi
+    }
+
+    func sdkCloseLoginView() {
+        // Màn hình đăng nhập vừa được đóng
+    }
+}
+```
+
+:::note
+SDK bản Swift tự động xử lý việc xin quyền (notification, App Tracking Transparency) trong lúc khởi tạo — không có hàm bật/tắt popup xin quyền thủ công như bản Objective-C cũ.
+:::
+
+### 3.2. Đăng nhập (Login)
+
+Luôn gọi hàm `login()` **trước khi game bắt đầu**. SDK sẽ tự hiển thị dialog đăng nhập nếu đây là lần đầu người dùng vào game, hoặc tự động refresh token nếu người dùng đã từng đăng nhập trước đó.
+
+```swift
+Sdk.sharedInstance.login()
+```
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image8.png)
+
+Nếu mọi thứ thành công, dialog đăng nhập sẽ hiển thị như hình trên.
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image9.png)
+
+Khi người dùng đăng nhập thành công, thông tin user sẽ được trả về qua callback `sdk(_:loginSuccess:accessToken:refreshToken:)` của `SdkDelegate` mà bạn đã đăng ký với SDK.
+
+### 3.3. Đăng xuất (Logout)
+
+```swift
+Sdk.sharedInstance.logout()
+```
+
+Khi đăng xuất thành công, SDK sẽ gọi lại callback `sdk(_:logout:)` để thông báo cho game. Ngoài ra còn có `Sdk.sharedInstance.forceLogout()` — đăng xuất ngay lập tức mà không gọi API huỷ refresh token phía server (dùng khi phiên đăng nhập đã hết hạn phía server).
+
+### 3.4. Lấy danh sách sản phẩm (List products)
+
+Lấy danh sách sản phẩm (gói nạp) từ App Store. Bạn nên gọi hàm này ngay sau khi đăng nhập thành công, vì cần dùng giá sản phẩm để gửi lên hệ thống tracking khi người dùng thanh toán.
+
+```swift
+func sdk(_ sdk: Sdk, loginSuccess user: User, accessToken: String, refreshToken: String) {
+    Sdk.sharedInstance.listProducts { error, products in
+        // products: [IAPProduct]?
+    }
+    Sdk.sharedInstance.showOrHideFloatingButton()
+}
+```
+
+:::note
+Nên đặt lệnh gọi `listProducts` trong callback `loginSuccess`, như ví dụ trên — không cần chờ gì thêm.
+:::
+
+### 3.5. Đổi ngôn ngữ (Set Language)
+
+Gọi hàm sau để đổi ngôn ngữ hiển thị của SDK:
+
+```swift
+Sdk.sharedInstance.setLanguage(input: "vi")
+```
+
+Các mã ngôn ngữ được hỗ trợ:
+
+| Mã | Ngôn ngữ |
 | --- | --- |
-| productId | Id sản phẩm, là product id trên google store |
-| localizedPrice | Giá sản phẩm theo locale |
-| appAmount | Số gold user nhận được khi mua gói này |
+| `vi` | Tiếng Việt |
+| `en` | Tiếng Anh |
+| `th` | Tiếng Thái |
+| `zh` | Tiếng Trung |
 
-| accountID | User Id |
+SDK cũng gọi lại callback `sdk(_:getLanguage:)` của `SdkDelegate` mỗi khi ngôn ngữ được thay đổi (bao gồm cả lần đầu khởi tạo).
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image10.png)
+
+### 3.6. Hiển thị đếm ngược (Show countdown)
+
+Để hiển thị giao diện đếm ngược như hình dưới, gọi `showCountdown()` **sau khi đăng nhập hoàn tất**:
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image11.png)
+
+```swift
+func sdk(_ sdk: Sdk, loginSuccess user: User, accessToken: String, refreshToken: String) {
+    Sdk.sharedInstance.listProducts { error, products in }
+    Sdk.sharedInstance.showOrHideFloatingButton()
+    Sdk.sharedInstance.showCountdown()
+}
+```
+
+Bạn có thể kiểm tra trước xem sự kiện đếm ngược có đang khả dụng không bằng `Sdk.sharedInstance.isCountdownAvailable() -> Bool`.
+
+### 3.7. Nhận quà (Receive Gift)
+
+```swift
+Sdk.sharedInstance.showReceiveGift()
+```
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image13.png)
+
+:::note
+Hàm này không nhận tham số — SDK tự lấy `characterId`/`serverId` đã lưu từ lần gọi `mappingUser(...)` gần nhất ([mục 3.10](#310-ánh-xạ-thông-tin-nhân-vật-map-user)). Vì vậy bạn cần gọi `mappingUser` trước khi hiển thị nút nhận quà.
+:::
+
+### 3.8. Thanh toán (Make payment)
+
+```swift
+Sdk.sharedInstance.payProduct(itemProduct.productId ?? "", forCharacterId: "17782088632480", onServerId: "s6003")
+```
+
+- Tham số đầu (`productID`): lấy từ `productId` của một `IAPProduct` trong kết quả `listProducts` ở [mục 3.4](#34-lấy-danh-sách-sản-phẩm-list-products).
+- `forCharacterId`: Id nhân vật trong game.
+- `onServerId`: Id server.
+
+Kết quả thanh toán (thành công hoặc thất bại) sẽ được trả về tương ứng qua callback `sdk(_:didPurchaseSuccess:)` hoặc `sdk(_:didPurchaseFailed:purchaseError:)` của `SdkDelegate`.
+
+### 3.9. Hiện/ẩn floating button (Show dashboard)
+
+```swift
+Sdk.sharedInstance.showOrHideFloatingButton()
+```
+
+### 3.10. Ánh xạ thông tin nhân vật (Map User)
+
+Gọi hàm này để gửi thông tin nhân vật hiện tại của người dùng lên SDK, phục vụ cho tracking và các tính năng liên quan đến nhân vật/server (bao gồm cả `showReceiveGift()` ở [mục 3.7](#37-nhận-quà-receive-gift)):
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image12.png)
+
+```swift
+Sdk.sharedInstance.mappingUser(
+    "name",
+    characterId: "1",
+    characterLevel: "1",
+    serverName: "test",
+    serverId: "1"
+)
+```
+
+- Tham số đầu (không có nhãn): tên nhân vật.
+- `characterId`: Id của nhân vật.
+- `characterLevel`: Level hiện tại của nhân vật.
+- `serverName`: Tên server.
+- `serverId`: Id server.
+
+SDK còn có `Sdk.sharedInstance.levelUpUser(_:characterId:characterLevel:serverName:serverId:vip:)` — gọi mỗi khi nhân vật lên level hoặc lên VIP, để hệ thống tracking ghi nhận mốc đạt được.
+
+## 4. Hàm ghi log tracking (SdkTracking)
+
+Các hàm dưới đây nằm trên singleton **`SdkTracking.shared`** (khác với `Sdk.sharedInstance`), dùng để gửi sự kiện tracking về hệ thống, giúp đo lường hành vi người dùng trong toàn bộ vòng đời chơi game — từ mở app, tải patch, tạo nhân vật đến vào game.
+
+Chú thích màu trong sơ đồ Flowchart gốc:
+
+- **Màu xám**: các bước xử lý phía Game.
+- **Màu vàng**: các điểm Game cần gọi hàm của SDK.
+
+Vui lòng xem thêm mục "Login or Start Game" trong [Flowchart](#6-sơ-đồ-luồng-flowchart) để biết vị trí chính xác cần đặt các hàm log bên dưới trong luồng chạy của game.
+
+```swift
+SdkTracking.shared.logStartGameScreen()
+SdkTracking.shared.logEnterGamePlay()
+SdkTracking.shared.logStartTutorial()
+SdkTracking.shared.logCompleteTutorial()
+```
+
+#### `logEnterGamePlay()`
+
+Tracking sự kiện người dùng vào màn hình gameplay, ngay sau khi bấm nút "Enter Game".
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image14.png)
+
+#### `logPatchStart` — Bắt đầu tải tài nguyên (patch)
+
+```swift
+SdkTracking.shared.logPatchStart(sizeMB: 500, withVerrsion: "1.0.1", withNetworkType: "wifi")
+```
+
+| Tham số | Ý nghĩa |
 | --- | --- |
-| accountName | Username |
+| `sizeMB` | Dung lượng file patch cần tải, tính theo MB |
+| `withVerrsion` | Phiên bản gói cài đặt |
+| `withNetworkType` | Loại mạng (`"wifi"`, `"4g"`...) |
 
-| **Sdk** | |
+#### `logPatchSuccess` — Tải tài nguyên hoàn tất
+
+```swift
+SdkTracking.shared.logPatchSuccess(durationSec: 450, withAvgSpeedKbps: 111, withCdnNode: "192.168.0.2")
+```
+
+| Tham số | Ý nghĩa |
 | --- | --- |
-| sharedInstance | Lấy singleton của object |
-| showOrHideFloatingButton() | Hiện hoặc ẩn floating button |
-| accessToken | Lấy access token sau khi login thành công |
+| `durationSec` | Thời gian từ lúc bắt đầu tải đến khi tải xong (giây) |
+| `withAvgSpeedKbps` | Tốc độ tải trung bình (Kbps) |
+| `withCdnNode` | Node CDN đã sử dụng để tải |
 
-## Flowchart
+#### `logPatchError` — Tải tài nguyên thất bại
 
-1. Flowchart
+```swift
+SdkTracking.shared.logPatchError(errorCode: "500", withRetryCount: 1, withFailedUrl: "https://cdn.game.com/patch/v120.zip", withCdnNode: "192.168.0.2")
+```
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image16.png)
+| Tham số | Ý nghĩa |
+| --- | --- |
+| `errorCode` | Mã lỗi |
+| `withRetryCount` | Số lần đã retry do lỗi |
+| `withFailedUrl` | URL bị lỗi khi tải |
+| `withCdnNode` | Node CDN xảy ra lỗi |
 
-2. Login or Start game
+#### `logExtractStarted` — Bắt đầu giải nén tài nguyên
 
-3. Payment
+```swift
+SdkTracking.shared.logExtractStarted(totalSizeMb: "500", withTotalSize: "400")
+```
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image17.png)
+| Tham số | Ý nghĩa |
+| --- | --- |
+| `totalSizeMb` | Dung lượng sau khi giải nén, tính theo MB |
+| `withTotalSize` | Số lượng file trong patch cần giải nén |
 
-## Import certificates to keychain
+#### `logExtractFinished` — Giải nén hoàn tất
 
-Chúng tôi sẽ cung cấp certificate cho bạn bao gồm apn_certificate, dev_certificate, dis_certificate, development provision, production provision để build ipa.
+```swift
+SdkTracking.shared.logExtractFinished(durationSec: 100, withResultCode: "ok")
+```
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image18.png)
+| Tham số | Ý nghĩa |
+| --- | --- |
+| `durationSec` | Thời gian từ lúc bắt đầu giải nén đến khi hoàn tất (giây) |
+| `withResultCode` | Mã kết quả — `"ok"`/`0`: OK, `1`: Disk Full |
 
-Click vào file p12 để thêm vào keychain.
+#### `logCharCreateStart` — Bắt đầu tạo nhân vật
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image19.png)
+```swift
+SdkTracking.shared.logCharCreateStart(serverId: "100")
+```
 
-Sau đó bạn sẽ thấy certificate trên keychain như sau.
+:::note
+Nên cài một timer nội bộ để tự đo thời gian từ lúc bắt đầu tạo nhân vật đến khi tạo xong — giá trị này cần truyền vào `logCharCreateSuccess` bên dưới.
+:::
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image20.png)
+#### `logCharCreateSuccess` — Tạo nhân vật thành công
 
-Import provision vào Xcode.
+```swift
+SdkTracking.shared.logCharCreateSuccess(
+    serverId: "100",
+    withCharId: "1001",
+    withCharName: "test",
+    withCharClass: "1",
+    withDurationSec: 5
+)
+```
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image21.png)
+| Tham số | Ý nghĩa |
+| --- | --- |
+| `serverId` | Id server |
+| `withCharId` | Id nhân vật |
+| `withCharName` | Tên nhân vật |
+| `withCharClass` | Id lớp nhân vật (class_id) |
+| `withDurationSec` | Thời gian từ lúc bắt đầu tạo đến khi tạo thành công (giây) |
 
-Sai Client Id và Client Secret
+#### `logCharCreateError` — Tạo nhân vật thất bại
 
-Nếu client id và client secret sai, bạn sẽ nhận được thông báo lỗi như hình. Chọn Code Sign.
+```swift
+SdkTracking.shared.logCharCreateError(errorCode: "NAME_DUPLICATED", withCharName: "test", withServerId: "1")
+```
 
-Nếu bạn gặp lỗi khi build file IPA do provisioning key. Vui lòng kiểm tra kỹ.
+#### `logCharSelect` — Chọn nhân vật
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image22.png)
+Gọi hàm này ngay sau khi người dùng chọn server và nhân vật để vào game.
 
-Cách export file IPA để upload lên store
+```swift
+SdkTracking.shared.logCharSelect("1", withCharacterName: "name", withCharLevel: "1")
+```
 
-Vui lòng làm theo các bước sau:
+## 5. Cập nhật đồng bộ thông tin theo Nghị định 147
 
-1.
+Khác với bản Objective-C cũ (2 hàm `isNeedShowEventProfileSync` + `showEventProfile` gọi thủ công), bản Swift gộp thành **một hàm duy nhất** `checkShow147`, và SDK **tự hiển thị màn hình** đồng bộ thông tin nếu cần — bạn chỉ cần gọi và (tuỳ chọn) đọc kết quả qua completion:
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image23.png)
+```swift
+Sdk.sharedInstance.checkShow147 { needVerify in
+    // needVerify == true: SDK đã tự mở màn hình đồng bộ thông tin (Event Profile)
+    // needVerify == false: không cần làm gì thêm, có thể cho người dùng vào game
+}
+```
 
-2. Sau đó chọn Product > Archive
+Nên gọi ngay trong callback `loginSuccess`, trước khi cho vào màn hình chính của game.
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image24.png)
+## 6. Gợi ý đánh giá ứng dụng (Review App)
 
-3.
+Dùng tính năng này để gợi ý người dùng đánh giá (review) ứng dụng ngay trong app, thông qua hộp thoại đánh giá chuẩn của Apple (`SKStoreReviewController`).
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image25.png)
+```swift
+Sdk.sharedInstance.requestReview()
+```
 
-4.
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image15.png)
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image26.png)
+## 7. Các lớp/kiểu dữ liệu chính trong SDK
 
-5. Nhớ kiểm tra aps-environment là production
+**`IAPProduct`** — thông tin một sản phẩm (gói nạp):
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image27.png)
+| Thuộc tính | Mô tả |
+| --- | --- |
+| `productId` | Id sản phẩm, trùng với product id khai báo trên App Store |
+| `productDescription` | Mô tả sản phẩm |
+| `localizedPrice` | Giá sản phẩm hiển thị theo locale của thiết bị |
+| `price` / `currencyCode` / `priceLocale` | Giá gốc, mã tiền tệ, locale (dùng khi cần tự format giá) |
+| `appAmount` | Số lượng gold/vàng người dùng nhận được khi mua gói này |
+| `amount` | Số vXu tương ứng |
 
-6. Show in finder
+**`User`** — thông tin người dùng:
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image28.png)
+| Thuộc tính | Mô tả |
+| --- | --- |
+| `accountID` | Id tài khoản người dùng |
+| `accountName` | Username của tài khoản |
 
-7. Show package Contents
+**`TransactionInfo`** — thông tin giao dịch thanh toán (trả về qua `didPurchaseSuccess`/`didPurchaseFailed`):
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image29.png)
+| Thuộc tính | Mô tả |
+| --- | --- |
+| `transId` | Id giao dịch |
+| `productId` | Id sản phẩm đã mua |
+| `purchasedToken` | Token xác nhận giao dịch từ App Store |
+| `paymentOrderId` | Id đơn hàng phía hệ thống thanh toán |
+| `confirmByServer` | Trạng thái xác nhận từ server |
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image30.png)
+**`Sdk`** — singleton chính của SDK:
 
-Vui lòng gửi cho tôi file dSYM và file .ipa.
+| Thành phần | Mô tả |
+| --- | --- |
+| `Sdk.sharedInstance` | Singleton của SDK |
+| `delegate: SdkDelegate?` | Nơi nhận các callback (login, logout, thanh toán...) |
+| `environment: Environment` | `.prod` hoặc `.dev` |
+| `getCurrentAccessToken() -> String` | Lấy access token hiện tại sau khi đăng nhập thành công |
 
-Xin cảm ơn!
+## 8. Sơ đồ luồng (Flowchart)
+
+**Sơ đồ tổng quan:**
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image16.png)
+
+Sơ đồ trên mô tả luồng "Login or Start Game" — thứ tự các bước và vị trí cần gọi các hàm SDK/tracking đã giới thiệu ở các mục trên.
+
+**Sơ đồ luồng thanh toán (Payment):**
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image17.png)
+
+## 9. Import certificate vào Keychain và build IPA
+
+Chúng tôi sẽ cung cấp cho bạn các certificate cần thiết để build file `.ipa`, bao gồm: `apn_certificate`, `dev_certificate`, `dis_certificate`, development provisioning profile và production provisioning profile.
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image18.png)
+
+**Bước 1 — Import certificate vào Keychain:** double-click (hoặc kéo thả) file `.p12` để thêm vào Keychain Access.
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image19.png)
+
+Sau khi import thành công, bạn sẽ thấy certificate xuất hiện trong Keychain như hình dưới:
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image20.png)
+
+**Bước 2 — Import provisioning profile vào Xcode:** double-click file provisioning profile (hoặc kéo thả vào Xcode) để Xcode tự nhận diện.
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image21.png)
+
+:::caution[Sai Client ID / Client Secret]
+Nếu Client ID hoặc Client Secret cấu hình sai, bạn sẽ thấy thông báo lỗi ký (code signing) như hình dưới. Hãy vào mục **Signing & Capabilities**, kiểm tra lại và chọn đúng **Code Sign Identity** tương ứng với provisioning profile đã import.
+
+Nếu vẫn gặp lỗi khi build file IPA liên quan đến provisioning, vui lòng kiểm tra kỹ lại bundle id, team và certificate đã dùng để tạo provisioning profile đó.
+:::
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image22.png)
+
+### Cách export file IPA để upload lên App Store
+
+:::danger[Cần đối chiếu lại]
+Tài liệu gốc chỉ có ảnh chụp màn hình cho các bước này, không kèm mô tả bằng chữ. Nội dung 7 bước dưới đây do đội ngũ tài liệu diễn giải lại theo quy trình archive/export chuẩn của Xcode — vui lòng đối chiếu với ảnh chụp màn hình thực tế bên dưới trước khi làm theo, và báo lại nếu có bước nào không khớp.
+:::
+
+Làm theo các bước sau trong Xcode:
+
+1. Chọn đích build là **Any iOS Device (arm64)** thay vì simulator.
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image23.jpg)
+
+2. Vào menu **Product > Archive** để Xcode build và đóng gói archive.
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image24.jpg)
+
+3. Sau khi archive xong, cửa sổ **Organizer** sẽ tự mở và hiển thị bản archive vừa tạo. Chọn **Distribute App**.
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image25.jpg)
+
+4. Chọn phương thức phân phối phù hợp (ví dụ **App Store Connect** hoặc **Ad Hoc**) và làm theo các bước wizard của Xcode.
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image26.jpg)
+
+5. Trước khi export, nhớ kiểm tra kỹ mục **aps-environment** trong entitlements phải là `production` (không phải `development`), nếu không push notification sẽ không hoạt động trên bản release.
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image27.png)
+
+6. Sau khi export xong, chọn **Show in Finder** để mở thư mục chứa file `.ipa`.
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image28.png)
+
+7. Chuột phải vào file `.ipa` (hoặc file `.xcarchive`) và chọn **Show Package Contents** để lấy file dSYM bên trong nếu cần gửi debug symbol.
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image29.png)
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image30.png)
+
+:::note
+Khi cần hỗ trợ debug, vui lòng gửi cho đội ngũ VTVLive cả file **dSYM** và file **.ipa** tương ứng.
+:::
