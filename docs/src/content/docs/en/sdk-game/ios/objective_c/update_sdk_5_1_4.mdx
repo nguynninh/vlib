@@ -1,19 +1,19 @@
 ---
-title: Update SDK 5.1.4
-description: Change history and Podfile configuration when updating iTapSDK iOS to version 5.1.4.
+title: SDK 5.1.4 Update
+description: Change history and Podfile configuration when updating the iTapSDK iOS to version 5.1.4.
 ---
 
-Change history:
+## 1. Summary of changes
 
-- Updated AppsFlyerFramework to 6.17.7
+- Updated AppsFlyerFramework to 6.17.7.
+- Updated the Receive Gift feature.
+- Updated the Switch account feature.
 
-- Updated Receive Gift
+## 2. Podfile update
 
-- Updated Switch account
+Update your `Podfile` as shown below, then run `pod install` again:
 
-1. Profile
-
-```SQL
+```ruby
 platform :ios, '15.0'
 target 'SdkExample' do
   use_frameworks!
@@ -48,21 +48,20 @@ post_install do |lib|
 end
 ```
 
-Run pod:
+Then run the following commands to reinstall dependencies cleanly:
 
-`pod cache clean --all`
+```bash
+pod cache clean --all
+pod deintegrate
+pod install
+```
 
-`pod deintegrate`
+## 3. AppDelegate update
 
-`pod install`
+Update `AppDelegate.m` according to the template below to match the new SDK version:
 
-2. Update AppDelegate
-
-```Plain Text
-
+```Objective-C
 @import Firebase;
-
-
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     [[Sdk sharedInstance] initWithDelegate:self application:application launchOptions:launchOptions isProdEnv:TRUE];
@@ -72,7 +71,7 @@ Run pod:
 }
 
 -(void) getLangaugeSdk: (NSString *) langauge {
-    // print  Langauge
+    // Handle SDK language change
 }
 
 - (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
@@ -85,9 +84,14 @@ Run pod:
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_update_sdk_5_1_4_image1.png)
 
-3. Receive Gift
+## 4. Receive Gift
 
-(You need to initialize characterId and serverId before calling showReceiveGift)
+:::note
+You need to initialize `characterId` and `serverId` (for example via `mappingUser`) before calling `showReceiveGift`.
+:::
 
-When the user clicks the gift box button, please call this function:
-`[[Sdk sharedInstance] showReceiveGift];`
+When the user taps the gift box button, call the following function:
+
+```Objective-C
+[[Sdk sharedInstance] showReceiveGift];
+```

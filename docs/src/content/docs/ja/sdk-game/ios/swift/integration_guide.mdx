@@ -1,106 +1,111 @@
 ---
-title: iOS向けSwift SDK統合ガイド
-description: iOS向けSwift SDKをプロジェクトに統合するために必要なファイル一覧と手順のガイド。
+title: iOS 用 Swift SDK 統合ガイド
+description: iOS 用 Swift SDK をプロジェクトに統合するために必要なファイル一覧と手順ガイド。
 ---
 
-## Necessary documents for sdk integration
-
-1. AFNetworking.xcframework
-
-2. iTapSdk.xcframework
-
-3. ISdkTrackier.xcframework
-
-4. Gooogle-Facebook-plist
-
-5. AppConfigDefault.plist
-
-6. Gooogle-Facebook-plist.txt
-
-7. Example demo
-
-8. Mobileprovision
-
-:::caution
-上記のファイルを受け取れない場合、またはご不明点がある場合は、VTVLiveチームまでご連絡ください。
+:::note
+このページは `iTapSdk` の実際の Swift ソースコード（`Sdk` クラス、`SdkDelegate`、`SdkTracking`）に合わせて書き直されました。以前のような Objective-C の構文はもう使用していません。
 :::
 
-dev環境でのテストが完了した後、production環境用のキーを提供します。
+## 1. 必要なファイル一覧
 
-## SDK integration steps
+統合を始める前に、以下のファイル一式を準備しておく必要があります（VTVLive チームより提供）。
 
-SDKを統合するには、以下のインストール手順に従うことをお勧めします。
+1. `AFNetworking.xcframework`
+2. `iTapSdk.xcframework`
+3. `ISdkTrackier.xcframework`
+4. Google-Facebook `.plist`
+5. `AppConfigDefault.plist`
+6. Google-Facebook `.plist.txt`
+7. サンプルのデモプロジェクト（example）
+8. `.mobileprovision` ファイル
 
-プロジェクトに追加するframeworksとlibrariesを選択します。
+:::caution
+上記のファイルが不足している場合、または統合中に何かご不明な点がございましたら、VTVLive チームまでお問い合わせください。
+:::
 
-- projectでは、libraryに対して **Embed & Sign** を使用してください。
+dev 環境でのテストが完了した後、本番（production）環境用の専用キーをご提供いたします。
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image1.png)
+## 2. SDK 統合手順
 
-- UnityFrameworkでは、libraryに対して **Do Not Embed** を使用してください。
+SDK を統合するには、以下の手順を正しい順序で行ってください。
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image2.png)
+### 2.1. framework とライブラリをプロジェクトに追加
 
-## Add Notification Service Extension
+- **メインプロジェクト**（target app）では、上記に列挙したライブラリに対して **Embed & Sign** モードを選択してください。
 
-1. **Xcode** でiOSプロジェクトを開きます
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image1.png)
 
-2. File > New > Target... に移動します
+- **UnityFramework**（Unity でビルドされたゲームの場合）では、これらのライブラリに対して **Do Not Embed** モードを選択してください。ライブラリはすでにメインターゲットに embed されているため、重複を避ける必要があります。
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image3.png)
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image2.png)
 
-3. templateのchooserで **Notification Service Extension** を探して選択します
+### 2.2. Notification Service Extension の追加
 
-4. **Next** をクリックし、例えば `FirebaseNotificationServiceExtension` のような名前を付けてから **Finish** をクリックします
+このエクステンションは、SDK が push notification の内容（Firebase からの画像やカスタムデータを含む）を正しく処理・表示するのを助けます。
 
-5. 確認を求められたら、**Activate** schemeを選択します。
+1. **Xcode** で iOS プロジェクトを開きます。
+2. **File > New > Target...** を選択します。
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image4.png)
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image3.png)
 
-## Add package dependencies
+3. テンプレート一覧から **Notification Service Extension** を探して選択します。
+4. **Next** を押し、ターゲット名（例: `FirebaseNotificationServiceExtension`）を入力してから **Finish** を押します。
+5. Xcode が新しいスキームを有効化するか確認してきたら、**Activate** を選択します。
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image5.png)
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image4.png)
 
-## FirebaseNotificationServiceExtension
+### 2.3. パッケージ依存関係の追加
 
-`NotificationService.m` ファイルを開き、以下のように編集します。
+必要なパッケージ（例: Firebase）を **Swift Package Manager** 経由でプロジェクトに追加します。
 
-```Swift
-#import "NotificationService.h"
-@import Firebase;
-@import FirebaseMessaging;
-@interface NotificationService ()
-@property (nonatomic, strong) void (^contentHandler)(UNNotificationContent *contentToDeliver);
-@property (nonatomic, strong) UNMutableNotificationContent *bestAttemptContent;
-@end
-@implementation NotificationService
-- (void)didReceiveNotificationRequest:(UNNotificationRequest *)request withContentHandler:(void (^)(UNNotificationContent * _Nonnull))contentHandler {
-    self.contentHandler = contentHandler;
-    self.bestAttemptContent = [request.content mutableCopy];
-    self.bestAttemptContent.title = [NSString stringWithFormat:@"%@", self.bestAttemptContent.title];
-    [[FIRMessaging extensionHelper] populateNotificationContent:self.bestAttemptContent
-                                                withContentHandler:contentHandler];
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image5.png)
+
+### 2.4. FirebaseNotificationServiceExtension の設定
+
+エクステンションの `NotificationService.swift` ファイルを開き、以下のように内容を編集します。
+
+```swift
+import UserNotifications
+import Firebase
+import FirebaseMessaging
+
+class NotificationService: UNNotificationServiceExtension {
+
+    var contentHandler: ((UNNotificationContent) -> Void)?
+    var bestAttemptContent: UNMutableNotificationContent?
+
+    override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
+        self.contentHandler = contentHandler
+        bestAttemptContent = (request.content.mutableCopy() as? UNMutableNotificationContent)
+
+        if let bestAttemptContent = bestAttemptContent {
+            FIRMessaging.extensionHelper().populateNotificationContent(bestAttemptContent, withContentHandler: contentHandler)
+        }
+    }
+
+    override func serviceExtensionTimeWillExpire() {
+        if let contentHandler = contentHandler, let bestAttemptContent = bestAttemptContent {
+            contentHandler(bestAttemptContent)
+        }
+    }
 }
-- (void)serviceExtensionTimeWillExpire {
-    [[FIRMessaging extensionHelper] populateNotificationContent:self.bestAttemptContent
-                                                withContentHandler:self.contentHandler];
-}
-@end
 ```
 
-この時点で、Xcodeの画面は以下のように表示されます。
+この手順の後、Xcode 上のプロジェクト構造は以下の図のように表示されます。
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image6.png)
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image6.png)
 
-Appleでのログインを有効にするには、**Sign in with Apple** を統合する必要があります。
+その他:
 
-notificationを受信するには、**Push Notifications** を追加し、**Background Modes** の中で **Background Fetch** と **Remote Notifications** が有効になっていることを確認してください。
+- Apple でのログインを有効にするには、メインターゲットで **Sign in with Apple** capability を有効にする必要があります。
+- push notification を受け取るには、**Push Notifications** capability を追加し、**Background Modes** 内で **Background Fetch** と **Remote Notifications** を有効にする必要があります。
 
-## Add Facebook Config to info.plist
+### 2.5. `Info.plist` への Facebook 設定の追加
 
-facebook idとfacebook clientの情報を取得した後、以下のコードをプロジェクトの `Info.plist` に追加することをお勧めします（facebook idの設定方法の詳細はこちらを参照）。
+Facebook App ID と Facebook Client Token を取得したら（アプリ用の情報取得については VTVLive にお問い合わせください）、プロジェクトの `Info.plist` ファイルに以下の設定を追加します。以下の値はあくまで例示です。実際の情報に置き換えてください。
 
-```Swift
+```xml
 <key>CFBundleURLTypes</key>
         <array>
                 <dict>
@@ -148,454 +153,482 @@ facebook idとfacebook clientの情報を取得した後、以下のコードを
         <string>This identifier will be used to deliver personalized ads to you.</string>
 ```
 
-## Firebase Crashlytics
+### 2.6. Firebase Crashlytics の設定
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image7.png)
+ビルドの度に Crashlytics が debug symbol（dSYM）を自動アップロードできるように、メインターゲットの Build Phases に **Run Script Phase** を追加します。
 
-注意: `GoogleService-Info.plist` ファイルの実際のパスを正しく指定していることを確認してください。
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image7.png)
 
-`${PROJECT_DIR}/SdkExample/GoogleService-Info.plist` は一例であり、これは私のGoogleService-Infoファイルへの実際のパスです。
+:::note
+マシン上の実際の `GoogleService-Info.plist` ファイルへの正しいパスを指定していることを確認してください。例えば `${PROJECT_DIR}/SdkExample/GoogleService-Info.plist` はサンプルプロジェクトの構造にのみ正しいものであり、ご自身のプロジェクトに合わせて修正する必要があります。
+:::
 
-ご自身のファイルの実際の物理的な場所を正しく指すようにパスを修正してください。
+## 3. SDK 関数の統合
 
-## SDK Integrate
+SDK は、主要機能全体を扱うシングルトン `Sdk.sharedInstance` と、イベントトラッキング関数専用のシングルトン `SdkTracking.shared` を提供します。このセクションでは、初期化 → ログイン → ゲーム内の各操作 → ログアウトという実際の利用ライフサイクルの順にご案内します。
 
-1. SDKの初期化
+### 3.1. SDK の初期化
 
-`AppDelegate.h` ファイルで、以下のようにSDKをimportできます。
+`AppDelegate.swift` で SDK を import し、`AppDelegate` が `SdkDelegate` プロトコルに準拠するよう宣言し、アプリ起動直後に SDK を初期化します。
 
-```Swift
-#import <UIKit/UIKit.h>
-#import <iTapSdk/iTapSdk.h>
-@interface AppDelegate : UIResponder <UIApplicationDelegate,SdkDelegate>
+```swift
+import UIKit
+import iTapSdk
 
-@property (strong, nonatomic) UIWindow *window;
-@end
-```
+@main
+class AppDelegate: UIResponder, UIApplicationDelegate, SdkDelegate {
 
-`AppDelegate.m` ファイルで、以下のように `SdkDelegate` のcallbackを実装します。
-
-```Swift
-- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-    [[Sdk sharedInstance] initWithDelegate:self application:application launchOptions:launchOptions isProdEnv:TRUE];
-    [[Sdk sharedInstance] setLocationFloatingButton:20 with:100];
-    [[Sdk sharedInstance] setGrantEnv:YES];
-    return YES;
-}
-```
-
-統合時には、以下のコードでdev環境に切り替えることをお勧めします。
-
-```Swift
-[[Sdk sharedInstance] initWithDelegate:self application:application launchOptions:launchOptions isProdEnv:FALSE];
-```
-
-権限リクエストのpopupを表示するには、`setGrantEnv` を `YES` に設定します。表示したくない場合は、`setGrantEnv` を `NO` に設定します。
-
-2. Login
-
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image8.png)
-
-ゲーム開始前に必ずこの関数を呼び出してください。ユーザーが初めてゲームに入る場合はdialogが表示され、ユーザーが再度戻ってきた場合はSDKがtokenをrefreshします。loginについての詳細は以下のflowchartを参照してください。
-
-```Swift
-[[Sdk sharedInstance] login];
-```
-
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image9.png)
-
-すべてが成功すると、以下のようなlogin dialogが表示されます。
-
-ログインに成功すると、user情報がSDKに登録された `SdkDelegate` の `loginSuccess` 関数に返されます。
-
-3. Logout
-
-ログアウトに成功すると、user情報がSDKに登録された `SdkDelegate` の `logout` 関数に返されます。
-
-```Swift
-[[Sdk sharedInstance] logout];
-```
-
-4. List products
-
-store（Play StoreまたはApple Store）から商品リストを取得します。ユーザーが支払いを行う際にtracking systemへ送信する商品価格を取得する必要があるため、この関数を呼び出すことをお勧めします。
-
-注意: ログイン成功後にのみ実行されるコード内にラップすることをお勧めします。
-
-```Swift
--(void)loginSuccess:(User *)user withAccessToken:(NSString *)accessToken andRefreshToken:(NSString *)refreshToken{
-    
-    [[Sdk sharedInstance] listProducts:^(NSError *error, NSArray<IAPProduct*> * _Nullable result) {
-        
-    }];
-    [[Sdk sharedInstance] showOrHideFloatingButton];
-    
-}
-```
-
-5. Update language（appが複数言語をサポートしている場合）
-
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image10.png)
-
-言語を変更する際は、対応するパラメータで **`[[Sdk sharedInstance] setLanguage:@"vi"];`** 関数を呼び出してください。
-
-`vi` はベトナム語、
-
-`en` は英語、
-
-`th` はタイ語、
-
-`zh` は中国語です。
-
-6. Show countdown
-
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image11.png)
-
-上記のようなcountdown画面を表示するには、AppDelegate内でログイン完了後に **`[[Sdk sharedInstance] showCountdown]`** を呼び出すだけで構いません。
-
-> `-(void)loginSuccess:(User *)user withAccessToken:(NSString *)accessToken andRefreshToken:(NSString *)refreshToken{`
->
-> `[[Sdk sharedInstance] listProducts:^(NSError *error, NSArray<IAPProduct*> * `**`_Nullable`**` result) {`
->
-> `}];`
->
-> `[[Sdk sharedInstance] showOrHideFloatingButton];`
->
-> `[[Sdk sharedInstance] showCountdown];`
->
-> `}`
-
-7. Receive Gift
-
-ユーザーがgift boxボタンをクリックしたら、この関数を呼び出してください。
-`[[Sdk sharedInstance] showReceiveGift:@"1111111" withCharacterId:@"11112"];`
-
-serverId: ServerのId
-
-characterId: CharacterのId
-
-8. Make payment
-
-注意: productIdは `listProducts` から取得します
-
-forCharacterId: ゲーム内のCharacter ID
-
-onServerId: Server ID
-
-```Swift
-[[Sdk sharedInstance] payProduct:itemProduct.productId forCharacterId:@"17782088632480" onServerId:@"s6003"];
-```
-
-支払いの成功または失敗は、SDKに登録された `SdkDelegate` の `didPurchaseSuccess` または `didPurchaseFailed` 関数に情報が返されます。
-
-6. Set Language
-
-以下の関数を呼び出すことで、希望する言語に変更できます。
-
-```Swift
-[[Sdk sharedInstance] setLanguage: @"vi"];
-```
-
-言語が変更された際に通知するdelegateを提供しています: `getLangaugeSdk`
-
-7. Show dashboard
-
-```Swift
-[[Sdk sharedInstance] showOrHideFloatingButton];
-```
-
-8. Map User
-
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image12.png)
-
-```Swift
--(void) mappingUser:(NSString*)characterName
-        characterId:(NSString*)characterId
-     characterLevel:(NSString*)characterLevel
-        serverName:(NSString*)serverName
-          serverId:(NSString*)serverId;
-          
- example. : 
- [[SdkTracking sharedInstance] mappingUser: @"name" characterId : @1 characterLevel : @1 serverName : @"test" serverId : @"1"];
-```
-
-characterName: Characterの名前
-
-characterId: CharacterのId
-
-characterLevel: CharacterのLevel
-
-serverName: Serverの名前
-
-serverId: ServerのId
-
-## Receive Gift
-
-（`showReceiveGift` を呼び出す前に `characterId` と `serverId` を初期化しておく必要があります）
-
-ユーザーがgift boxボタンをクリックしたら、この関数を呼び出してください。
-`[[Sdk sharedInstance] showReceiveGift];`
-
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image13.png)
-
-## Log Function
-
-注意:
-
-グレー色: Game内のステップ
-
-黄色: GameがSDKを呼び出す
-
-これらの関数をgameのどこに配置するかについては、Flowchartの「Login or Start Game」の項目を参照してください。
-
-```Java
--(void) logStartGameScreen;
--(void) logEnterGamePlay;
--(void) logStartTutorial;
--(void) logCompleteTutorial;
-```
-
-`logEnterGamePlay`
-
-「Enter Game」ボタンを押した後、ユーザーがGame Play画面に入ったことをtrackingします
-
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image14.png)
-
-リソースのダウンロードを開始します。
-
-```Swift
-// リソースのダウンロードを開始
--(void) logPatchStart: (NSNumber * _Nullable) sizeMB withVerrsion:(NSString * _Nullable)version withNetworkType: (NSString * _Nullable) networkType;
-
-sizeMB : 更新が必要なpatchファイルの容量（Mb単位で表示）
-version : インストールパッケージのversion
-
-example. : 
- [[SdkTracking sharedInstance] logPatchStart: @"500" withVerrsion : @"1.0.1" withNetworkType : @"wifi"];
-```
-
-リソースのダウンロードが完了しました。
-
-```Swift
--(void) logPatchSuccess: (NSNumber * _Nullable) durationSec withAvgSpeedKbps: (NSNumber * _Nullable) avgSpeedKbps withCdnNode :(NSString * _Nullable) cdnNode;
-
-durationSec : ダウンロード開始からダウンロード完了までの時間。update_typeがStoreの場合に取得できるか確認してください。
-avgSpeedKbps : 更新が必要なpatchファイルの容量（Mb単位で表示）
-cdnNode : cdn note
-
-example. : 
- [[SdkTracking sharedInstance] logPatchSuccess: @"500" withAvgSpeedKbps : @"111" avgSpeedKbps : @"450" withCdnNode: @"192.168.0.2"];
-```
-
-リソースのダウンロードに失敗しました。
-
-```Swift
-//リソースのダウンロードが中断または失敗した場合。
--(void) logPatchError:(NSString * _Nullable) errorCode withRetryCount:(NSNumber * _Nullable) retryCount withFailedUrl:(NSString * _Nullable) failedUrl withCdnNode :(NSString * _Nullable) cdnNode;
-
-errorCode : エラーコード
-retryCount : エラーによるretryが必要な回数
-failedUrl : エラーが発生したurl
-cdnNode : エラーが発生したcdn note
-
-example. : 
- [[SdkTracking sharedInstance] logPatchError: @"500" withRetryCount: @1 withFailedUrl: @"https://cdn.game.com/patch/v120.zip" withCdnNode : @"192.168.0.2"];
-```
-
-リソースの解凍を開始します。
-
-```Swift
-//ダウンロード完了直後に、解凍・インストールを開始します。
--(void) logExtractStarted:(NSString * _Nullable) totalSizeMb withTotalSize: (NSString * _Nullable) totalSize;
-
-totalSizeMb : 解凍後の容量（mb単位）
-totalSize : 解凍が必要なpatch内のファイル数。取得できない場合は省略してください
-
-example. : 
- [[SdkTracking sharedInstance] logExtractStarted: @"500" withTotalSize : @"400"];
-```
-
-ダウンロードしたデータの解凍が完了しました。
-
-```Swift
-//解凍が完了したら、Login画面に入る準備が整います。
--(void) logExtractFinished:(NSNumber * _Nullable) durationSec withResultCode:(NSString * _Nullable) resultCode;
-durationSec : 解凍開始から成功までにかかった時間
-resultCode : duration_sec, result_code (0: OK, 1: Disk Full)
-
-example. : 
- [[SdkTracking sharedInstance] logExtractFinished: @100 withResultCode : @"ok"];
-```
-
-キャラクター作成を開始します。
-
-```Swift
--(void) logCharCreateStart: (NSString * _Nullable) serverId;
-
-serverId : server id
-
-example. : 
- [[SdkTracking sharedInstance] logCharCreateStart: @"100"];
-```
-
-注意: キャラクター作成開始から完了までの時間を計測するtimerを設定してください。
-
-キャラクター作成に成功しました。
-
-```Objective-C
--(void) logCharCreateSuccess: (NSString * _Nullable) serverId withCharId:(NSString * _Nullable) charId withCharName:(NSString * _Nullable) charName withCharClass:(NSString * _Nullable) charClass withDurationSec: (NSNumber * _Nullable) durationSec;
-
-serverId : Id of Server
-charId : id of Character
-charName : name of Character
-charClass : Class_id
-durationSec : キャラクター作成開始から作成成功までの時間。
-
-example. : 
- [[SdkTracking sharedInstance] logCharCreateSuccess: @"500" withVerrsion : @"1.0.1" withNetworkType : @"wifi"];
-```
-
-キャラクター作成に失敗しました。
-
-```Objective-C
--(void) logCharCreateError:(NSString * _Nullable) errorCode withCharName:(NSString * _Nullable) charName withServerId:(NSString * _Nullable) serverId;
-
-errorCode : error code
-charName : name of Character
-serverId : Id of Server
-
-example. : 
- [[SdkTracking sharedInstance] logCharCreateError: @"NAME_DUPLICATED" withCharName : @"test" withServerId :@"1"];
-```
-
-serverを選択した後、この関数を呼び出してください。
-
-```Objective-C
--(void) logCharSelect: (NSString * _Nullable) charId withCharacterName :(NSString* _Nonnull) characterName withCharLevel:(NSString * _Nullable) charLevel;
-serverId : Id of Server
-charId : id of Character
-example. : 
- [[SdkTracking sharedInstance] logCharSelect: @"1" withCharacterName : @"name " withCharLevel : @"1"];
-```
-
-## Update event 147
-
-```Swift
-dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-    BOOL needShow = [[Sdk sharedInstance] isNeedShowEventProfileSync];
-    if (needShow) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [[Sdk sharedInstance] showEventProfile];   // showEventProfileはUIがあるため必ずmain threadで実行する必要がある
-        });
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        Sdk.sharedInstance.initWithDelegate(self, application: application, launchOptions: launchOptions, environment: .prod)
+        Sdk.sharedInstance.setLocationFloatingButton(width: 20, height: 100)
+        return true
     }
-});
+
+    // 必須: Facebook / Google Sign-In の URL コールバックを転送
+    func application(_ application: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
+        return Sdk.sharedInstance.application(application, open: url, options: options)
+    }
+}
 ```
 
-`isNeedShowEventProfile()` が true を返す場合、Event Profile画面を開きます。
+- 統合・テスト中は、`environment` を `.dev` に切り替えてください。
 
-`isNeedShowEventProfile()` が false を返す場合、ユーザーを直接ゲームに入らせます。
-
-## Review App
-
-この機能を使用してApple reviewを促すことができます。
-
-```Objective-C
-[[Sdk sharedInstance] requestReview];
+```swift
+Sdk.sharedInstance.initWithDelegate(self, application: application, launchOptions: launchOptions, environment: .dev)
 ```
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image15.png)
+`AppDelegate` の extension 内に、`SdkDelegate` の各コールバック（すべて optional のため、必要なものだけ実装してください）を実装します。
 
-## Class in SDK
+```swift
+extension AppDelegate {
 
-| **IAPProduct** | |
+    func sdk(_ sdk: Sdk, loginSuccess user: User, accessToken: String, refreshToken: String) {
+        // ログイン成功 — user.accountID、user.accountName
+    }
+
+    func sdk(_ sdk: Sdk, logout user: User) {
+        // ログアウト成功
+    }
+
+    func sdk(_ sdk: Sdk, didPurchaseSuccess transactionInfo: TransactionInfo) {
+        // 決済成功 — transactionInfo.productId、transactionInfo.transId...
+    }
+
+    func sdk(_ sdk: Sdk, didPurchaseFailed transactionInfo: TransactionInfo, purchaseError: String?) {
+        // 決済失敗
+    }
+
+    func sdk(_ sdk: Sdk, getLanguage language: String) {
+        // SDK の言語が変更された
+    }
+
+    func sdkCloseLoginView() {
+        // ログイン画面が閉じられた
+    }
+}
+```
+
+:::note
+Swift 版 SDK は、初期化時に権限リクエスト（通知、App Tracking Transparency）を自動的に処理します。旧 Objective-C 版のような、権限ポップアップを手動でオン/オフする関数はありません。
+:::
+
+### 3.2. ログイン（Login）
+
+**ゲームが開始する前に** 必ず `login()` を呼び出してください。ユーザーが初めてゲームに入る場合、SDK が自動的にログインダイアログを表示します。既にログイン済みの場合は、自動的にトークンをリフレッシュします。
+
+```swift
+Sdk.sharedInstance.login()
+```
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image8.png)
+
+すべて正常であれば、上図のようにログインダイアログが表示されます。
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image9.png)
+
+ユーザーのログインが成功すると、あらかじめ SDK に登録しておいた `SdkDelegate` の `sdk(_:loginSuccess:accessToken:refreshToken:)` コールバック経由でユーザー情報が返されます。
+
+### 3.3. ログアウト（Logout）
+
+```swift
+Sdk.sharedInstance.logout()
+```
+
+ログアウトが成功すると、SDK はゲームに通知するために `sdk(_:logout:)` コールバックを呼び出します。また、`Sdk.sharedInstance.forceLogout()` もあります。これはサーバー側の refresh token 破棄 API を呼び出さずに即座にログアウトするもので、サーバー側でログインセッションが既に期限切れになっている場合に使用します。
+
+### 3.4. 商品一覧の取得（List products）
+
+App Store から商品（課金パッケージ）の一覧を取得します。決済時にトラッキングシステムへ商品価格を送信する必要があるため、この関数はログイン成功直後に呼び出すことを推奨します。
+
+```swift
+func sdk(_ sdk: Sdk, loginSuccess user: User, accessToken: String, refreshToken: String) {
+    Sdk.sharedInstance.listProducts { error, products in
+        // products: [IAPProduct]?
+    }
+    Sdk.sharedInstance.showOrHideFloatingButton()
+}
+```
+
+:::note
+上記の例のように、`listProducts` の呼び出しは `loginSuccess` コールバック内に配置することを推奨します。それ以上待つ必要はありません。
+:::
+
+### 3.5. 言語の変更（Set Language）
+
+SDK の表示言語を変更するには、以下の関数を呼び出してください。
+
+```swift
+Sdk.sharedInstance.setLanguage(input: "vi")
+```
+
+サポートされている言語コード:
+
+| コード | 言語 |
 | --- | --- |
-| productId | 商品Id。google store上のproduct idです |
-| localizedPrice | localeに応じた商品価格 |
-| appAmount | このパッケージを購入した際にユーザーが受け取るgold数 |
+| `vi` | ベトナム語 |
+| `en` | 英語 |
+| `th` | タイ語 |
+| `zh` | 中国語 |
 
-| accountID | User Id |
+SDK は、言語が変更されるたび（初回初期化時も含む）に `SdkDelegate` の `sdk(_:getLanguage:)` コールバックを呼び出します。
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image10.png)
+
+### 3.6. カウントダウンの表示（Show countdown）
+
+下図のようなカウントダウン UI を表示するには、**ログイン完了後に** `showCountdown()` を呼び出してください。
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image11.png)
+
+```swift
+func sdk(_ sdk: Sdk, loginSuccess user: User, accessToken: String, refreshToken: String) {
+    Sdk.sharedInstance.listProducts { error, products in }
+    Sdk.sharedInstance.showOrHideFloatingButton()
+    Sdk.sharedInstance.showCountdown()
+}
+```
+
+`Sdk.sharedInstance.isCountdownAvailable() -> Bool` を使うことで、カウントダウンイベントが利用可能かどうかを事前に確認できます。
+
+### 3.7. ギフト受け取り（Receive Gift）
+
+```swift
+Sdk.sharedInstance.showReceiveGift()
+```
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image13.png)
+
+:::note
+この関数はパラメータを受け取りません。SDK は、直近に呼び出された `mappingUser(...)`（[3.10 節](#310-キャラクター情報のマッピングmap-user)）から保存された `characterId`/`serverId` を自動的に取得します。そのため、ギフト受け取りボタンを表示する前に `mappingUser` を呼び出しておく必要があります。
+:::
+
+### 3.8. 決済（Make payment）
+
+```swift
+Sdk.sharedInstance.payProduct(itemProduct.productId ?? "", forCharacterId: "17782088632480", onServerId: "s6003")
+```
+
+- 第一引数（`productID`）: [3.4 節](#34-商品一覧の取得list-products)の `listProducts` の結果に含まれる `IAPProduct` の `productId` を使用します。
+- `forCharacterId`: ゲーム内のキャラクター Id。
+- `onServerId`: サーバー Id。
+
+決済結果（成功または失敗）は、それぞれ `SdkDelegate` の `sdk(_:didPurchaseSuccess:)` または `sdk(_:didPurchaseFailed:purchaseError:)` コールバック経由で返されます。
+
+### 3.9. フローティングボタンの表示/非表示（Show dashboard）
+
+```swift
+Sdk.sharedInstance.showOrHideFloatingButton()
+```
+
+### 3.10. キャラクター情報のマッピング（Map User）
+
+ユーザーの現在のキャラクター情報を SDK に送信するために、この関数を呼び出します。トラッキングや、[3.7 節](#37-ギフト受け取りreceive-gift)の `showReceiveGift()` を含む、キャラクター/サーバーに関連する各機能に使用されます。
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image12.png)
+
+```swift
+Sdk.sharedInstance.mappingUser(
+    "name",
+    characterId: "1",
+    characterLevel: "1",
+    serverName: "test",
+    serverId: "1"
+)
+```
+
+- 第一引数（ラベルなし）: キャラクター名。
+- `characterId`: キャラクターの Id。
+- `characterLevel`: キャラクターの現在のレベル。
+- `serverName`: サーバー名。
+- `serverId`: サーバー Id。
+
+SDK にはさらに `Sdk.sharedInstance.levelUpUser(_:characterId:characterLevel:serverName:serverId:vip:)` があります。キャラクターがレベルアップまたは VIP がアップした際に呼び出すことで、トラッキングシステムが達成したマイルストーンを記録します。
+
+## 4. トラッキングログ関数（SdkTracking）
+
+以下の関数は（`Sdk.sharedInstance` とは異なる）シングルトン **`SdkTracking.shared`** 上にあり、システムにトラッキングイベントを送信するために使用します。アプリを開く、パッチのダウンロード、キャラクター作成からゲームに入るまで、ゲームプレイのライフサイクル全体にわたるユーザー行動を計測するのに役立ちます。
+
+元のフローチャートにおける色の凡例:
+
+- **グレー**: ゲーム側で処理されるステップ。
+- **黄色**: ゲームが SDK の関数を呼び出す必要があるポイント。
+
+これらのログ関数をゲームの実行フローのどこに正確に配置すべきかについては、[フローチャート](#6-フローチャートflowchart)の「Login or Start Game」の項もあわせてご参照ください。
+
+```swift
+SdkTracking.shared.logStartGameScreen()
+SdkTracking.shared.logEnterGamePlay()
+SdkTracking.shared.logStartTutorial()
+SdkTracking.shared.logCompleteTutorial()
+```
+
+#### `logEnterGamePlay()`
+
+「Enter Game」ボタンを押した直後、ユーザーがゲームプレイ画面に入ったイベントをトラッキングします。
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image14.png)
+
+#### `logPatchStart` — リソース（パッチ）のダウンロード開始
+
+```swift
+SdkTracking.shared.logPatchStart(sizeMB: 500, withVerrsion: "1.0.1", withNetworkType: "wifi")
+```
+
+| パラメータ | 意味 |
 | --- | --- |
-| accountName | Username |
+| `sizeMB` | ダウンロードが必要なパッチファイルの容量（MB） |
+| `withVerrsion` | インストールパッケージのバージョン |
+| `withNetworkType` | ネットワークの種類（`"wifi"`、`"4g"`など） |
 
-| **Sdk** | |
+#### `logPatchSuccess` — リソースのダウンロード完了
+
+```swift
+SdkTracking.shared.logPatchSuccess(durationSec: 450, withAvgSpeedKbps: 111, withCdnNode: "192.168.0.2")
+```
+
+| パラメータ | 意味 |
 | --- | --- |
-| sharedInstance | objectのsingletonを取得 |
-| showOrHideFloatingButton() | floating buttonを表示または非表示にする |
-| accessToken | ログイン成功後にaccess tokenを取得 |
+| `durationSec` | ダウンロード開始からダウンロード完了までの時間（秒） |
+| `withAvgSpeedKbps` | 平均ダウンロード速度（Kbps） |
+| `withCdnNode` | ダウンロードに使用した CDN ノード |
 
-## Flowchart
+#### `logPatchError` — リソースのダウンロード失敗
 
-1. Flowchart
+```swift
+SdkTracking.shared.logPatchError(errorCode: "500", withRetryCount: 1, withFailedUrl: "https://cdn.game.com/patch/v120.zip", withCdnNode: "192.168.0.2")
+```
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image16.png)
+| パラメータ | 意味 |
+| --- | --- |
+| `errorCode` | エラーコード |
+| `withRetryCount` | エラーによるリトライ回数 |
+| `withFailedUrl` | ダウンロードに失敗した URL |
+| `withCdnNode` | エラーが発生した CDN ノード |
 
-2. Login or Start game
+#### `logExtractStarted` — リソースの解凍開始
 
-3. Payment
+```swift
+SdkTracking.shared.logExtractStarted(totalSizeMb: "500", withTotalSize: "400")
+```
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image17.png)
+| パラメータ | 意味 |
+| --- | --- |
+| `totalSizeMb` | 解凍後の容量（MB） |
+| `withTotalSize` | パッチ内で解凍が必要なファイル数 |
 
-## Import certificates to keychain
+#### `logExtractFinished` — 解凍完了
 
-ipaをbuildするために、apn_certificate、dev_certificate、dis_certificate、development provision、production provisionを含むcertificateを提供します。
+```swift
+SdkTracking.shared.logExtractFinished(durationSec: 100, withResultCode: "ok")
+```
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image18.png)
+| パラメータ | 意味 |
+| --- | --- |
+| `durationSec` | 解凍開始から完了までの時間（秒） |
+| `withResultCode` | 結果コード — `"ok"`/`0`: OK、`1`: Disk Full |
 
-p12ファイルをクリックしてkeychainに追加します。
+#### `logCharCreateStart` — キャラクター作成開始
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image19.png)
+```swift
+SdkTracking.shared.logCharCreateStart(serverId: "100")
+```
 
-その後、keychain上に以下のようにcertificateが表示されます。
+:::note
+作成開始から完了までの時間を自動計測する内部タイマーを設定することを推奨します。この値は下記の `logCharCreateSuccess` に渡す必要があります。
+:::
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image20.png)
+#### `logCharCreateSuccess` — キャラクター作成成功
 
-provisionをXcodeにimportします。
+```swift
+SdkTracking.shared.logCharCreateSuccess(
+    serverId: "100",
+    withCharId: "1001",
+    withCharName: "test",
+    withCharClass: "1",
+    withDurationSec: 5
+)
+```
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image21.png)
+| パラメータ | 意味 |
+| --- | --- |
+| `serverId` | サーバー Id |
+| `withCharId` | キャラクター Id |
+| `withCharName` | キャラクター名 |
+| `withCharClass` | キャラクターのクラス Id（class_id） |
+| `withDurationSec` | 作成開始から作成成功までの時間（秒） |
 
-Client IdとClient Secretの誤り
+#### `logCharCreateError` — キャラクター作成失敗
 
-client idとclient secretが間違っている場合、画像のようなエラーメッセージが表示されます。Code Signを選択してください。
+```swift
+SdkTracking.shared.logCharCreateError(errorCode: "NAME_DUPLICATED", withCharName: "test", withServerId: "1")
+```
 
-provisioning keyが原因でIPAファイルのbuild時にエラーが発生した場合は、よく確認してください。
+#### `logCharSelect` — キャラクター選択
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image22.png)
+ユーザーがサーバーとキャラクターを選択してゲームに入った直後にこの関数を呼び出してください。
 
-storeへアップロードするためのIPAファイルのexport方法
+```swift
+SdkTracking.shared.logCharSelect("1", withCharacterName: "name", withCharLevel: "1")
+```
 
-以下の手順に従ってください。
+## 5. Nghị định（政令）147 に基づく情報同期のアップデート
 
-1.
+旧 Objective-C 版（`isNeedShowEventProfileSync` と `showEventProfile` の 2 つの関数を手動で呼び出す方式）とは異なり、Swift 版では**単一の関数** `checkShow147` に統合されており、必要な場合は SDK が**自動的に画面を表示**します。呼び出すだけで、（任意で）completion 経由で結果を読み取ることができます。
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image23.png)
+```swift
+Sdk.sharedInstance.checkShow147 { needVerify in
+    // needVerify == true: SDK が情報同期画面（Event Profile）を自動的に開いた
+    // needVerify == false: これ以上何もする必要はなく、ユーザーをゲームに入らせてよい
+}
+```
 
-2. その後、Product > Archive を選択します
+`loginSuccess` コールバック内で、ゲームのメイン画面に入る前に呼び出すことを推奨します。
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image24.png)
+## 6. アプリ評価の依頼（Review App）
 
-3.
+Apple 標準の評価ダイアログ（`SKStoreReviewController`）を通じて、アプリ内でユーザーにアプリの評価（review）を依頼するために、この機能を使用します。
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image25.png)
+```swift
+Sdk.sharedInstance.requestReview()
+```
 
-4.
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image15.png)
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image26.png)
+## 7. SDK 内の主要なクラス/データ型
 
-5. aps-environmentがproductionになっていることを必ず確認してください
+**`IAPProduct`** — 商品（課金パッケージ）1 件の情報:
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image27.png)
+| プロパティ | 説明 |
+| --- | --- |
+| `productId` | 商品 Id。App Store 上で宣言された商品 id と一致 |
+| `productDescription` | 商品の説明 |
+| `localizedPrice` | 端末のロケールに応じて表示される商品価格 |
+| `price` / `currencyCode` / `priceLocale` | 元の価格、通貨コード、ロケール（価格を自前でフォーマットする必要がある場合に使用） |
+| `appAmount` | このパッケージ購入時にユーザーが受け取る gold（ゴールド）の数量 |
+| `amount` | 対応する vXu の数量 |
 
-6. Show in finder
+**`User`** — ユーザー情報:
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image28.png)
+| プロパティ | 説明 |
+| --- | --- |
+| `accountID` | ユーザーアカウントの Id |
+| `accountName` | アカウントのユーザー名 |
 
-7. Show package Contents
+**`TransactionInfo`** — 決済の取引情報（`didPurchaseSuccess`/`didPurchaseFailed` 経由で返される）:
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image29.png)
+| プロパティ | 説明 |
+| --- | --- |
+| `transId` | 取引 Id |
+| `productId` | 購入した商品の Id |
+| `purchasedToken` | App Store からの取引確認トークン |
+| `paymentOrderId` | 決済システム側の注文 Id |
+| `confirmByServer` | サーバー側からの確認状態 |
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image30.png)
+**`Sdk`** — SDK のメインシングルトン:
 
-dSYMファイルと.ipaファイルを送っていただけますようお願いいたします。
+| 要素 | 説明 |
+| --- | --- |
+| `Sdk.sharedInstance` | SDK のシングルトン |
+| `delegate: SdkDelegate?` | 各種コールバック（ログイン、ログアウト、決済など）を受け取る場所 |
+| `environment: Environment` | `.prod` または `.dev` |
+| `getCurrentAccessToken() -> String` | ログイン成功後の現在の access token を取得 |
 
-ありがとうございます!
+## 8. フローチャート（Flowchart）
 
+**全体の流れ図:**
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image16.png)
+
+上図は「Login or Start Game」の流れを示しており、上記の各セクションで紹介した SDK/トラッキング関数の呼び出し順序と位置を表しています。
+
+**決済（Payment）の流れ図:**
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image17.png)
+
+## 9. Keychain への証明書のインポートと IPA のビルド
+
+`.ipa` ファイルのビルドに必要な証明書（`apn_certificate`、`dev_certificate`、`dis_certificate`、development provisioning profile、production provisioning profile を含む）をご提供いたします。
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image18.png)
+
+**手順 1 — 証明書を Keychain にインポート:** `.p12` ファイルをダブルクリック（またはドラッグ＆ドロップ）して Keychain Access に追加します。
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image19.png)
+
+インポートに成功すると、下図のように Keychain 内に証明書が表示されます。
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image20.png)
+
+**手順 2 — provisioning profile を Xcode にインポート:** provisioning profile ファイルをダブルクリック（または Xcode にドラッグ＆ドロップ）すると、Xcode が自動的に認識します。
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image21.png)
+
+:::caution[Client ID / Client Secret の誤り]
+Client ID または Client Secret の設定が誤っている場合、下図のような署名（code signing）エラーが表示されます。**Signing & Capabilities** で設定を確認し、インポートした provisioning profile に対応する正しい **Code Sign Identity** を選択してください。
+
+IPA ファイルのビルド時に provisioning 関連のエラーが引き続き発生する場合は、その provisioning profile を作成する際に使用した bundle id、team、証明書を再度よくご確認ください。
+:::
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image22.png)
+
+### App Store にアップロードするための IPA ファイルのエクスポート方法
+
+:::danger[要照合]
+元のドキュメントには、これらの手順に対するスクリーンショットのみが含まれており、文章による説明はありませんでした。以下の 7 つの手順の内容は、ドキュメントチームが Xcode 標準の archive/export の手順に沿って解釈し直したものです。実際に手順を進める前に、下記の実際のスクリーンショットと照らし合わせてご確認いただき、一致しない箇所があればご報告ください。
+:::
+
+Xcode で以下の手順に従ってください。
+
+1. ビルド先をシミュレーターではなく **Any iOS Device (arm64)** に設定します。
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image23.jpg)
+
+2. **Product > Archive** メニューを選択し、Xcode に archive をビルド・パッケージ化させます。
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image24.jpg)
+
+3. archive が完了すると **Organizer** ウィンドウが自動的に開き、作成された archive が表示されます。**Distribute App** を選択します。
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image25.jpg)
+
+4. 適切な配布方法（例: **App Store Connect** または **Ad Hoc**）を選択し、Xcode のウィザードの手順に従います。
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image26.jpg)
+
+5. エクスポート前に、entitlements 内の **aps-environment** が `development` ではなく `production` になっていることを必ず確認してください。そうでない場合、リリース版で push notification が動作しません。
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image27.png)
+
+6. エクスポートが完了したら、**Show in Finder** を選択して `.ipa` ファイルが格納されたフォルダを開きます。
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image28.png)
+
+7. `.ipa` ファイル（または `.xcarchive` ファイル）を右クリックし、**Show Package Contents** を選択すると、debug symbol の送付が必要な場合に内部の dSYM ファイルを取得できます。
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image29.png)
+
+![](BASE_STORAGE/v2.0.0/ios_swift_integration_guide_image30.png)
+
+:::note
+デバッグのサポートが必要な場合は、対応する **dSYM** ファイルと **.ipa** ファイルの両方を VTVLive チームまで送付してください。
+:::

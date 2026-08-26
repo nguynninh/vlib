@@ -1,81 +1,67 @@
 ---
-title: iOS SDK 5.3.0 Integration Guide
-description: List of required files and step-by-step instructions for integrating iTapSDK iOS version 5.3.0 into your project.
+title: iOS SDK Integration Guide (Objective-C)
+description: List of required files and step-by-step instructions for integrating the iTapSDK iOS Objective-C version into a project.
 ---
 
-## Necessary documents for sdk integration
+## 1. Required files
 
-1. AFNetworking.xcframework
+Before integrating, you need to prepare all of the following files (provided by the VTVLive team):
 
-2. FBAEMKit.xcframework
-
-3. FBSDKCoreKit_Basics.xcframework
-
-4. FBSDKCoreKit.xcframework
-
-5. FBSDKLoginKit.xcframework
-
-6. FBSDKShareKit.xcframework
-
-7. iTapSdk.xcframework
-
-8. ISdkTrackier.xcframework
-
-9. RecapchaSdk.xcframework
-
-10. RXSwift.xcframework
-
-11. Gooogle-Facebook-plist
-
-12. AppConfigDefault.plist
-
-13. Gooogle-Facebook-plist.txt
-
-14. Podfile
-
-15. Example demo
-
-16. Mobileprovision
+1. `AFNetworking.xcframework`
+2. `FBAEMKit.xcframework`
+3. `FBSDKCoreKit_Basics.xcframework`
+4. `FBSDKCoreKit.xcframework`
+5. `FBSDKLoginKit.xcframework`
+6. `FBSDKShareKit.xcframework`
+7. `iTapSdk.xcframework`
+8. `ISdkTrackier.xcframework`
+9. `RecapchaSdk.xcframework`
+10. `RXSwift.xcframework`
+11. Google-Facebook `.plist`
+12. `AppConfigDefault.plist`
+13. Google-Facebook `.plist.txt`
+14. `Podfile`
+15. Sample demo project (example)
+16. `.mobileprovision` file
 
 :::caution
-If you did not receive the files above, or have any questions, please contact the VTVLive team.
+If you did not receive all of the files above, or have any questions during integration, please contact the VTVLive team for support.
 :::
 
-Once testing in the dev environment is complete, we will provide the key for the production environment.
+After testing is complete in the dev environment, we will provide you with a dedicated key for the production environment.
 
-## SDK integration steps
+## 2. SDK integration steps
 
-To integrate the SDK, we recommend following the installation instructions below.
+To integrate the SDK, follow the steps below in the exact order given.
 
-Select the frameworks and libraries to add to the project.
+### 2.1. Add frameworks and libraries to the project
 
-- In the project, please use **Embed & Sign** for the libraries.
+- In the **main project** (app target), select **Embed & Sign** for the libraries listed above.
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image1.png)
 
-- In UnityFramework, please use **Do Not Embed** for the libraries.
+- In **UnityFramework** (if the game is built from Unity), select **Do Not Embed** for the libraries — since these libraries are already embedded in the main target, this avoids duplication.
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image2.png)
 
-## Add Notification Service Extension
+### 2.2. Add the Notification Service Extension
 
-1. Open your iOS project in **Xcode**
+This extension helps the SDK correctly process and display push notification content (including notifications with images or custom data from Firebase).
 
-2. Go to File > New > Target...
+1. Open the iOS project in **Xcode**.
+2. Go to **File > New > Target...**
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image3.png)
 
-3. In the template chooser, find and select **Notification Service Extension**
-
-4. Click **Next**, name it something like `FirebaseNotificationServiceExtension`, then click **Finish**
-
-5. When prompted, select **Activate** for the scheme.
+3. In the template list, find and select **Notification Service Extension**.
+4. Click **Next**, name the target — for example `FirebaseNotificationServiceExtension` — then click **Finish**.
+5. When Xcode asks whether to activate the new scheme, choose **Activate**.
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image4.png)
 
-## Install Firebase SDK for the Extension
+### 2.3. Install the Firebase SDK for the Extension
 
-1. Open `Podfile` and **add a new target** for the extension:
+1. Open the `Podfile` and **add a new target** dedicated to the extension you just created:
 
 ```Swift
 source 'https://mirrors.tuna.tsinghua.edu.cn/git/CocoaPods/Specs.git'
@@ -127,21 +113,20 @@ post_install do |lib|
 end
 ```
 
-2. Run the following command to install dependencies:
+2. Run the following commands to cleanly reinstall dependencies:
 
-```Swift
-pod cache clean --all 
+```bash
+pod cache clean --all
 pod deintegrate
 pod install
 ```
 
-## FirebaseNotificationServiceExtension
+### 2.4. Configure FirebaseNotificationServiceExtension
 
-1. Open the `.xcworkspace` file
+1. Open the `.xcworkspace` file (not the `.xcodeproj`).
+2. Edit the extension's `NotificationService.m` file as follows:
 
-2. Then edit the `NotificationService.m` file as shown below:
-
-```Swift
+```Objective-C
 #import "NotificationService.h"
 @import Firebase;
 @import FirebaseMessaging;
@@ -164,19 +149,20 @@ pod install
 @end
 ```
 
-At this point, the Xcode interface will look as follows.
+After this step, the project structure in Xcode will look like the image below:
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image5.png)
 
-To enable Apple sign-in, you need to integrate **Sign in with Apple**.
+In addition:
 
-To receive notifications, you need to add **Push Notifications** and make sure **Background Fetch** and **Remote Notifications** are enabled under **Background Modes**.
+- To enable Sign in with Apple, you need to enable the **Sign in with Apple** capability for the main target.
+- To receive push notifications, you need to add the **Push Notifications** capability, and also enable **Background Fetch** and **Remote Notifications** under **Background Modes**.
 
-## Add Facebook Config to info.plist
+### 2.5. Add Facebook configuration to `Info.plist`
 
-Once you have the Facebook ID and Facebook client information, you should add the code below to the project's `Info.plist` (see the details on configuring the Facebook ID here):
+Once you have the Facebook App ID and Facebook Client Token (contact VTVLive to get this information for your app), add the following configuration to your project's `Info.plist` file. The values below are only illustrative examples — replace them with your actual information:
 
-```Swift
+```xml
 <key>CFBundleURLTypes</key>
         <array>
                 <dict>
@@ -224,30 +210,32 @@ Once you have the Facebook ID and Facebook client information, you should add th
         <string>This identifier will be used to deliver personalized ads to you.</string>
 ```
 
-## Firebase Crashlytics
+### 2.6. Configure Firebase Crashlytics
+
+Add a **Run Script Phase** to the main target's Build Phases with the content below, so Crashlytics automatically uploads the debug symbol (dSYM) on every build:
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image6.png)
 
-```Bash
+```bash
 echo "Symbols Directory"
 echo "${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}"
 #Firebase
 "${PODS_ROOT}/FirebaseCrashlytics/upload-symbols" -gsp "${PROJECT_DIR}/SdkExample/GoogleService-Info.plist" -p ios "${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}"
 ```
 
-Note: make sure you point to the actual path of the `GoogleService-Info.plist` file on disk.
+:::note
+The path `${PROJECT_DIR}/SdkExample/GoogleService-Info.plist` in the example above is only correct for the structure of our sample project. You need to update this path so it points to the actual location of the `GoogleService-Info.plist` file in your project.
+:::
 
-`${PROJECT_DIR}/SdkExample/GoogleService-Info.plist` is an example; it is the actual path to my GoogleService-Info file.
+## 3. Integrating the SDK functions
 
-Please adjust the path so that it points to the actual physical location of your file.
+This section explains how to call the SDK's main functions in code, following the correct usage lifecycle order: initialize → login → in-game actions → logout.
 
-## SDK Integrate
+### 3.1. Initialize the SDK
 
-1. Initialize the SDK
+In the `AppDelegate.h` file, import the SDK and declare `AppDelegate` conforming to the `SdkDelegate` protocol:
 
-In the `AppDelegate.h` file, you can import the SDK as shown below:
-
-```Swift
+```Objective-C
 #import <UIKit/UIKit.h>
 #import <iTapSdk/iTapSdk.h>
 @interface AppDelegate : UIResponder <UIApplicationDelegate,SdkDelegate>
@@ -256,9 +244,9 @@ In the `AppDelegate.h` file, you can import the SDK as shown below:
 @end
 ```
 
-In the `AppDelegate.m` file, implement the callback for SdkDelegate as shown below:
+In the `AppDelegate.m` file, initialize the SDK as soon as the app launches:
 
-```Swift
+```Objective-C
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     [[Sdk sharedInstance] initWithDelegate:self application:application launchOptions:launchOptions isProdEnv:TRUE];
     [[Sdk sharedInstance] setLocationFloatingButton:20 with:100];
@@ -267,45 +255,43 @@ In the `AppDelegate.m` file, implement the callback for SdkDelegate as shown bel
 }
 ```
 
-When integrating, you should switch to the dev environment using this code:
+- While integrating and testing, change `isProdEnv` to `FALSE` to run in the dev environment:
 
-```Swift
+```Objective-C
 [[Sdk sharedInstance] initWithDelegate:self application:application launchOptions:launchOptions isProdEnv:FALSE];
 ```
 
-To show the permission request popup, set `setGrantEnv` to `YES`. If you don't want it shown, set `setGrantEnv` to `NO`.
+- `setGrantEnv:YES` — displays the permission request popup (ads, tracking...) when entering the game. Set `setGrantEnv:NO` if you don't want this popup shown.
 
-2. Login
+### 3.2. Login
 
-![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image7.png)
+Always call the `login` function **before the game starts**. The SDK will automatically show the login dialog if this is the user's first time entering the game, or automatically refresh the token if the user has logged in before. See the [Flowchart section](#6-sơ-đồ-luồng-flowchart) below for more details on the login flow.
 
-Always remember to call this function before the game starts. Internally, a dialog will appear if the user enters the game for the first time, or the SDK will refresh the token when the user returns. You can see more about login in the flowchart section below.
-
-```Swift
+```Objective-C
 [[Sdk sharedInstance] login];
 ```
 
+![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image7.png)
+
+If everything succeeds, the login dialog will display as shown above.
+
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image8.png)
 
-If everything succeeds, you will see the login dialog as shown below.
+When the user logs in successfully, the user information is returned via the `loginSuccess` function of the `SdkDelegate` you registered with the SDK.
 
-If login is successful, the user information will be returned in the `loginSuccess` function of the SdkDelegate registered with the SDK.
+### 3.3. Logout
 
-3. Logout
-
-If logout is successful, the user information will be returned in the `logout` function of the SdkDelegate registered with the SDK.
-
-```Swift
+```Objective-C
 [[Sdk sharedInstance] logout];
 ```
 
-4. List products
+When logout succeeds, the SDK will call back the `logout` function of `SdkDelegate` to notify the game.
 
-Get the list of products from the store (Play Store or Apple Store). You should call this function because you need the product prices to send to the tracking system when the user makes a payment.
+### 3.4. List products
 
-Note: it is recommended to wrap this in code that only runs after a successful login.
+Get the list of products (top-up packages) from the store (App Store). You should call this function right after a successful login, since you'll need the product price to send to the tracking system when the user makes a payment.
 
-```Swift
+```Objective-C
 -(void)loginSuccess:(User *)user withAccessToken:(NSString *)accessToken andRefreshToken:(NSString *)refreshToken{
     
     [[Sdk sharedInstance] listProducts:^(NSError *error, NSArray<IAPProduct*> * _Nullable result) {
@@ -316,273 +302,289 @@ Note: it is recommended to wrap this in code that only runs after a successful l
 }
 ```
 
-5. Update language (if the app supports multiple languages)
+:::note
+You should place the `listProducts` call in code that only runs **after a successful login**, as in the example above.
+:::
+
+### 3.5. Set Language
+
+Call the following function to change the SDK's display language, with the corresponding parameter:
+
+```Objective-C
+[[Sdk sharedInstance] setLanguage:@"vi"];
+```
+
+Supported language codes:
+
+| Code | Language |
+| --- | --- |
+| `vi` | Vietnamese |
+| `en` | English |
+| `th` | Thai |
+| `zh` | Chinese |
+
+The SDK also provides the `getLangaugeSdk` delegate to notify the game whenever the language is changed.
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image9.png)
 
-When changing the language, please call the function **`[[Sdk sharedInstance] setLanguage:@"vi"];`** with the corresponding parameter:
+### 3.6. Show countdown
 
-`vi` for Vietnamese,
-
-`en` for English,
-
-`th` for Thai,
-
-`zh` for Chinese.
-
-6. Show countdown
+To display the countdown UI as shown below, call `showCountdown` **after login is complete**, inside the `loginSuccess` callback of `AppDelegate`:
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image10.png)
 
-To display the countdown UI shown above, simply call **`[[Sdk sharedInstance] showCountdown]`** after login completes in AppDelegate.
+```Objective-C
+-(void)loginSuccess:(User *)user withAccessToken:(NSString *)accessToken andRefreshToken:(NSString *)refreshToken{
 
-> `-(void)loginSuccess:(User *)user withAccessToken:(NSString *)accessToken andRefreshToken:(NSString *)refreshToken{`
->
-> `[[Sdk sharedInstance] listProducts:^(NSError *error, NSArray<IAPProduct*> * `**`_Nullable`**` result) {`
->
-> `}];`
->
-> `[[Sdk sharedInstance] showOrHideFloatingButton];`
->
-> `[[Sdk sharedInstance] showCountdown];`
->
-> `}`
+    [[Sdk sharedInstance] listProducts:^(NSError *error, NSArray<IAPProduct*> * _Nullable result) {
 
-7. Receive Gift
+    }];
+    [[Sdk sharedInstance] showOrHideFloatingButton];
+    [[Sdk sharedInstance] showCountdown];
 
-When the user clicks the gift box button, please call this function:
-`[[Sdk sharedInstance] showReceiveGift:@"1111111" withCharacterId:@"11112"];`
+}
+```
 
-serverId: Server Id
+### 3.7. Receive Gift
 
-characterId: Character Id
+When the user taps the gift box button, call the following function:
 
-8. Make payment
+```Objective-C
+[[Sdk sharedInstance] showReceiveGift:@"1111111" withCharacterId:@"11112"];
+```
 
-Note: productId is obtained from `listProducts`
+- `serverId`: the server's Id.
+- `characterId`: the character's Id.
 
-forCharacterId: Character ID in the game
+### 3.8. Make payment
 
-onServerId: Server ID
-
-```Swift
+```Objective-C
 [[Sdk sharedInstance] payProduct:itemProduct.productId forCharacterId:@"17782088632480" onServerId:@"s6003"];
 ```
 
-Whether the payment succeeds or fails, the information will be returned in the `didPurchaseSuccess` or `didPurchaseFailed` function of the SdkDelegate registered with the SDK.
+- `itemProduct.productId`: obtained from the result of `listProducts` in [section 3.4](#34-lấy-danh-sách-sản-phẩm-list-products).
+- `forCharacterId`: the character's Id in the game.
+- `onServerId`: the server's Id.
 
-6. Set Language
+The payment result (success or failure) will be returned via the `didPurchaseSuccess` or `didPurchaseFailed` function of the `SdkDelegate` you registered with the SDK.
 
-You can change the desired language by calling the following function:
+### 3.9. Show/hide the floating button (Show dashboard)
 
-```Swift
-[[Sdk sharedInstance] setLanguage: @"vi"];
-```
-
-We provide a delegate to notify when the language changes: `getLangaugeSdk`
-
-7. Show dashboard
-
-```Swift
+```Objective-C
 [[Sdk sharedInstance] showOrHideFloatingButton];
 ```
 
-8. Map User
+### 3.10. Map User
+
+Call this function to send the user's current character information to the SDK, used for tracking and other features related to the character/server:
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image11.png)
 
-```Swift
+```Objective-C
 -(void) mappingUser:(NSString*)characterName
         characterId:(NSString*)characterId
      characterLevel:(NSString*)characterLevel
         serverName:(NSString*)serverName
           serverId:(NSString*)serverId;
-          
- example. : 
- [[SdkTracking sharedInstance] mappingUser: @"name" characterId : @1 characterLevel : @1 serverName : @"test" serverId : @"1"];
+
+// Example:
+[[SdkTracking sharedInstance] mappingUser: @"name" characterId : @1 characterLevel : @1 serverName : @"test" serverId : @"1"];
 ```
 
-characterName: Character name
+- `characterName`: character name.
+- `characterId`: character Id.
+- `characterLevel`: the character's current level.
+- `serverName`: server name.
+- `serverId`: server Id.
 
-characterId: Character Id
+## 4. Receive Gift (no parameters)
 
-characterLevel: Character level
+The SDK also provides another overload of the receive gift function, which **does not require passing `characterId`/`serverId`** — used when you have already called `mappingUser` in [section 3.10](#310-ánh-xạ-thông-tin-nhân-vật-map-user), since at that point the SDK already knows the current character/server information.
 
-serverName: Server name
+When the user taps the gift box button, call:
 
-serverId: Server Id
-
-## Receive Gift
-
-(You need to initialize characterId and serverId before calling showReceiveGift)
-
-When the user clicks the gift box button, please call this function:
-`[[Sdk sharedInstance] showReceiveGift];`
+```Objective-C
+[[Sdk sharedInstance] showReceiveGift];
+```
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image12.png)
 
-## Log Function
+## 5. Log Function
+
+The functions below are used to send tracking events to the system, helping to measure user behavior across the entire game-playing lifecycle — from opening the app, downloading patches, creating a character, to entering the game.
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image13.png)
 
-Note:
+Color legend in the diagram above:
 
-Gray: Steps that happen in the Game
+- **Gray**: processing steps on the Game side.
+- **Yellow**: points where the Game needs to call SDK functions.
 
-Yellow: Game calls into the SDK
+See the "Login or Start Game" section in the [Flowchart](#6-sơ-đồ-luồng-flowchart) for the exact position where the log functions below should be placed in the game's flow.
 
-Please refer to the "Login or Start Game" section in the Flowchart to see how to place these functions in the game.
-
-```Java
+```Objective-C
 -(void) logStartGameScreen;
 -(void) logEnterGamePlay;
 -(void) logStartTutorial;
 -(void) logCompleteTutorial;
 ```
 
-`logEnterGamePlay`
+#### `logEnterGamePlay`
 
-Tracks the user entering the Game Play screen after tapping the "Enter Game" button
+Tracks the event of the user entering the gameplay screen, right after tapping the "Enter Game" button.
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image14.png)
 
-Start downloading resources.
+#### `logPatchStart` — Start downloading resources (patch)
 
-```Swift
-// Start downloading resources
+```Objective-C
 -(void) logPatchStart: (NSNumber * _Nullable) sizeMB withVerrsion:(NSString * _Nullable)version withNetworkType: (NSString * _Nullable) networkType;
 
-sizeMB : Size of the patch file to update (shown in Mb)
-version : install package version
+// sizeMB  : the patch file size that needs downloading, in MB
+// version : installation package version
 
-example. : 
- [[SdkTracking sharedInstance] logPatchStart: @"500" withVerrsion : @"1.0.1" withNetworkType : @"wifi"];
+// Example:
+[[SdkTracking sharedInstance] logPatchStart: @"500" withVerrsion : @"1.0.1" withNetworkType : @"wifi"];
 ```
 
-Resource download complete.
+#### `logPatchSuccess` — Resource download completed
 
-```Swift
+```Objective-C
 -(void) logPatchSuccess: (NSNumber * _Nullable) durationSec withAvgSpeedKbps: (NSNumber * _Nullable) avgSpeedKbps withCdnNode :(NSString * _Nullable) cdnNode;
 
-durationSec : Time from when the download started to when it finished. Check whether this can be obtained when update_type is Store.
-avgSpeedKbps : Size of the patch file to update (shown in Mb)
-cdnNode : cdn node 
+// durationSec  : time from start of download to completion (seconds)
+// avgSpeedKbps : average download speed (Kbps)
+// cdnNode      : CDN node used for the download
 
-example. : 
- [[SdkTracking sharedInstance] logPatchSuccess: @"500" withAvgSpeedKbps : @"111" avgSpeedKbps : @"450" withCdnNode: @"192.168.0.2"];
+// Example:
+[[SdkTracking sharedInstance] logPatchSuccess: @"500" withAvgSpeedKbps : @"111" avgSpeedKbps : @"450" withCdnNode: @"192.168.0.2"];
 ```
 
-Resource download failed.
+#### `logPatchError` — Resource download failed
 
-```Swift
-//When the resource download is interrupted or fails.
+Call this when the resource download is interrupted or fails.
+
+```Objective-C
 -(void) logPatchError:(NSString * _Nullable) errorCode withRetryCount:(NSNumber * _Nullable) retryCount withFailedUrl:(NSString * _Nullable) failedUrl withCdnNode :(NSString * _Nullable) cdnNode;
 
-errorCode : error code
-retryCount : number of retries needed due to error
-failedUrl : failed url 
-cdnNode : failed cdn node 
+// errorCode   : error code
+// retryCount  : number of retries due to error
+// failedUrl   : URL that failed during download
+// cdnNode     : CDN node where the error occurred
 
-example. : 
- [[SdkTracking sharedInstance] logPatchError: @"500" withRetryCount: @1 withFailedUrl: @"https://cdn.game.com/patch/v120.zip" withCdnNode : @"192.168.0.2"];
+// Example:
+[[SdkTracking sharedInstance] logPatchError: @"500" withRetryCount: @1 withFailedUrl: @"https://cdn.game.com/patch/v120.zip" withCdnNode : @"192.168.0.2"];
 ```
 
-Start extracting resources.
+#### `logExtractStarted` — Start extracting resources
 
-```Swift
-//Immediately after download completes, start extracting/installing.
+Call this right after the download finishes, when extraction/installation begins.
+
+```Objective-C
 -(void) logExtractStarted:(NSString * _Nullable) totalSizeMb withTotalSize: (NSString * _Nullable) totalSize;
 
-totalSizeMb : Size after extraction, in Mb
-totalSize : Number of files in the patch to extract. Skip if not available
+// totalSizeMb : size after extraction, in MB
+// totalSize   : number of files in the patch to extract (omit if unavailable)
 
-example. : 
- [[SdkTracking sharedInstance] logExtractStarted: @"500" withTotalSize : @"400"];
+// Example:
+[[SdkTracking sharedInstance] logExtractStarted: @"500" withTotalSize : @"400"];
 ```
 
-Extraction of downloaded data complete.
+#### `logExtractFinished` — Resource extraction completed
 
-```Swift
-//When extraction is complete, ready to enter the Login screen.
+Call this when extraction is finished and the app is ready to show the login screen.
+
+```Objective-C
 -(void) logExtractFinished:(NSNumber * _Nullable) durationSec withResultCode:(NSString * _Nullable) resultCode;
-durationSec : time from the start of extraction to success 
-resultCode : duration_sec, result_code (0: OK, 1: Disk Full)
 
-example. : 
- [[SdkTracking sharedInstance] logExtractFinished: @100 withResultCode : @"ok"];
+// durationSec : time from start of extraction to completion (seconds)
+// resultCode  : result code — 0: OK, 1: Disk Full
+
+// Example:
+[[SdkTracking sharedInstance] logExtractFinished: @100 withResultCode : @"ok"];
 ```
 
-Start character creation.
+#### `logCharCreateStart` — Start character creation
 
-```Swift
+```Objective-C
 -(void) logCharCreateStart: (NSString * _Nullable) serverId;
 
-serverId : server id 
+// serverId : server id
 
-example. : 
- [[SdkTracking sharedInstance] logCharCreateStart: @"100"];
+// Example:
+[[SdkTracking sharedInstance] logCharCreateStart: @"100"];
 ```
 
-NOTE: set up a timer to measure the time from the start until character creation finishes.
+:::note
+You should set up an internal timer to measure the time from the start of character creation to completion — this value needs to be passed to `logCharCreateSuccess` below.
+:::
 
-Character created successfully.
+#### `logCharCreateSuccess` — Character creation succeeded
 
 ```Objective-C
 -(void) logCharCreateSuccess: (NSString * _Nullable) serverId withCharId:(NSString * _Nullable) charId withCharName:(NSString * _Nullable) charName withCharClass:(NSString * _Nullable) charClass withDurationSec: (NSNumber * _Nullable) durationSec;
 
-serverId : Id of Server
-charId : id of Character
-charName : name of Character
-charClass : Class_id 
-durationSec : measured from the start of character creation to success.
+// serverId    : server id
+// charId      : character id
+// charName    : character name
+// charClass   : character class id (class_id)
+// durationSec : time from start of creation to success (seconds)
 
-example. : 
- [[SdkTracking sharedInstance] logCharCreateSuccess: @"500" withVerrsion : @"1.0.1" withNetworkType : @"wifi"];
+// Example:
+[[SdkTracking sharedInstance] logCharCreateSuccess: @"500" withVerrsion : @"1.0.1" withNetworkType : @"wifi"];
 ```
 
-Character creation failed.
+:::danger[Example may be incorrect]
+The example line above is kept unchanged from the original document, but the `withVerrsion`/`withNetworkType` parameters do not match the `logCharCreateSuccess` function signature declared above (it appears to have been mistakenly copied from the `logPatchStart` example). Please confirm the correct parameters with the SDK development team before using.
+:::
+
+#### `logCharCreateError` — Character creation failed
 
 ```Objective-C
 -(void) logCharCreateError:(NSString * _Nullable) errorCode withCharName:(NSString * _Nullable) charName withServerId:(NSString * _Nullable) serverId;
 
-errorCode : error code 
-charName : name of Character
-serverId : Id of Server
+// errorCode : error code
+// charName  : character name
+// serverId  : server id
 
-example. : 
- [[SdkTracking sharedInstance] logCharCreateError: @"NAME_DUPLICATED" withCharName : @"test" withServerId :@"1"];
+// Example:
+[[SdkTracking sharedInstance] logCharCreateError: @"NAME_DUPLICATED" withCharName : @"test" withServerId :@"1"];
 ```
 
-After selecting the server, call this function.
+#### `logCharSelect` — Select character
+
+Call this function right after the user selects a server and a character to enter the game.
 
 ```Objective-C
 -(void) logCharSelect: (NSString * _Nullable) charId withCharacterName :(NSString* _Nonnull) characterName withCharLevel:(NSString * _Nullable) charLevel;
-serverId : Id of Server
-charId : id of Character
-example. : 
- [[SdkTracking sharedInstance] logCharSelect: @"1" withCharacterName : @"name " withCharLevel : @"1"];
+
+// charId        : character id
+// characterName : character name
+// charLevel     : character level
+
+// Example:
+[[SdkTracking sharedInstance] logCharSelect: @"1" withCharacterName : @"name " withCharLevel : @"1"];
 ```
 
-## Update event 147
+## 6. Sync information updates per Decree 147
 
-```Swift
+```Objective-C
 dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
     BOOL needShow = [[Sdk sharedInstance] isNeedShowEventProfileSync];
     if (needShow) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            [[Sdk sharedInstance] showEventProfile];   // showEventProfile must definitely run on the main thread since it involves UI
+            [[Sdk sharedInstance] showEventProfile];   // showEventProfile must run on the main thread because it involves UI
         });
     }
 });
 ```
 
-If `isNeedShowEventProfile()` returns true, open the Event Profile screen.
+- If `isNeedShowEventProfile()` returns `true`: open the information sync screen (Event Profile) for the user to update.
+- If `isNeedShowEventProfile()` returns `false`: allow the user to enter the game directly, no need to show this screen.
 
-If `isNeedShowEventProfile()` returns false, allow the user to enter the game directly.
+## 7. Review App
 
-## Review App
-
-You can use this feature to prompt an Apple review.
+Use this feature to prompt the user to review the app directly within the app, via Apple's standard review dialog.
 
 ```Objective-C
 [[Sdk sharedInstance] requestReview];
@@ -590,103 +592,107 @@ You can use this feature to prompt an Apple review.
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image15.png)
 
-## Class in SDK
+## 8. SDK classes
 
-| **IAPProduct** | |
+**`IAPProduct`** — information about a product (top-up package):
+
+| Property | Description |
 | --- | --- |
-| productId | Product Id, the product id on the google store |
-| localizedPrice | Product price based on locale |
-| appAmount | Amount of gold the user receives when purchasing this package |
+| `productId` | Product Id, matching the product id declared on the App Store |
+| `localizedPrice` | Product price displayed according to the device's locale |
+| `appAmount` | Amount of gold the user receives when purchasing this package |
 
-| accountID | User Id |
+**`User`** — user information:
+
+| Property | Description |
 | --- | --- |
-| accountName | Username |
+| `accountID` | User account Id |
+| `accountName` | Account username |
 
-| **Sdk** | |
+**`Sdk`** — the main SDK object:
+
+| Member | Description |
 | --- | --- |
-| sharedInstance | Get the singleton of the object |
-| showOrHideFloatingButton() | Show or hide the floating button |
-| accessToken | Get the access token after a successful login |
+| `sharedInstance` | Gets the SDK's singleton instance |
+| `showOrHideFloatingButton()` | Shows or hides the floating button |
+| `accessToken` | Gets the access token after a successful login |
 
-## Flowchart
+## 9. Flowchart
 
-1. Flowchart
+**Overview diagram:**
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image16.png)
 
-2. Login or Start game
+The diagram above describes the "Login or Start Game" flow — the step order and the positions where the SDK/tracking functions introduced in the sections above should be called.
 
-3. Payment
+**Payment flow diagram:**
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image17.png)
 
-## Import certificates to keychain
+## 10. Import certificate into Keychain and build the IPA
 
-We will provide you with certificates including apn_certificate, dev_certificate, dis_certificate, development provision, production provision to build the ipa.
+We will provide you with the certificates needed to build the `.ipa` file, including: `apn_certificate`, `dev_certificate`, `dis_certificate`, a development provisioning profile, and a production provisioning profile.
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image18.png)
 
-
-Click on the p12 file to add it to the keychain.
+**Step 1 — Import the certificate into Keychain:** double-click (or drag and drop) the `.p12` file to add it to Keychain Access.
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image19.png)
 
-
-You will then see the certificate in the keychain as follows.
+After a successful import, you'll see the certificate appear in Keychain as shown below:
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image20.png)
 
-
-Import the provision into Xcode.
+**Step 2 — Import the provisioning profile into Xcode:** double-click the provisioning profile file (or drag it into Xcode) for Xcode to automatically recognize it.
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image21.png)
 
+:::caution[Wrong Client ID / Client Secret]
+If the Client ID or Client Secret is configured incorrectly, you will see a code signing error message like the one shown below. Go to **Signing & Capabilities**, check again, and select the correct **Code Sign Identity** matching the imported provisioning profile.
 
-Wrong Client Id and Client Secret
-
-If the client id and client secret are wrong, you will get an error message as shown in the image. Select Code Sign.
-
-If you encounter an error building the IPA file due to a provisioning key, please check carefully.
+If you still encounter provisioning-related errors when building the IPA file, please carefully double-check the bundle id, team, and certificate used to create that provisioning profile.
+:::
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image22.png)
 
+### How to export the IPA file to upload to the App Store
 
-How to export the IPA file to upload to the store
+:::danger[Needs verification]
+The original document only has screenshots for these steps, with no accompanying text description. The content of the 7 steps below was interpreted by the documentation team based on Xcode's standard archive/export process — please cross-check with the actual screenshots below before following along, and report back if any step doesn't match.
+:::
 
-Please follow these steps:
+Follow these steps in Xcode:
 
-1.
+1. Select **Any iOS Device (arm64)** as the build destination instead of a simulator.
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image23.png)
 
-
-2. Then select Product > Archive
+2. Go to **Product > Archive** for Xcode to build and package the archive.
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image24.png)
 
-3.
+3. Once archiving is complete, the **Organizer** window will automatically open and display the archive you just created. Select **Distribute App**.
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image25.png)
 
-4.
+4. Choose the appropriate distribution method (for example **App Store Connect** or **Ad Hoc**) and follow Xcode's wizard steps.
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image26.png)
 
-5. Remember to check that aps-environment is production
+5. Before exporting, be sure to check that the **aps-environment** entry in the entitlements is `production` (not `development`) — otherwise push notifications will not work in the release build.
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image27.png)
 
-
-6. Show in finder
+6. Once the export is complete, select **Show in Finder** to open the folder containing the `.ipa` file.
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image28.png)
 
-7. Show package Contents
+7. Right-click the `.ipa` file (or the `.xcarchive` file) and select **Show Package Contents** to get the dSYM file inside if you need to send debug symbols.
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image29.png)
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_integration_guide_image30.png)
 
-Please send me the dSYM file and the .ipa file.
-
-Thank you!
+:::note
+When you need debugging support, please send the VTVLive team both the **dSYM** file and the corresponding **.ipa** file.
+:::

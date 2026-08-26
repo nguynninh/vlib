@@ -1,23 +1,21 @@
 ---
-title: Update SDK 5.0.0
-description: iTapSDK iOSをバージョン5.0.0に更新する際の変更履歴とPodfile構成。
+title: SDK 5.0.0 へのアップデート
+description: iTapSDK iOS を 5.0.0 にアップデートする際の変更履歴と Podfile の設定。
 ---
 
-変更履歴:
+## 1. 変更概要
 
-- iOS 15 platformの更新
+- デプロイメントターゲットを iOS 15 に引き上げ。
+- Firebase を 12.0.0 にアップデート。
+- AppsFlyerFramework を 6.17.2 にアップデート。
+- トラッキングロジックをアップデート。
+- FirebaseCrashlytics 12.0.0 を追加。
 
-- Firebase 12.0.0の更新
+## 2. Podfile のアップデート
 
-- AppsFlyerFramework 6.17.2の更新
+`Podfile` を以下のように修正し、`pod install` を再実行してください。
 
-- trackingの更新
-
-- FirebaseCrashlytics 12.0.0の追加
-
-1. PodFile
-
-```Swift
+```ruby
 platform :ios, '15.0'
 target 'SdkExample' do
   use_frameworks!
@@ -51,17 +49,18 @@ post_install do |lib|
 end
 ```
 
-2. Config lib
+## 3. Xcode でのライブラリ再設定
+
+`pod install` が完了したら、`.xcworkspace` ファイルでプロジェクトを開き直し、下図のように各ライブラリの **Embed & Sign** / **Do Not Embed** 設定を確認してください（詳しい設定方法は[統合ガイド](/sdk-game/ios/objective_c/integration_guide)を参照）。
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_update_sdk_5_0_0_image1.png)
 
-3. Update AppDelegate
+## 4. AppDelegate のアップデート
 
-```Swift
+新しい SDK バージョンに合わせて、`AppDelegate.m` を以下のテンプレートのようにアップデートしてください。
 
+```Objective-C
 @import Firebase;
-
-
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     [[Sdk sharedInstance] initWithDelegate:self application:application launchOptions:launchOptions isProdEnv:TRUE];
@@ -71,7 +70,7 @@ end
 }
 
 -(void) getLangaugeSdk: (NSString *) langauge {
-    // print  Langauge
+    // SDK の言語が変更されたときの処理
 }
 
 - (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
@@ -82,27 +81,24 @@ end
 }
 ```
 
-4. Update log
+## 5. キャラクター作成ログ関数のアップデート
 
-**logStartedCharacterCreation**または**logFinishedCharacterCreation**を呼び出す際は、以下のパラメータを追加する必要があります。
+このバージョンから、`logStartedCharacterCreation` または `logFinishedCharacterCreation` を呼び出す際に、以下のパラメータを追加で渡す必要があります。
 
-- **logStartedCharacterCreation**には、**serverId**と**serverName**を指定してください。
+- `logStartedCharacterCreation`: `serverId` と `serverName` を追加。
+- `logFinishedCharacterCreation`: `characterId` と `characterName` を追加。
 
-- **logFinishedCharacterCreation**には、**characterId**と**characterName**を指定してください。
-
-```Swift
+```Objective-C
 -(void) logStartedCharacterCreation:(NSString *) serverId withSeverName: (NSString *) serverName;
 -(void) logFinishedCharacterCreation:(NSString *) characterId characterName :(NSString*)characterName;
 ```
 
-5. Firebase Crashlytics
+## 6. Firebase Crashlytics 用 dSYM のアップロード
 
-.ipaファイルのビルドに成功したら、「Show in Finder」をクリックします。
+`.ipa` ファイルのビルドが完了したら、**Show in Finder** を選択して dSYM ファイルを取得し、`.ipa` ファイルとあわせて VTVLive チームに送付してください。
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_update_sdk_5_0_0_image2.png)
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_update_sdk_5_0_0_image3.png)
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_update_sdk_5_0_0_image4.png)
-
-dSYMファイルと.ipaファイルを私に送ってください。

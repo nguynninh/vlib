@@ -1,19 +1,19 @@
 ---
-title: Update SDK 5.1.4
+title: 更新 SDK 5.1.4
 description: 将 iTapSDK iOS 更新至 5.1.4 版本时的变更历史与 Podfile 配置。
 ---
 
-变更历史：
+## 1. 变更摘要
 
-- 更新 AppsFlyerFramework 6.17.7
+- 更新 AppsFlyerFramework 至 6.17.7。
+- 更新收礼（Receive Gift）功能。
+- 更新切换账号（Switch account）功能。
 
-- 更新 Receive Gift
+## 2. 更新 Podfile
 
-- 更新 Switch account
+按下方内容修改 `Podfile`，然后重新运行 `pod install`：
 
-1. Profile
-
-```SQL
+```ruby
 platform :ios, '15.0'
 target 'SdkExample' do
   use_frameworks!
@@ -48,21 +48,20 @@ post_install do |lib|
 end
 ```
 
-Run pod:
+之后运行以下命令，彻底重新安装依赖：
 
-`pod cache clean --all`
+```bash
+pod cache clean --all
+pod deintegrate
+pod install
+```
 
-`pod deintegrate`
+## 3. 更新 AppDelegate
 
-`pod install`
+按下方示例更新 `AppDelegate.m`，以匹配新版本 SDK：
 
-2. Update AppDelegate
-
-```Plain Text
-
+```Objective-C
 @import Firebase;
-
-
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     [[Sdk sharedInstance] initWithDelegate:self application:application launchOptions:launchOptions isProdEnv:TRUE];
@@ -72,7 +71,7 @@ Run pod:
 }
 
 -(void) getLangaugeSdk: (NSString *) langauge {
-    // print  Langauge
+    // 处理 SDK 语言变化时的逻辑
 }
 
 - (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
@@ -85,10 +84,14 @@ Run pod:
 
 ![](BASE_STORAGE/v2.0.0/ios_objective_c_update_sdk_5_1_4_image1.png)
 
-3. Receive Gift
+## 4. 收礼（Receive Gift）
 
-（您需要在调用 showReceiveGift 之前初始化 characterId 和 serverId）
+:::note
+您需要先初始化 `characterId` 和 `serverId`（例如通过 `mappingUser`），然后才能调用 `showReceiveGift`。
+:::
 
-当用户点击 gift box 按钮时，请调用此函数：
-`[[Sdk sharedInstance] showReceiveGift];`
+当用户点击礼物盒（gift box）按钮时，调用以下函数：
 
+```Objective-C
+[[Sdk sharedInstance] showReceiveGift];
+```

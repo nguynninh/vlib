@@ -8,6 +8,17 @@ import Navigation from './Navigation.astro';
     <Navigation />
 </div>
 
+<script>
+	const locales = ['vi', 'en', 'zh', 'ja'];
+	const locale = location.pathname.split('/')[1];
+
+	if (locales.includes(locale)) {
+		try {
+			localStorage.setItem('docs-mobile-locale', locale);
+		} catch {}
+	}
+</script>
+
 <style>
     .custom-header {
         position: relative;
