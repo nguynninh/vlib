@@ -1,0 +1,106 @@
+---
+title: "简介"
+description: "Web Documentation 平台概述：其目标、文档结构、内容格式以及设计原则。"
+---
+
+## 概述
+
+**Web Documentation** 是一个基于 Web 的文档平台，旨在为技术文档提供一个结构化、可搜索且易于维护的知识库。
+
+该平台使用 **MDX** 作为主要内容格式，允许文档在需要时将标准 Markdown 与交互式组件结合使用。
+
+这种方式让文档内容保持简单易读，同时仍具备构建更丰富技术文档所需的灵活性。
+
+## 目标
+
+Web Documentation 平台旨在：
+
+* 将技术文档组织成清晰的层级结构。
+* 以版本受控的 MDX 文件形式存储文档。
+* 支持 Markdown 语法和自定义 MDX 组件。
+* 在文档页面之间提供快速导航。
+* 支持代码示例和技术图表（Mermaid）。
+* 在整个文档范围内提供全文搜索。
+* 支持浅色和深色主题。
+* 支持多语言。
+* 在桌面端、平板和移动端提供响应式体验。
+
+## 文档结构
+
+文档被划分为几个主要区域：
+
+```text
+Web Documentation
+│
+├── Overview
+├── Architecture
+├── Development
+├── Documentation
+├── UI
+├── Features
+├── Deployment
+├── Maintenance
+└── Changelog
+```
+
+每个部分都专注于平台的某一特定方面，从架构、开发到部署和维护。
+
+## 内容格式
+
+文档页面使用 **MDX** 编写：
+
+```mdx title="src/content/docs/zh/example.mdx"
+---
+title: "简介"
+description: "Web Documentation 平台简介。"
+---
+
+## 简介
+
+这是一个文档页面。
+
+<CustomComponent />
+```
+
+MDX 兼具 Markdown 的简洁性，同时允许将组件直接嵌入文档页面。
+
+## 目标用户
+
+本文档主要面向：
+
+* 负责该文档平台的 Web 开发者。
+* 贡献新文档页面的开发者。
+* 负责该平台的维护者。
+* 负责部署的 DevOps 工程师。
+* 维护文档内容的技术写作人员。
+
+## 关键原则
+
+该平台遵循以下几项原则：
+
+### 简单
+
+文档应该易于编写、阅读和更新。
+
+### 结构化
+
+内容应遵循可预测的层级结构，以便用户能快速找到所需信息。
+
+### 版本控制
+
+文档与源代码一起存储，并通过 Git 进行管理。
+
+### 可扩展
+
+MDX 组件使文档系统能够支持更多交互功能，而无需更改底层内容格式。
+
+### 易维护
+
+项目结构和文档编写规范应让后续开发者易于理解和维护该系统。
+
+## 后续步骤
+
+在了解该平台的目标之后，请继续阅读：
+
+* [功能特性](/zh/internal/web-documentation/overview/features)
+* [技术栈](/zh/internal/web-documentation/overview/tech-stack)

@@ -34,13 +34,18 @@ const t = labels[locale] ?? labels.vi;
 const items = [
     { label: t.sdkGame, section: 'sdk-game', path: 'sdk-game/overview/introduction' },
     { label: t.interactive, section: 'itr', path: 'itr/getting-started/overview' },
-    { label: t.web, section: 'web-documentation', path: 'web-documentation/overview/introduction' },
     { label: t.about, section: 'chung-toi', path: 'chung-toi' },
 ];
+
+const internalItems = [
+    { label: t.web, section: 'internal', path: 'internal/web-documentation/overview/introduction' },
+];
+
+const visibleItems = currentSection === 'internal' ? internalItems : items;
 ---
 
 <nav class="top-nav">
-    {items.map((item) => (
+    {visibleItems.map((item) => (
         <a
             href={`/${locale}/${item.path}`}
             class:list={['nav-item', { active: currentSection === item.section }]}

@@ -1,0 +1,38 @@
+---
+title: "Nhật ký thay đổi"
+---
+
+## 1.0.1
+
+### Đã thay đổi
+
+- Chuyển toàn bộ mục Web Documentation từ `/web-documentation` sang `/internal/web-documentation`, tách riêng khỏi khu vực công khai (SDK Game, Tài liệu Interactive, Về chúng tôi).
+- Trang chủ mặc định của site (`index.mdx`) cũng được chuyển vào `/internal`, đóng vai trò trang chào mừng riêng cho khu vực nội bộ; khu vực công khai (`/vi`, `/en`, `/zh`, `/ja`) giờ trỏ thẳng vào SDK Game.
+- Thanh điều hướng trên cùng (top-nav) hiển thị khác nhau theo ngữ cảnh: 3 mục khi ở khu vực công khai, chỉ còn 1 mục "Tài liệu Web" khi đang ở trong `/internal`.
+- Logo VLive ở góc trái giờ dẫn ra trang chính thức `https://vtvlive.vn/` thay vì trang chủ tài liệu.
+- Toàn bộ liên kết nội bộ trong các trang Web Documentation (Kiểu chữ, Bảng, Khối mã, Media & Files, Giới thiệu, Tính năng, Công nghệ sử dụng...) được cập nhật lại theo đường dẫn `/internal/web-documentation/...` mới.
+- Dịch trang "Về chúng tôi" sang tiếng Anh, tiếng Trung và tiếng Nhật (trước đây 3 ngôn ngữ này hiển thị fallback tiếng Việt kèm cảnh báo chưa dịch).
+
+### Đã thêm
+
+- Thêm thẻ `<meta name="robots" content="noindex, nofollow">` và `robots.txt` chặn crawler cho mọi trang nằm trong `/internal/*`, vì đây là khu vực nội bộ không công khai lên công cụ tìm kiếm.
+- Thêm redirect cho các đường dẫn rút gọn: `/<locale>` → trang SDK Game overview, `/<locale>/internal/web-documentation` → trang overview/introduction.
+
+### Đã sửa
+
+- Sửa lỗi phân trang (nút "Tiếp"/"Trước") ở ranh giới giữa khu vực công khai và `internal`: trang cuối cùng của mục Tài liệu Interactive trước đây tự động dẫn sang Web Documentation dù mục này đã ẩn khỏi nav công khai; nay đã cắt liên kết ở cả hai đầu.
+- Sửa đường dẫn ảnh tương đối bị sai (`houston.webp`) sau khi trang chủ được chuyển vào thư mục `internal/` sâu hơn một cấp.
+
+## 1.0.0
+
+### Đã thêm
+
+- Trang [Kiểu chữ](/vi/internal/web-documentation/ui/typography): hướng dẫn sử dụng tiêu đề, đoạn văn, in đậm, in nghiêng, gạch ngang, mã nguồn nội dòng, danh sách (không thứ tự, có thứ tự, công việc), trích dẫn, đường kẻ ngang, link, ảnh, xuống dòng, ký tự đặc biệt và các quy tắc trình bày văn bản trong tài liệu kỹ thuật.
+
+### Đã cập nhật
+
+- [Giới thiệu](/vi/internal/web-documentation/overview/introduction): viết lại toàn bộ nội dung, chuyển từ nội dung mẫu tiếng Anh (tích hợp cổng thanh toán) sang giới thiệu đúng về nền tảng Web Documentation.
+- [Tính năng](/vi/internal/web-documentation/overview/features): bổ sung nội dung chi tiết cho từng tính năng (MDX, khối mã, Mermaid, khung chú thích, bảng nâng cao, tìm kiếm toàn văn, đa ngôn ngữ, giao diện sáng/tối, responsive, điều hướng, quản lý phiên bản qua Git).
+- [Công nghệ sử dụng](/vi/internal/web-documentation/overview/tech-stack): bổ sung bảng công nghệ, plugin Markdown tuỳ biến, cấu hình i18n, cấu trúc thư mục và hướng dẫn build & triển khai.
+- [Media & Files](/vi/internal/web-documentation/ui/media_file): thay các link ảnh/video/file mẫu trỏ trực tiếp đến GitHub Releases bằng biến `BASE_STORAGE` để dễ thay đổi nguồn lưu trữ.
+- Cấu hình build (`astro.config.mjs`, `remark-media-options.mjs`): đọc biến `PORT` để đặt cổng chạy dev server, và tự động thay token `BASE_STORAGE` trong link media bằng giá trị thật lấy từ `.env` lúc build.
