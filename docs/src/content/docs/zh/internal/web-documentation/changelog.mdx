@@ -1,0 +1,38 @@
+---
+title: "Changelog"
+---
+
+## 1.0.1
+
+### 变更
+
+- 将整个 Web Documentation 模块从 `/web-documentation` 迁移到 `/internal/web-documentation`,与公开区域(SDK Game、Interactive 文档、关于我们)分离。
+- 网站默认首页(`index.mdx`)也一并迁移到 `/internal`,作为内部区域专属的欢迎页;公开区域(`/vi`、`/en`、`/zh`、`/ja`)现在会直接跳转到 SDK Game。
+- 顶部导航栏会根据所在区域显示不同内容:公开区域显示 3 个选项,进入 `/internal` 后仅显示"Web 文档"一项。
+- 左上角的 VLive 徽标现在会链接到官方网站 `https://vtvlive.vn/`,而不是文档首页。
+- 更新了 Web Documentation 各页面(排版、表格、代码块、Media & Files、简介、功能特性、技术栈等)中的所有内部链接,统一指向新的 `/internal/web-documentation/...` 路径。
+- 将"关于我们"页面翻译为英文、中文和日文(此前这三种语言会回退显示越南语内容,并附带未翻译提示)。
+
+### 新增
+
+- 为 `/internal/*` 下的所有页面添加 `<meta name="robots" content="noindex, nofollow">` 标签,并在 `robots.txt` 中屏蔽爬虫抓取,因为这是不对搜索引擎公开的内部区域。
+- 为简化路径添加重定向:`/<locale>` → SDK Game 概览页,`/<locale>/internal/web-documentation` → 概览/简介页。
+
+### 修复
+
+- 修复了公开区域与 `internal` 交界处的上一页/下一页分页问题:此前 Interactive 文档的最后一页会自动跳转到 Web Documentation,即使该模块已从公开导航中隐藏;现已在两端切断该链接。
+- 修复了首页迁移到更深一层的 `internal/` 目录后,相对图片路径(`houston.webp`)错误的问题。
+
+## 1.0.0
+
+### 新增
+
+- [排版](/zh/internal/web-documentation/ui/typography) 页面:介绍标题、段落、粗体、斜体、删除线、行内代码、列表(无序、有序、任务)、引用、水平分割线、链接、图片、换行、特殊字符转义,以及技术文档中的文本呈现规范。
+
+### 更新
+
+- [简介](/zh/internal/web-documentation/overview/introduction):重写了全部内容,从遗留的示例内容(支付网关集成)改为对 Web Documentation 平台的正确介绍。
+- [功能特性](/zh/internal/web-documentation/overview/features):为每项功能补充了详细内容(MDX、代码块、Mermaid、提示框、增强表格、全文搜索、多语言、浅色/深色主题、响应式布局、导航、通过 Git 进行版本控制)。
+- [技术栈](/zh/internal/web-documentation/overview/tech-stack):补充了技术栈表格、自定义 Markdown 插件、i18n 配置、目录结构以及构建与部署说明。
+- [Media & Files](/zh/internal/web-documentation/ui/media_file):将直接指向 GitHub Releases 的示例图片/视频/文件链接替换为 `BASE_STORAGE` 变量,便于更改存储来源。
+- 构建配置(`astro.config.mjs`、`remark-media-options.mjs`):读取 `PORT` 变量以设置开发服务器端口,并在构建时自动将媒体链接中的 `BASE_STORAGE` 占位符替换为 `.env` 中的真实值。

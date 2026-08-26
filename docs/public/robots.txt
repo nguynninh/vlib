@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /vi/internal/
+Disallow: /en/internal/
+Disallow: /zh/internal/
+Disallow: /ja/internal/

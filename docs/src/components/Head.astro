@@ -1,0 +1,14 @@
+---
+import Default from '@astrojs/starlight/components/Head.astro';
+import type { Props } from '@astrojs/starlight/props';
+
+const props = Astro.props as Props;
+
+// Pages under /<locale>/internal/... are a private area — keep them out of
+// search engine indexes even though they're not access-gated.
+const segments = Astro.url.pathname.split('/').filter(Boolean);
+const isInternal = segments[1] === 'internal';
+---
+
+<Default {...props} />
+{isInternal && <meta name="robots" content="noindex, nofollow" />}
