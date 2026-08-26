@@ -1,0 +1,108 @@
+---
+title: Update SDK 5.0.0
+description: iTapSDK iOSをバージョン5.0.0に更新する際の変更履歴とPodfile構成。
+---
+
+変更履歴:
+
+- iOS 15 platformの更新
+
+- Firebase 12.0.0の更新
+
+- AppsFlyerFramework 6.17.2の更新
+
+- trackingの更新
+
+- FirebaseCrashlytics 12.0.0の追加
+
+1. PodFile
+
+```Swift
+platform :ios, '15.0'
+target 'SdkExample' do
+  use_frameworks!
+  pod 'GoogleSignIn', '7.1.0'
+  pod 'Firebase', '12.0.0'
+  pod 'FirebaseMessaging', '12.0.0'
+  pod 'FirebaseRemoteConfig', '12.0.0'
+  pod 'AppsFlyerFramework', '6.17.7'
+  pod 'JWT', '2.2.0'
+  pod 'TikTokBusinessSDK', '1.5.0'
+  pod 'FirebaseRemoteConfig', '12.0.0'
+end
+target 'FirebaseNotificationServiceExtension' do
+ use_frameworks!
+ pod 'Firebase', '12.0.0'
+ pod 'FirebaseMessaging', '12.0.0'
+
+end
+post_install do |lib|
+    lib.pods_project.targets.each do |target|
+        if target.name == 'GoogleSignIn' || target.name == 'Firebase' || target.name == 'FirebaseRemoteConfig' || target.name == 'FirebaseMessaging' || target.name == 'AppsFlyerFramework' ||  target.name == 'JWT' ||  target.name == 'TikTokBusinessSDK'
+            target.build_configurations.each do |config|
+                config.build_settings['BUILD_LIBRARY_FOR_DISTRIBUTION'] = 'YES'
+            end
+        end
+        
+        target.build_configurations.each do |config|
+            config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+        end
+    end
+end
+```
+
+2. Config lib
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_update_sdk_5_0_0_image1.png)
+
+3. Update AppDelegate
+
+```Swift
+
+@import Firebase;
+
+
+
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+    [[Sdk sharedInstance] initWithDelegate:self application:application launchOptions:launchOptions isProdEnv:TRUE];
+    [[Sdk sharedInstance] setLocationFloatingButton:20 with:100];
+    [[Sdk sharedInstance] setGrantEnv:NO];
+    return YES;
+}
+
+-(void) getLangaugeSdk: (NSString *) langauge {
+    // print  Langauge
+}
+
+- (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
+    [FIRMessaging messaging].APNSToken = deviceToken;
+}
+
+- (void)messaging:(FIRMessaging *)messaging didReceiveRegistrationToken:(NSString *)fcmToken {
+}
+```
+
+4. Update log
+
+**logStartedCharacterCreation**または**logFinishedCharacterCreation**を呼び出す際は、以下のパラメータを追加する必要があります。
+
+- **logStartedCharacterCreation**には、**serverId**と**serverName**を指定してください。
+
+- **logFinishedCharacterCreation**には、**characterId**と**characterName**を指定してください。
+
+```Swift
+-(void) logStartedCharacterCreation:(NSString *) serverId withSeverName: (NSString *) serverName;
+-(void) logFinishedCharacterCreation:(NSString *) characterId characterName :(NSString*)characterName;
+```
+
+5. Firebase Crashlytics
+
+.ipaファイルのビルドに成功したら、「Show in Finder」をクリックします。
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_update_sdk_5_0_0_image2.png)
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_update_sdk_5_0_0_image3.png)
+
+![](BASE_STORAGE/v2.0.0/ios_objective_c_update_sdk_5_0_0_image4.png)
+
+dSYMファイルと.ipaファイルを私に送ってください。

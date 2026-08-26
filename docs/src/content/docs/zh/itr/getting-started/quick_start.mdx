@@ -1,0 +1,33 @@
+---
+title: 快速入门
+description: 快速指南,帮助你将 Interactive SDK 集成到应用中并显示第一个 overlay。
+---
+
+快速指南,帮助你将 **Interactive SDK** 集成到应用中并显示第一个 overlay。
+
+:::caution
+如果你还没有阅读[概述](/zh/itr/getting-started/overview),建议先了解一下,以理解 SDK 的整体架构。
+:::
+
+## 1. 选择平台
+
+根据你的平台选择详细的集成文档:
+
+- **Android** → 查看[安装与集成](/zh/itr/android/installation_integration)
+- **iOS** → 查看[安装与集成](/zh/itr/ios/installation_integration)
+
+## 2. 通用步骤
+
+1. **添加 SDK** 到项目中(源码模块或 `.aar`/framework 文件)。
+2. **初始化** overlay 管理组件(例如 Android 上的 `OverlayManager`)于视频播放画面中。
+3. **建立实时连接**:调用初始化 token 的函数(`initToken`)并加入房间(`joinRoom`)以接收来自 Interactive 服务器的事件。
+4. **挂载 overlay** 到播放器上方:声明覆盖在视频显示区域上的 overlay view。
+5. **监听回调**:处理诸如 `NEED_LOGIN`、socket state 变化或用户交互事件等状态。
+6. **测试**:在 staging 环境/Interactive 服务器上进行测试,确认 overlay 正确显示且 tracking emit-ack 正常工作。
+
+## 3. 下一步
+
+- 查看 [Interactive SDK 架构](/zh/itr/android/sdk_interactive_architecture)以了解各组件如何协同工作。
+- 查看[详细运行流程](/zh/itr/android/detailed_workflow)以掌握一次交互会话的完整生命周期。
+- 需要各函数/回调的详细信息时,请参阅 [API Reference](/zh/itr/android/api_reference)。
+- 若在集成过程中遇到问题,请查看[常见错误](/zh/itr/android/error)。

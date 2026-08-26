@@ -1,0 +1,34 @@
+---
+title: 概述
+description: 介绍 Interactive SDK,在视频播放器上嵌入交互式 overlay 的能力,以及在深入各平台集成文档之前的起点。
+---
+
+**Interactive SDK** 可用于在应用内的视频播放器上嵌入交互层(overlay、迷你游戏、问卷、投票等),
+通过 Socket.IO 与 Interactive 服务器建立实时连接,
+并在客户端与后端之间同步交互状态。
+
+:::note
+本节为 **Getting Started(快速入门)** —— 在深入各平台(Android/iOS)专属集成文档之前的起点。
+:::
+
+## 本文档适合谁阅读?
+
+- 需要将 Interactive SDK 集成到已有播放器的应用中的 Android/iOS 工程师。
+- 在开始集成前需要了解整体架构(client ⇄ Socket.IO ⇄ REST ⇄ CDN)的人员。
+- 处理 overlay、tracking emit-ack 或登录/登出流程相关问题的人员。
+
+## 文档结构
+
+| 章节 | 内容 |
+|---|---|
+| **入门** | 概述与快速入门指南(即本页面)。 |
+| **Android** | SDK 架构、安装与集成、运行流程、API reference、常见错误、tracking。 |
+| **iOS** | 与 Android 类似,专门针对 iOS 平台(Swift)。 |
+
+## 开始前的准备工作
+
+- 应用中已集成视频播放器(ExoPlayer、AVPlayer 或其他播放 SDK)。
+- 拥有 `FragmentActivity`/`AppCompatActivity`(Android)或对应的 `UIViewController`(iOS)以用于挂载 overlay。
+- 已获取 Interactive 服务器的连接信息(Socket.IO endpoint、REST API、`X-TENANT-ID`)。
+
+接下来,请参阅[快速入门](/zh/itr/getting-started/quick_start)以快速将 SDK 集成到你的应用中。

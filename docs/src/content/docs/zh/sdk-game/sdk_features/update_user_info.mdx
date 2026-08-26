@@ -1,0 +1,60 @@
+---
+title: 进入游戏时要求更新用户信息
+description: 提议更新 SDK 与 ID 页面，要求玩家在登录时补充个人信息，包括拦截登录的弹窗与信息更新引导弹窗。
+---
+
+## 问题提出
+
+为确保公司旗下游戏在用户开设 G1 类电子游戏账户时遵守个人信息相关规定，TT VplayHN1 提议对 SDK 与 ID 页面进行更新，新增以下功能：
+
+1. **客户提供的个人信息包括：**
+
+此部分已存在，但 TT 仍建议将 ID 页面上的"安全"与"账户"标签页合并为一个，方便客户更新信息。
+
+| STT | 信息字段 | 是否必填 |
+| --- | --- | --- |
+| 1 | 姓名 | 必填 |
+| 2 | 出生年月日 | 必填 |
+| 3 | 身份证/公民身份证/护照号码 | 必填 |
+| 4 | 签发日期、签发地点 | 必填 |
+| 5 | 常住户籍地址 | 必填 |
+| 6 | 手机号 | 非必填 |
+| 7 | 邮箱 | 非必填 |
+
+2. **账户尚未填写个人信息时的 SDK 登录拦截弹窗**
+
+当客户登录 SDK 时，若账户尚未按要求补全个人信息（上方标注 * 的字段），则会显示警告弹窗。该警告弹窗可通过 CMS 为各服务的 SDK 分别设置以下三个等级开关：
+
+- 等级 1：不启用弹窗（跳过账户信息是否已更新的检查，直接进入游戏）。
+
+- 等级 2：允许关闭弹窗（每次登录时显示弹窗，客户可关闭弹窗并继续游戏）。
+
+- 等级 3：不允许关闭弹窗（每次登录都显示，账户必须前往 [id.vplay.vn](http://id.vplay.vn/) 或 [id.onlive.vn](http://id.onlive.vn/) 网站更新信息）。
+
+
+| STT | 显示条件 | 内容 |
+| --- | --- | --- |
+| 1 | 账户尚未更新必填信息 | 标题：更新信息 [错误码]<br/>内容：您的账户尚未按规定更新个人信息，请访问首页进行操作，或通过热线联系以获取支持。 |
+| 2 | 账户已更新信息，但根据出生年份，客户尚未年满 18 岁 | 标题：更新信息 [错误码]<br/>内容：您的年龄不符合该游戏内容的要求，请访问首页查看详情，或通过热线联系以获取支持。 |
+
+3. **ID 页面与充值页面上的信息更新引导弹窗**
+
+当客户在 ID 页面登录时，若账户尚未更新必填的个人信息，将显示引导弹窗，指导客户更新信息。该引导弹窗可通过 CMS 设置以下三个等级：
+
+- 等级 1：不启用弹窗
+
+- 等级 2：显示引导弹窗，但可以跳过
+
+- 等级 3：显示引导弹窗，且必须更新个人信息后才能执行交易相关操作
+
+## 需求
+
+- 业务文档：[TLNV_升级 VplayID（要求更新用户信息弹窗）](https://vtvlivevn.larksuite.com/docx/QrPidasukob68Exk74Ou920jsQb?from=from_copylink)
+
+- 流程：[Flowchart - 信息更新弹窗](https://vtvlivevn.larksuite.com/docx/UHWMdTt4uoyhloxFSviuw5P6sce?from=from_copylink)
+
+- Figma：[https://www.figma.com/design/Vi8KLZrexEt9lq9VrxQyp3/popup-Vplay?node-id=0-1&t=0sgmRdfR6W4UIQvZ-1](https://www.figma.com/design/Vi8KLZrexEt9lq9VrxQyp3/popup-Vplay?node-id=0-1&t=0sgmRdfR6W4UIQvZ-1)
+
+## API 文档
+
+https://documenter.getpostman.com/view/18060251/2s93XzxNbZ#b83e9ce6-9ec8-41c6-8fef-ee7dac8c07cb

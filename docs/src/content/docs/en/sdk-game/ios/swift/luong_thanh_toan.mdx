@@ -1,0 +1,173 @@
+---
+title: Payment Flow (Payment / IAP)
+description: Describes the In-App Purchase payment flow, from fetching the product list, handling StoreKit transactions, to verification with the server.
+---
+
+This document describes the SDK's In-App Purchase payment flow, built from the actual code:
+`Sdk+Payment.swift` (public API) and `PaymentView.swift` (StoreKit transaction handling +
+server-side verification).
+
+## 1. Fetching the product list & opening payment
+
+```mermaid
+%% width: 1100
+flowchart TD
+    subgraph LP["listProducts(completeTask)"]
+        A1["GET PATH_GAME_LIST_PRODUCTS<br/>app_package, channel + Bearer idToken"] --> A2{Error code}
+        A2 -- "code 86" --> A3["doRefreshWithAction → retries listProducts"]
+        A3 --> A1
+        A2 -- "code = 0" --> A4["Maps to IAPProduct<br/>validateProductIdentifiers()"]
+        A4 --> A5["SKProductsRequest to StoreKit<br/>(Provider.shared as delegate)"]
+    end
+
+    subgraph PP["payProduct(productID, characterId, serverId)"]
+        B1{Product list empty?} -- "Yes" --> B2([Dialog: No products available<br/>calls listProducts then stops])
+        B1 -- "No" --> B3{productID found?}
+        B3 -- "No" --> B4([Dialog: No products available])
+        B3 -- "Yes" --> B5["Stores serverId, characterId"]
+        B5 --> B6{Logged in?<br/>accessToken not empty}
+        B6 -- "No" --> B7([Alert: You need to log in])
+        B6 -- "Yes" --> B8["showPaymentUI()"]
+        B8 --> B9{"Payment in progress?<br/>isProcessingPayment"}
+        B9 -- "Busy" --> B10([Ignored])
+        B9 -- "Free" --> B11["Opens PaymentView"]
+    end
+```
+
+## 2. Transaction lifecycle in `PaymentView`
+
+```mermaid
+%% width: 1100
+flowchart TD
+    A["configUI: registers SKPaymentTransactionObserver<br/>showLoading → initTransaction()"] --> B["POST PATH_PAYMENT_CREATE_ORDER_IAP_V2<br/>jwt, client_id, os, maker_code, server_id, character_id"]
+
+    B --> C{Error code}
+    C -- "code 86" --> C1["doRefreshWithAction → retries initTransaction"]
+    C1 --> B
+    C -- "code != 0 / error" --> C2([Error alert → closes])
+    C -- "code = 0" --> D["Stores vOrderId = transId<br/>SKMutablePayment(productId, applicationUsername = sign)<br/>SKPaymentQueue.add → Track OPEN_PURCHASE_SCREEN"]
+
+    D --> E{"StoreKit: transactionState"}
+    E -- ".purchasing / .deferred" --> E1([Waits])
+    E -- ".failed" --> F["fail(): if user cancelled → Track CANCEL_PURCHASE<br/>if other error → delegate didPurchaseFailed + Track<br/>finishTransaction → closes"]
+    E -- ".restored" --> G["restore(): finishTransaction → closes"]
+    E -- ".purchased" --> H["complete()"]
+
+    H --> I{Has App Store receipt?}
+    I -- "No" --> I1([finishTransaction<br/>Alert: Receipt not found → closes])
+    I -- "Yes" --> J["Base64 receipt → builds TransactionInfo<br/>productId, transId, purchasedToken, paymentOrderId"]
+    J --> K{"characterId / serverId / paymentOrderId valid?"}
+    K -- "Missing" --> K1([finishTransaction<br/>Confirmation error alert → closes])
+    K -- "Complete" --> L["confirmTransaction()<br/>POST PATH_PAYMENT_CONFIRM_ORDER_IAP_V2"]
+
+    L --> M{Result}
+    M -- "Network error" --> N["2-button alert: Retry / Cancel"]
+    N -- "Retry" --> L
+    N -- "Cancel" --> N1([finishTransaction<br/>delegate didPurchaseFailed → closes])
+    M -- "code != 0" --> O([finishTransaction<br/>Error alert → closes])
+    M -- "code = 0" --> P["finishTransaction<br/>confirmByServer = true<br/>delegate didPurchaseSuccess"]
+    P --> Q["Tracking: FINISH_PURCHASE (AppsFlyer revenue)<br/>TikTok purchase, FINISH_SUCCESS<br/>Firebase on-device conversion"]
+    Q --> R([Alert: Payment recorded → closes])
+```
+
+## Detailed description
+
+### `listProducts()` – fetches the product list
+
+Calls `PATH_GAME_LIST_PRODUCTS` (GET, with Bearer `idToken`) with `app_package` and `channel`.
+
+- `code = 0`: converts the data into `[IAPProduct]`, then `validateProductIdentifiers()` creates
+an `SKProductsRequest` to fetch real product information from StoreKit (delegate is `Provider.shared`).
+If the list is empty, returns error `CODE_PAYMENT_ERROR_NO_CONFIG`.
+
+- `code = 86`: refreshes the token then retries; on failure returns an error via `getProductTask`.
+
+### `payProduct(productID, characterId, serverId)` – starts a purchase
+
+1. If there are no products yet → shows a "No products available" dialog and calls `listProducts(nil)` then stops.
+
+2. Looks up the product by `productID`; if not found → "No products available" dialog.
+
+3. Stores `serverId`, `characterId` (in a variable and UserDefaults).
+
+4. If `accessToken` is empty → alert "You need to log in" then stops.
+
+5. Calls `showPaymentUI()`: if no transaction is currently in progress (`isProcessingPayment == false`),
+opens `PaymentView` (passing products, serverId, characterId, productId, delegate).
+
+### `PaymentView` – creates the order & handles the StoreKit payment
+
+**Initialization (`configUI`)**: registers as `SKPaymentTransactionObserver`, shows loading and calls
+`initTransaction()`.
+
+**`initTransaction()`** – creates the order on the server side: calls `PATH_PAYMENT_CREATE_ORDER_IAP_V2` (POST)
+with `jwt`, `client_id`, `os`, `maker_code = productId`, `server_id`, `character_id`.
+
+- `code = 0`: stores `vOrderId = transId`, creates an `SKMutablePayment` (setting
+`applicationUsername = sign` from the server) and adds it to the `SKPaymentQueue` to open Apple's payment
+dialog; tracks `EVENT_OPEN_PURCHASE_SCREEN`.
+
+- `code = 86`: refreshes the token then retries `initTransaction()`.
+
+- other errors: shows an error alert then closes.
+
+**Transaction monitoring (`paymentQueue:updatedTransactions`)**:
+
+- `.purchasing` / `.deferred`: waits.
+
+- `.failed` → `fail()`: if the user cancelled, tracks `EVENT_CANCEL_PURCHASE`; if another error occurred,
+fires the delegate's `didPurchaseFailed` and tracks; always `finishTransaction` then closes.
+
+- `.restored` → `restore()`: `finishTransaction` then closes.
+
+- `.purchased` → `complete()`.
+
+**`complete()`** – prepares for verification: shows a "Verifying transaction" loading state, reads
+`appStoreReceiptURL` to get the receipt.
+
+- No receipt → `finishTransaction` + "Receipt not found" alert → closes.
+
+- Has receipt → base64 encodes it, builds `TransactionInfo` (`productId`, `transId`,
+`purchasedToken = receipt`, `paymentOrderId = vOrderId`).
+
+- If `characterId` / `serverId` / `paymentOrderId` are missing → `finishTransaction` + error alert → closes.
+
+- Otherwise → `confirmTransaction()`.
+
+**`confirmTransaction()`** – verifies with the server: calls `PATH_PAYMENT_CONFIRM_ORDER_IAP_V2` (POST)
+with `jwt`, `cid`/`client_id`, `client_secret = transactionIdentifier`, `os`,
+`b_code = purchasedToken` (receipt), `transId = paymentOrderId`, `maker_code = productId`,
+`character_id`, `server_id`.
+
+- **Network error**: 2-button alert "Retry" / "Cancel". "Retry" calls `confirmTransaction` again; "Cancel"
+calls `finishTransaction`, fires the delegate's `didPurchaseFailed` then closes.
+
+- `code = 0`: `finishTransaction`, sets `confirmByServer = true`, fires the delegate's
+`didPurchaseSuccess`. Records tracking `EVENT_FINISH_PURCHASE` (AppsFlyer with revenue),
+the TikTok purchase event, `EVENT_FINISH_SUCCESS`, Firebase on-device conversion. Shows an alert
+"Payment recorded ..." then closes.
+
+- `code != 0`: `finishTransaction` + error alert → closes.
+
+## Endpoints used
+
+- `PATH_GAME_LIST_PRODUCTS` – fetches the IAP product list (GET, Bearer idToken)
+
+- `PATH_PAYMENT_CREATE_ORDER_IAP_V2` – creates a payment order (POST)
+
+- `PATH_PAYMENT_CONFIRM_ORDER_IAP_V2` – verifies / records the transaction (POST)
+
+## Notes
+
+- This is **server-verified payment**: the SDK creates the order first (getting `transId` + `sign`),
+uses `sign` as the `applicationUsername` of the `SKPayment`, and only records success after the
+server verifies the receipt (`PATH_..._CONFIRM_...`).
+
+- `SKPaymentQueue.finishTransaction` is only called after verification completes (success or
+the user chooses to cancel), preventing lost transactions on network errors — on a network error, the user can
+tap "Retry" to verify again.
+
+- The final result is always returned to the app via the `didPurchaseSuccess` /
+`didPurchaseFailed` delegate methods (with `TransactionInfo`).
+
+- `isProcessingPayment` ensures two payment screens can't be opened at once.

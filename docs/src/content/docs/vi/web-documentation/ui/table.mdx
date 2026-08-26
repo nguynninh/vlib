@@ -1139,6 +1139,45 @@ Nếu câu trả lời là có, Markdown Table thường là lựa chọn phù h
 
 ---
 
+## 32. Gộp Row (Rowspan) bằng dấu `^^`
+
+Markdown Table chuẩn **không hỗ trợ rowspan** — không có cú pháp gốc nào để một cell chiếm nhiều hàng.
+
+Trong docs này, khi một cell ở đầu dòng chỉ chứa đúng hai ký tự `^^`, nó sẽ được hiểu là "gộp với cell phía trên, cùng column" thay vì để trống.
+
+:::danger[Lỗi thường gặp]
+Chỉ dùng đúng hai ký tự `^^` cho cell muốn gộp lên trên. Không thêm khoảng trắng hay ký tự khác trong cùng cell (ví dụ `^^ `, `^^abc`), vì khi đó cell sẽ được hiểu là text bình thường thay vì marker gộp row.
+:::
+
+**Mã nguồn**
+
+```mdx showLineNumbers title="Rowspan với ^^"
+| Tính năng | Tính năng nhỏ | Trạng thái |
+| --- | --- | --- |
+| Đăng nhập | Tài khoản Vlive | Đã làm |
+| ^^ | Google | Đã làm |
+| ^^ | Facebook | Đã làm |
+```
+
+**Thử nghiệm**
+
+| Tính năng | Tính năng nhỏ | Trạng thái |
+| --- | --- | --- |
+| Đăng nhập | Tài khoản Vlive | Đã làm |
+| ^^ | Google | Đã làm |
+| ^^ | Facebook | Đã làm |
+
+Kết quả render ra HTML là một cell duy nhất `Đăng nhập` với `rowspan` bằng số dòng liên tiếp bên dưới có `^^` ở cùng column, các cell `^^` đó không còn tồn tại trong hàng của chúng.
+
+Một vài lưu ý khi dùng:
+
+* `^^` chỉ gộp với cell **ngay phía trên**, không gộp xuyên qua các dòng khác đã bị ngắt bởi một giá trị khác.
+* `^^` có thể dùng cho bất kỳ column nào, không chỉ column đầu tiên.
+* Không dùng `^^` ở hàng đầu tiên của phần dữ liệu (ngay sau header) vì không có cell nào phía trên để gộp.
+* Chỉ nên dùng khi các row thực sự cùng thuộc một nhóm logic (ví dụ nhiều tính năng con của cùng một tính năng cha), không dùng để "sửa lỗi hiển thị" cho table không liên quan.
+
+---
+
 ## Tóm tắt
 
 Table trong MDX thực chất sử dụng cú pháp Markdown Table và không cần component riêng cho những trường hợp thông thường.

@@ -1,0 +1,33 @@
+---
+title: Quick Start
+description: A quick guide to bringing the Interactive SDK into your application and displaying your first overlay.
+---
+
+A quick guide to bringing the **Interactive SDK** into your application and displaying your first overlay.
+
+:::caution
+If you haven't read the [Overview](/en/itr/getting-started/overview) yet, you should review it first to understand the overall architecture of the SDK.
+:::
+
+## 1. Choose a platform
+
+Choose the detailed integration documentation for your platform:
+
+- **Android** → see [Installation & Integration](/en/itr/android/installation_integration)
+- **iOS** → see [Installation & Integration](/en/itr/ios/installation_integration)
+
+## 2. General steps
+
+1. **Add the SDK** to your project (source module or `.aar`/framework file).
+2. **Initialize** the overlay management component (e.g. `OverlayManager` on Android) on the video playback screen.
+3. **Connect in realtime**: call the token initialization function (`initToken`) and join a room (`joinRoom`) to receive events from the Interactive server.
+4. **Attach the overlay** on top of the player: declare an overlay view over the video display area.
+5. **Listen for callbacks**: handle states such as `NEED_LOGIN`, socket state changes, or user interaction events.
+6. **Test**: run tests against the staging environment/Interactive server to confirm the overlay displays correctly and emit-ack tracking works.
+
+## 3. Next steps
+
+- See [Interactive SDK Architecture](/en/itr/android/sdk_interactive_architecture) to understand how the components work together.
+- See [Detailed Workflow](/en/itr/android/detailed_workflow) to understand the lifecycle of an interaction session.
+- Refer to the [API Reference](/en/itr/android/api_reference) for details on individual functions/callbacks.
+- See [Common Errors](/en/itr/android/error) if you run into issues during integration.

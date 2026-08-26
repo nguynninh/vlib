@@ -1,0 +1,672 @@
+---
+title: 02 — インストールと統合
+description: SDK Interactive を Android アプリにインストール・統合するための環境要件と手順。
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+## 1. 環境要件
+
+| 項目 | 値 |
+|---|---|
+| `minSdk` | **21** |
+| SDK の `compileSdk` / `targetSdk` | 35 |
+| Java / Kotlin JVM target | **1.8** |
+| Kotlin plugin | 1.7.10（サンプルリポジトリに準拠） |
+| AGP | 8.6.1（サンプルの `app` モジュールは `com.android.application` 8.6.1 を使用） |
+| NDK | **28.1.13356709**（SDK を*ビルド*する場合のみ必要、ネイティブライブラリを含むため） |
+| CMake | 3.22.1（SDK ビルド時） |
+| Activity の種類 | **`FragmentActivity`**（通常は `AppCompatActivity`） |
+
+> SDK にはネイティブライブラリ `liboverlay.so`（環境 URL を隠蔽）が含まれます。`.aar` ファイルで
+> 統合する場合、`.so` は既に AAR に内包されているため、app 側では NDK/CMake は**不要**です。
+
+---
+
+## 2. AAR ファイルのビルド
+
+```bash
+./gradlew :interactive:assembleRelease
+```
+
+結果は `interactive/build/outputs/aar/` に出力され、ファイル名は
+[interactive/build.gradle](../interactive/build.gradle) のルールに従って命名されます:
+
+```
+Interactive_<DEVICE_TYPE>_<buildType>_<ビルド日>.aar
+例: Interactive_androidmobile_release_2026-07-30.aar
+```
+
+**Android TV 向けビルド**: `interactive/build.gradle` の
+`buildConfigField("String", "DEVICE_TYPE", "\"androidtv\"")` を変更してから再ビルドします。この値は
+以下に影響します:
+
+- socket ヘッダー `os`、
+- テンプレート URL に付与されるクエリ `os=`、
+- オーバーレイの `targets` フィルタ条件（`Utils.isValidTargets`）、
+- tracking の `platform` / `deviceClass` フィールド。
+
+---
+
+## 3. 依存関係の宣言
+
+### 方法 A — ソースモジュールを使用する（サンプルリポジトリと同様）
+
+`settings.gradle`:
+
+```gradle
+include ':interactive'
+```
+
+`app/build.gradle`:
+
+```gradle
+dependencies {
+    implementation project(":interactive")
+}
+```
+
+### 方法 B — `.aar` ファイルを使用する
+
+AAR を `app/libs/` にコピーしてから:
+
+```gradle
+dependencies {
+    implementation fileTree(include: ['*.jar', '*.aar'], dir: 'libs')
+}
+```
+
+> ⚠️ **AAR は推移的依存関係を運びません。** 方法 B を使う場合、app は SDK が使用する
+> すべてのライブラリを**必ず**再宣言する必要があります。さもないと実行時に `NoClassDefFoundError`
+> が発生します:
+
+```gradle
+dependencies {
+    // AndroidX / UI
+    implementation 'androidx.core:core-ktx:1.7.0'
+    implementation 'androidx.appcompat:appcompat:1.5.1'
+    implementation 'com.google.android.material:material:1.7.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+
+    // 画像（Predict / Lucky ボタンは CDN から読み込む GIF 画像）
+    implementation 'com.github.bumptech.glide:glide:4.12.0'
+
+    // リアルタイム通信
+    implementation("io.socket:socket.io-client:2.0.1") {
+        exclude group: 'org.json', module: 'json'
+    }
+
+    // REST + JSON
+    implementation 'com.google.code.gson:gson:2.9.1'
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+    implementation 'com.squareup.okhttp3:okhttp:4.9.3'
+    implementation 'com.squareup.okhttp3:logging-interceptor:4.9.3'
+}
+```
+
+さらに SDK は **Kotlin Coroutines**（`GlobalScope`, `Dispatchers.IO/Main`）と
+**AndroidX Lifecycle/LiveData** を使用します。これらは通常 `androidx.appcompat` の推移的依存関係に
+既に含まれていますが、プロジェクトで依存を削減していたり厳格な R8 設定を使用していてクラス不足の
+エラーが発生する場合は、以下を追加してください:
+
+```gradle
+implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.0'
+implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.5.1'
+```
+
+### 必要なリポジトリ
+
+```gradle
+repositories {
+    google()
+    mavenCentral()
+    maven { url 'https://jitpack.io' }
+}
+```
+
+---
+
+## 4. `AndroidManifest.xml` の権限と設定
+
+```xml
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+<application
+    android:usesCleartextTraffic="true">   <!-- DEV 環境で http を使う場合のみ -->
+    <activity
+        android:name=".MainActivity"
+        android:configChanges="orientation|screenSize" />  <!-- 回転時の Activity 再生成を防ぐ -->
+</application>
+```
+
+SDK は `Settings.Secure.ANDROID_ID` を `deviceId` として読み取ります — このために**権限の宣言は
+不要**です。
+
+---
+
+## 5. レイアウトに `OverlayView` を追加する
+
+`OverlayView` は**動画表示領域を正確に覆う**必要があり（通常は 16:9 の枠）、描画順で player の
+**上**に配置する必要があります（同じ `ConstraintLayout` 内で player の後に宣言するか、
+`elevation` を使用する）。
+
+```xml
+<androidx.constraintlayout.widget.ConstraintLayout
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- あなたの player -->
+    <FrameLayout
+        android:id="@+id/player_container"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintDimensionRatio="H,16:9"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- player に重ねて同じサイズで配置するオーバーレイ -->
+    <vn.interactive.widgets.OverlayView
+        android:id="@+id/overlay_view"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toTopOf="@id/player_container"
+        app:layout_constraintBottom_toBottomOf="@id/player_container"
+        app:layout_constraintStart_toStartOf="@id/player_container"
+        app:layout_constraintEnd_toEndOf="@id/player_container" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+```
+
+**なぜ `OverlayView` のサイズが重要なのか？** オーバーレイは `OverlayView` 自身に対する
+*パーセンテージ*で配置されます（`metadata.size.w/h` は `0..1` の範囲、`metadata.pos.x/y`）。
+`OverlayView` が動画枠より大きい場合、オーバーレイは映像領域からずれてしまいます。
+
+サンプルリポジトリでは `onResume` / `onConfigurationChanged` で 16:9 の比率に合わせてサイズを
+再計算しています（[MainActivity.kt:151](../app/src/main/java/com/vtvlive/example/MainActivity.kt:151) 参照）:
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+private fun resizeContentView() {
+    contentView.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
+        override fun onPreDraw(): Boolean {
+            contentView.viewTreeObserver.removeOnPreDrawListener(this)
+            val screenWidth = contentView.width
+            val calculatedHeight = (screenWidth * 9) / 16
+            updateOverlayViewLayoutParams(screenWidth, contentView.height, calculatedHeight)
+            return true
+        }
+    })
+}
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+private void resizeContentView() {
+    contentView.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
+        @Override
+        public boolean onPreDraw() {
+            contentView.getViewTreeObserver().removeOnPreDrawListener(this);
+            int screenWidth = contentView.getWidth();
+            int calculatedHeight = (screenWidth * 9) / 16;
+            updateOverlayViewLayoutParams(screenWidth, contentView.getHeight(), calculatedHeight);
+            return true;
+        }
+    });
+}
+```
+  </TabItem>
+</Tabs>
+
+---
+
+## 6. SDK の初期化
+
+<Tabs>
+  <TabItem label="Kotlin">
+````kotlin
+class MainActivity : AppCompatActivity(), DefaultOverlayEventListener {
+
+    private lateinit var overlayManager: OverlayManager
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+        initInteractive()
+    }
+
+    private fun initInteractive() {
+        val overlayData = OverlayData.Builder()
+            .setEnvironment(EnvInteractive.PROD)   // DEV | STG | PROD, デフォルト PROD
+            .setTenantId("vtvlive")                // 必須、Interactive チームから発行される
+            .setDebug(false)                       // 任意
+            .build()
+
+        overlayManager = OverlayManager(
+            /* activity  */ this,
+            /* overlayView */ findViewById(R.id.overlay_view),
+            /* overlayData */ overlayData,
+            /* listener */ this
+        )
+    }
+}
+````
+  </TabItem>
+  <TabItem label="Java">
+```java
+public class MainActivity extends AppCompatActivity implements DefaultOverlayEventListener {
+
+    private OverlayManager overlayManager;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        initInteractive();
+    }
+
+    private void initInteractive() {
+        OverlayData overlayData = new OverlayData.Builder()
+            .setEnvironment(EnvInteractive.PROD)   // DEV | STG | PROD, デフォルト PROD
+            .setTenantId("vtvlive")                // 必須、Interactive チームから発行される
+            .setDebug(false)                       // 任意
+            .build();
+
+        overlayManager = new OverlayManager(
+            /* activity  */ this,
+            /* overlayView */ findViewById(R.id.overlay_view),
+            /* overlayData */ overlayData,
+            /* listener */ this
+        );
+    }
+}
+```
+  </TabItem>
+</Tabs>
+
+コンストラクタは**ネットワーク接続を開始しません** — 設定を読み込むだけです。接続は
+`joinRoom()` で開始されます。
+
+---
+
+## 7. ログインセッションの宣言
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+// ログイン成功時
+overlayManager.initToken(
+    token = accessToken,   // JWT（"ey" で始まる）または cookie 文字列
+    userId = userId,       // ユーザー識別 id
+    bjName = ""            // 任意: BJ/チャンネル名、fanclub ダイアログに表示される
+)
+
+// ログアウト時
+overlayManager.initToken("", "")
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+// ログイン成功時
+overlayManager.initToken(
+    accessToken,   // JWT（"ey" で始まる）または cookie 文字列
+    userId,        // ユーザー識別 id
+    ""             // 任意: BJ/チャンネル名、fanclub ダイアログに表示される
+);
+
+// ログアウト時
+overlayManager.initToken("", "");
+```
+  </TabItem>
+</Tabs>
+
+仕組み:
+
+- トークンが `"ey"` で始まる場合 → SDK が socket と REST のヘッダーに自動で `Bearer ` を付加します。
+- それ以外（cookie）の場合 → そのまま送信します。
+- **Live** 視聴中に `initToken` を呼び出すと、SDK は**自動的に再入室**し、socket に新しいトークンを
+  持たせます。
+- 初回の入室では `joinRoom` の**前**に `initToken` を呼び出してください。
+
+---
+
+## 8. コンテンツへの参加/離脱
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+// LIVE
+overlayManager.joinRoom(mediaId = "003c04ba-8f7d-4663-bef0-c7a971c059b6", type = 1)
+
+// VOD
+overlayManager.joinRoom(mediaId = "4357747e-004c-4190-a3f3-4a33840a3c09", type = 2)
+
+// コンテンツ離脱 / 画面破棄
+overlayManager.releaseAll()
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+// LIVE
+overlayManager.joinRoom("003c04ba-8f7d-4663-bef0-c7a971c059b6", 1);
+
+// VOD
+overlayManager.joinRoom("4357747e-004c-4190-a3f3-4a33840a3c09", 2);
+
+// コンテンツ離脱 / 画面破棄
+overlayManager.releaseAll();
+```
+  </TabItem>
+</Tabs>
+
+- `type = 1` → LIVE（`Const.VIDEO_LIVE`）、`type = 2` → VOD（`Const.VIDEO_VOD`）。
+- `joinRoom` は自動的に前回のセッションをクリアするため、チャンネル切り替え時は再度呼び出すだけで
+  よい。
+- `releaseAll()` は socket を閉じ（Live の場合）、すべての WebView・ダイアログ・フローティング
+  ボタン・保留中の tracking を破棄します。
+
+**ルームに入る前にコンテンツにインタラクティブ機能があるか確認する**（任意）:
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+overlayManager.fetchInteractiveStatus(mediaId) { isInteractive ->
+    if (isInteractive) overlayManager.joinRoom(mediaId, type = 1)
+}
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+overlayManager.fetchInteractiveStatus(mediaId, isInteractive -> {
+    if (isInteractive) overlayManager.joinRoom(mediaId, 1);
+});
+```
+  </TabItem>
+</Tabs>
+
+---
+
+## 9. VOD の統合 — 再生時間の注入
+
+VOD では、SDK は player が現在何秒目にいるかを**自動的には把握しません**。app が毎秒注入する
+必要があります:
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+private val handler = Handler(Looper.getMainLooper())
+private var seconds = 0
+
+private val tick = object : Runnable {
+    override fun run() {
+        seconds = (player.currentPosition / 1000).toInt()   // player の現在の秒
+        overlayManager.receiveTrackingTime(seconds)         // SDK に注入
+        handler.postDelayed(this, 1000L)
+    }
+}
+
+// joinRoom(type = 2) の後に開始
+handler.post(tick)
+
+// コンテンツ離脱時に停止
+handler.removeCallbacks(tick)
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+private Handler handler = new Handler(Looper.getMainLooper());
+private int seconds = 0;
+
+private Runnable tick = new Runnable() {
+    @Override
+    public void run() {
+        seconds = (int) (player.getCurrentPosition() / 1000);   // player の現在の秒
+        overlayManager.receiveTrackingTime(seconds);             // SDK に注入
+        handler.postDelayed(this, 1000L);
+    }
+};
+
+// joinRoom(type = 2) の後に開始
+handler.post(tick);
+
+// コンテンツ離脱時に停止
+handler.removeCallbacks(tick);
+```
+  </TabItem>
+</Tabs>
+
+- 単位: **秒**（`Timeline.time` の `"mm:ss"` 形式と一致）。
+- SDK はオーバーレイのマイルストーンと**正確に秒単位**で照合します（`startTimeShowOverlay == time`）。
+  そのため**間隔を空けてはいけません**: tick の間隔が 1 秒より広い、またはユーザーがマイルストーンを
+  シークで飛ばした場合、そのマイルストーンのオーバーレイは表示されません。
+- `receiveTrackingTime` は `(Int) -> Unit` 型のプロパティで、通常の関数として呼び出せます。
+
+---
+
+## 10. SDK にプレイヤー状態を提供する（任意、Live）
+
+サーバーは `ckst` イベントを送ってクライアントが再生中か停止中かを問い合わせることがあります。
+正確に応答するには、以下を登録してください:
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+overlayManager.addPlayerListener(object : PlayerChangeListener {
+    override suspend fun currentPosition(): Long = player.currentPosition
+
+    // first = isPlaying, second = state (1 = IDLE, 2 = BUFFERING, 3 = READY, 4 = ENDED)
+    override fun onPlayerStateChanged(): Pair<Boolean, Int> =
+        Pair(player.isPlaying, player.playbackState)
+})
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+overlayManager.addPlayerListener(new PlayerChangeListener() {
+    @Override
+    public long currentPosition() {
+        return player.getCurrentPosition();
+    }
+
+    // first = isPlaying, second = state (1 = IDLE, 2 = BUFFERING, 3 = READY, 4 = ENDED)
+    @Override
+    public Pair<Boolean, Integer> onPlayerStateChanged() {
+        return new Pair<>(player.isPlaying(), player.getPlaybackState());
+    }
+});
+```
+  </TabItem>
+</Tabs>
+
+SDK のマッピング: `1 → "idle"`, `3 → "playing"/"paused"`（`isPlaying` に基づく）, それ以外 → 空文字列。
+
+> `addPlayerListener` は `joinRoom` の**後**に呼び出してください。そうすることで listener が
+> `SocketIOManagement`（Live ルームに入った後にのみ存在するオブジェクト）にも紐づきます。
+
+---
+
+## 11. SDK からのイベント受信
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+class MainActivity : AppCompatActivity(), DefaultOverlayEventListener {
+
+    /** app が対応すべきアクションをオーバーレイが要求する */
+    override fun onHandleMessage(msg: EventOverlay) {
+        when (msg) {
+            EventOverlay.NEED_LOGIN   -> showLoginScreen()   // 未ログインでユーザーが回答を押した
+            EventOverlay.NEED_PAY_ONG -> showTopUpScreen()   // サーバーが PM402（OnG 不足）を返した
+            else -> Unit
+        }
+    }
+
+    /** チャンネルのリアルタイム視聴者数（Live のみ） */
+    override fun onHandleLiveViews(liveViews: Int) {
+        tvViewers.text = liveViews.toString()
+    }
+
+    /** オーバーレイが統計部分を開く/閉じる — 必要に応じて app の UI の表示/非表示に利用 */
+    override fun onShowITR(show: Boolean) { }
+
+    /**
+     * オーバーレイの読み込み完了（takeControl = true）またはエラー（webViewError = true）。
+     * overlayConfig は popup か inline か、上/下寄せ、高さの比率を示す。
+     */
+    override fun onFocusOverlay(
+        takeControl: Boolean,
+        webViewError: Boolean,
+        overlayConfig: OverlayConfig?
+    ) {
+        if (overlayConfig?.popupOverlay == true) {
+            // 例: オーバーレイに隠れないよう player のコントロールを上にずらす
+        }
+    }
+}
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+public class MainActivity extends AppCompatActivity implements DefaultOverlayEventListener {
+
+    /** app が対応すべきアクションをオーバーレイが要求する */
+    @Override
+    public void onHandleMessage(EventOverlay msg) {
+        switch (msg) {
+            case NEED_LOGIN:
+                showLoginScreen();   // 未ログインでユーザーが回答を押した
+                break;
+            case NEED_PAY_ONG:
+                showTopUpScreen();   // サーバーが PM402（OnG 不足）を返した
+                break;
+            default:
+                break;
+        }
+    }
+
+    /** チャンネルのリアルタイム視聴者数（Live のみ） */
+    @Override
+    public void onHandleLiveViews(int liveViews) {
+        tvViewers.setText(String.valueOf(liveViews));
+    }
+
+    /** オーバーレイが統計部分を開く/閉じる — 必要に応じて app の UI の表示/非表示に利用 */
+    @Override
+    public void onShowITR(boolean show) { }
+
+    /**
+     * オーバーレイの読み込み完了（takeControl = true）またはエラー（webViewError = true）。
+     * overlayConfig は popup か inline か、上/下寄せ、高さの比率を示す。
+     */
+    @Override
+    public void onFocusOverlay(
+        boolean takeControl,
+        boolean webViewError,
+        OverlayConfig overlayConfig
+    ) {
+        if (overlayConfig != null && overlayConfig.popupOverlay) {
+            // 例: オーバーレイに隠れないよう player のコントロールを上にずらす
+        }
+    }
+}
+```
+  </TabItem>
+</Tabs>
+
+`DefaultOverlayEventListener` は `OverlayEventListener` のエイリアスに過ぎません — どちらを
+実装してもかまいませんが、**4 つの関数すべてが必須**です。
+
+---
+
+## 12. ランキング
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+overlayManager.showChartsInteractive(
+    mediaId = "003c04ba-8f7d-4663-bef0-c7a971c059b6",
+    userId = "355202",
+    backgroundColorHeader = "#139DED"   // 任意、ヘッダーの色の 16 進コード
+)
+
+if (overlayManager.isDialogCharShowing()) {
+    overlayManager.hideChartsInteractive()
+}
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+overlayManager.showChartsInteractive(
+    "003c04ba-8f7d-4663-bef0-c7a971c059b6",
+    "355202",
+    "#139DED"   // 任意、ヘッダーの色の 16 進コード
+);
+
+if (overlayManager.isDialogCharShowing()) {
+    overlayManager.hideChartsInteractive();
+}
+```
+  </TabItem>
+</Tabs>
+
+このダイアログは全画面の `DialogFragment` で、縦横の向きやタブレットに応じて自動的にサイズが
+調整されます。
+
+---
+
+## 13. 画面回転の処理
+
+Activity が**再生成されない**ように `android:configChanges="orientation|screenSize"` を宣言して
+ください — これによりオーバーレイ/socket が失われません。SDK のダイアログは自身の
+`onConfigurationChanged` を自動的に処理します。
+
+> 注意: `OverlayManager.onConfigurationChanged` は現在 **private** であり、app から直接呼び出せません。
+> 回転時に Activity が再生成される場合は、`OverlayManager` を再構築し `joinRoom` をやり直してください。
+
+---
+
+## 14. ProGuard / R8
+
+`:interactive` モジュールには `consumer-rules.pro`（AAR 使用時に app に自動適用される）が
+含まれており、以下を保持します:
+
+- Retrofit のインターフェース `OverlayService`, `InteractiveStatusService`、
+- `vn.interactive.model.**`, `retrofit2.**`, `okhttp3.**`, `okio.**` 全体、Gson とアノテーション。
+
+app が `minifyEnabled true` を有効にしていて JS ブリッジが呼ばれないエラーが発生する場合は、
+以下を追加してください:
+
+```proguard
+# JS interface を保持する（WebView がリフレクション経由で呼び出す）
+-keepclassmembers class vn.interactive.callbacks.OverlayWebViewCallBack {
+    @android.webkit.JavascriptInterface <methods>;
+}
+-keepclassmembers class vn.interactive.callbacks.PostMessageListener {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
+# 環境 URL を取得するネイティブ関数を保持する
+-keepclasseswithmembernames class vn.interactive.utils.Utils {
+    native <methods>;
+}
+```
+
+---
+
+## 15. 統合チェックリスト
+
+- [ ] Activity が `AppCompatActivity` / `FragmentActivity` を継承している。
+- [ ] `OverlayView` がレイアウトにあり、動画枠を正確に覆い、player の**上**に描画されている。
+- [ ] `INTERNET` + `ACCESS_NETWORK_STATE` を宣言済み。
+- [ ] 必要な依存関係をすべて宣言済み（AAR で統合する場合）。
+- [ ] `setTenantId(...)` に Interactive チームから発行された正しい値を設定している。
+- [ ] `initToken()` がログイン時**および**ログアウト時に呼ばれている。
+- [ ] 新しいコンテンツを視聴開始するたびに `joinRoom()` が呼ばれている。
+- [ ] VOD: 1 秒ごとに `receiveTrackingTime()` を呼ぶループがある。
+- [ ] コンテンツ離脱時 / `onDestroy()` で `releaseAll()` が呼ばれている。
+- [ ] `EventOverlay.NEED_LOGIN` と `NEED_PAY_ONG` を処理済み。
+
+---

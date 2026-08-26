@@ -1,0 +1,138 @@
+---
+title: SDK統合時の検証フロー
+description: SDK統合時の検証手順一覧。ゲーム側からstoreへのリリース前にレビューするAPK/AABの提供時の内容。
+---
+
+### 本ドキュメントは、ゲームのリリースプロセス中に問題が発生した場合、随時更新されます
+
+Note: アプリのリリース後であっても、各バージョン更新時にはdevから送られたapkをスキャンし、権限や潜在的な不具合がないか確認する必要があります。内部テストに上げる前に、apk向けの項目2を確認してください
+
+理由: devが事前連絡なしに機能や権限を追加する可能性があり、これはstoreのインストールポリシーに影響を与える可能性があります。管理しないとGoogleにbanされる恐れがあります
+
+内部テストに上げる際は、支払いエラーやイベント不足のようなエラーのみ許容されます。16kb、http、バックグラウンドダウンロード、危険な権限などのエラーは絶対に上げてはいけません。Googleから赤色警告を受けます。
+
+### サンプルプロジェクトへのSDK統合時
+
+1. ログイン（アカウント、Google（プロジェクトによる）、Facebook）、登録、パスワードを忘れた場合の成功
+
+2. appflyerへのイベント送信
+
+3. 通知のテスト送信
+
+4. hub上のすべてのパラメータの設定完了
+
+5. Firebase Remote Configへの設定反映完了
+
+6. 必要なイベントが送信済み（リリース日カウントダウン）
+
+### ゲーム側から検証用のapkを提供（mobsfを使用して検証）
+
+1. target api 35以上で16kbに対応したビルド
+
+2. 提供された署名鍵、package idが正しいこと
+
+3. sdkのバージョン
+
+4. ログイン（アカウント、Google（プロジェクトによる）、Facebook）、登録、パスワードを忘れた場合の成功
+
+5. 通知のテスト送信
+
+6. chalesでゲームからのdomainがhttpでないか確認。httpの場合はゲーム側の修正が必須
+
+7. mobfsで危険と警告された権限がゲームの機能に該当する場合、それが何の機能か把握しポリシーに申告する必要がある
+
+8. ゲームマップリソースのダウンロード以外でバックグラウンドダウンロードが許可されていないか確認。それ以外のダウンロードは、何をダウンロードしているか、進捗％をユーザーに通知する必要がある
+
+9. アプリが3分以上どこかでフリーズし、何の通知もない場合もゲーム側に報告が必要
+
+10. 反応しないボタンがあればゲーム側に報告が必要
+
+11. チャージパッケージのidがチャージ一覧と一致しているか確認
+
+12. Integrate SDKの項目「2.3 TrackingEvent」にある各イベントを確認し、ログでこれらのイベントが呼ばれているか確認。未統合の場合はゲーム側に統合を依頼
+
+### ゲーム側からaabが提供されstoreに上げる際
+
+1. テスト用サンプルプロジェクトを作成
+
+2. storeとhub上でのチャージ設定（要注意）
+
+3. 内部テストへアップロード
+
+4. Anh Minh氏に支払いの有効化を依頼（1日かかるため、aabをアップする1日前に有効化するのがベスト）
+
+5. 支払いテストの確認（外部アカウントを使うと弁済になるため、production用の専用アカウントを使用）
+
+6. mkt側から送信されるイベント、appflyer上の登録・ログインまでのイベントを確認
+
+7. その他機能イベント（カウントダウン、Build version）の確認
+
+8. レビュー用アカウントを使いプレイしてlv1のキャラクターを作成
+
+9. appsflyer上で必須のイベント一覧
+
+    1. af_app_launch（sdk）
+
+    2. **af_extract_started（dev trung - 要確認）**
+
+    3. **af_extract_finished（dev trung - 要確認）**
+
+    4. **af_show_start_game（dev trung - 要確認）**
+
+    5. af_login_view（sdk）
+
+    6. af_login_start（sdk）
+
+    7. af_first_launch（sdk）
+
+    8. af_server_registration（sdk）
+
+    9. af_play_time（sdk）
+
+    10. af_registration（sdk）
+
+    11. **af_enter_gameplay（dev trung - 要確認）**
+
+    12. **af_patch_start（dev trung - 要確認）**
+
+    13. **af_patch_error（dev trung - 要確認）（エラーが発生しなければ省略可）**
+
+    14. **af_patch_success（dev trung - 要確認）**
+
+    15. af_purchase（sdk）
+
+    16. af_payment_success（sdk）
+
+    17. af_open_payment_screen（sdk）
+
+    18. **af_level_achievement（dev trung - 要確認）**
+
+    19. **af_server_select（dev trung - 要確認）**
+
+    20. **af_char_create_start（dev trung - 要確認）**
+
+    21. **af_char_create_error（dev trung - 要確認）**
+
+    22. **af_char_create_success（dev trung - 要確認）**
+
+    23. **af_char_select（dev trung - 要確認）**
+
+    24. af_server_iap_purchase（sdk）
+
+    25. af_purchase_point_iap（sdk）
+
+    26. af_retention_d1（sdk）
+
+    27. **af_vip_achievement（dev trung - 要確認、VIPのないアカウントであれば確認不要）**
+
+このほか、ゲーム側でカスタムした他のイベントもあります
+
+### レビュー提出の準備
+
+1. レビュー提出前に、storeでのポリシー設定を正確に行う必要がある（アプリケーションの公開オン/オフ管理を有効化）
+
+2. アプリケーションの説明情報に関するエラーを確認。参考: [Android](https://vtvlivevn.sg.larksuite.com/wiki/NichwNl6hiTKnrkSE26lJxdyggL?table=tblpesOGDXb5oKYP&view=vewuCREkVn)
+
+3. 早期登録ドキュメントに従い、該当する場合は早期登録を有効化する。ドキュメント: [早期登録（Pre-Order, Pre-registration）](https://vtvlivevn.sg.larksuite.com/wiki/UNrAw3pX9icQkMklXN3urnLZsUf?table=tblpesOGDXb5oKYP&view=vewuCREkVn)
+
+4. storeへのレビュー提出

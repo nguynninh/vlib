@@ -1,0 +1,53 @@
+---
+title: "Tính năng"
+description: "Các tính năng chính của SDK Game: xác thực OTP, quên mật khẩu, cấu hình động, tracking sự kiện, nhận quà và cập nhật thông tin người dùng."
+sidebar:
+  order: 2
+---
+
+SDK Game cung cấp một tập hợp tính năng nền tảng nhằm chuẩn hoá nghiệp vụ tài khoản và tracking cho các game trong hệ sinh thái VTV Live.
+
+## Xác thực OTP
+
+Hỗ trợ xác thực email và số điện thoại người dùng bằng mã OTP, dùng chung cho các luồng đăng ký, đổi thông tin tài khoản trong game.
+
+## Quên mật khẩu
+
+Cung cấp luồng lấy lại mật khẩu hoàn chỉnh, cho phép người dùng khôi phục tài khoản mà không cần rời khỏi game.
+
+## Cấu hình động từ BE API và Firebase Remote Config
+
+SDK cho phép game nhận cấu hình động ngay trong lúc chạy, kết hợp giữa:
+
+* BE API nội bộ của hệ thống.
+* Firebase Remote Config.
+
+Nhờ đó, các thay đổi cấu hình (bật/tắt tính năng, tham số vận hành...) có thể áp dụng mà không cần phát hành lại bản build game.
+
+## Nhận quà game
+
+Hỗ trợ luồng nhận quà trong game thông qua API dùng chung, đảm bảo tính nhất quán khi nhiều game cùng khai thác chương trình quà tặng.
+
+## Yêu cầu cập nhật thông tin người dùng
+
+Tự động kiểm tra và yêu cầu người dùng cập nhật thông tin còn thiếu khi vào game, đảm bảo dữ liệu tài khoản đầy đủ cho các nghiệp vụ phía sau.
+
+## Tracking game hub
+
+Ghi nhận các sự kiện tương tác giữa người dùng và game hub, phục vụ phân tích hành vi và vận hành sản phẩm.
+
+## Theo dõi thông báo
+
+Theo dõi trạng thái nhận và tương tác của người dùng với thông báo (notification) được gửi tới game.
+
+## Sự kiện play_time
+
+Cập nhật logic ghi nhận sự kiện `play_time`, phục vụ đo lường thời gian chơi thực tế của người dùng.
+
+## Tài liệu tham chiếu dùng chung
+
+Bên cạnh các tính năng theo nền tảng, SDK Game cung cấp bộ tài liệu tham chiếu áp dụng cho cả Android và iOS:
+
+* Tài liệu tích hợp theo từng nền tảng và các link điều khoản, chính sách liên quan.
+* Tài liệu API/IAP dùng trong SDK: domain, path, tham số và mục đích.
+* Tài liệu mô tả luồng của từng sự kiện tracking, kèm ghi chú sự kiện MKT dùng để tối ưu quảng cáo.

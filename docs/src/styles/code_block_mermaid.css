@@ -81,7 +81,7 @@
 .mermaid-diagram svg {
 	display: block;
 	max-width: 100%;
-	max-height: 520px;
+	max-height: 900px;
 	height: auto;
 }
 
@@ -92,6 +92,10 @@
 
 .mermaid-diagram.is-wide svg {
 	width: min(760px, 100%) !important;
+}
+
+.mermaid-frame-body-scaled {
+	justify-content: flex-start;
 }
 
 .mermaid-frame.has-error .mermaid-diagram {

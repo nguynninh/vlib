@@ -1,0 +1,53 @@
+---
+title: イベントフロー説明ドキュメント
+description: SDK GameおよびBackEndにおけるAppsFlyerイベント(af_*)の一覧。発生箇所、フローの説明、広告最適化計測に使用するノートを含む。
+---
+
+| **イベント名** | **発生箇所** | **フロー説明** | **MKTが広告最適化に使用しているNote event** |
+| --- | --- | --- | --- |
+| af_click_login | SDK Game | ログインをクリック | |
+| af_complete_registration | BackEnd | 登録完了 | |
+| af_error_api | SDK Game | APIエラー | |
+| af_error_purchase | SDK Game | チャージエラー | |
+| af_logout | SDK Game | ログアウト | |
+| af_open_login | SDK Game | ログインパネルを開く | アプリオープンからリソース読み込み完了までの離脱率を計測 |
+| af_play_time | SDK Game | ゲームプレイ時間(30秒、1分、3分、5分、15分、30分、1時間、2時間、3時間...+1時間) | ユーザー品質を計測 |
+| af_cancel_purchase | SDK Game | IAP購入のキャンセル | |
+| af_app_launch | SDK Game | ゲーム起動 | NRU率計測用パラメータ |
+| af_purchase_point | BackEnd | | |
+| af_purchase_point_web | BackEnd | アプリでアカウント作成 -> キャラクター作成 -> Webでゲーム内通貨にOnGを交換 | |
+| af_server_web_purchase | BackEnd | | |
+| af_purchase_point_iap | BackEnd | モバイル端末のゲーム内でチャージすると発生 | |
+| af_server_iap_purchase | BackEnd | アプリ経由での購入 | |
+| af_purchase | BackEnd | 購入 | 広告収益を計測 |
+| af_registration | BackEnd | 新規アカウントでログインしてゲームをプレイ | NRUを計測 |
+| af_server_registration | BackEnd | | NRUを計測 |
+| af_payment_success | SDK Game | ゲーム内での支払い成功 | |
+| af_open_payment_screen | SDK Game | ゲーム内の支払い画面を開く | |
+| af_login | SDK Game | ゲーム内ログイン | NRUを計測 |
+| af_vip_achievement | SDK Game, パートナー | VIPランクアップ | |
+| af_level_achievement | SDK Game, パートナー | キャラクターレベルアップ | |
+| af_first_launch | SDK Game | ゲーム初回起動 | |
+| af_pay_firstgift_1 | SDK Game, パートナー | | 初回チャージパッケージ購入者率を計測 |
+| af_pay_firstgift_100 | SDK Game, パートナー | | |
+| af_pay_firstgift_1000 | SDK Game, パートナー | 条件に応じたパッケージ購入 | |
+| af_pay_weekgift | SDK Game, パートナー | | |
+| af_nonpay_monthgift | SDK Game, パートナー | | |
+| af_complete_tutorial | SDK Game, パートナー | 初心者チュートリアル完了 | 初心者チュートリアル完了率を計測 |
+| af_start_tutorial | SDK Game, パートナー | チュートリアル開始 | |
+| af_character_creation_started | SDK Game, パートナー | キャラクター作成開始 | |
+| af_character_creation_finished | SDK Game, パートナー | キャラクター作成終了 | ゲーム参加成功率(キャラクター作成済み)を計測 |
+| af_resource_started | SDK Game, パートナー | リソースのダウンロード開始 | リソースダウンロード時の離脱率を計測 |
+| af_resource_finished | SDK Game, パートナー | リソースのダウンロード終了 | リソースダウンロード時の離脱率を計測 |
+| af_enter_gameplay | SDK Game, パートナー | ゲーム参加 | |
+| af_extract_finished | SDK Game, パートナー | リソース解凍開始 | |
+| af_extract_started | SDK Game, パートナー | リソース解凍終了 | |
+| af_show_start_game | SDK Game, パートナー | ゲーム開始画面 | |
+| af_retention_d1 | BackEnd | 日次でのゲーム再訪 | RRを計測 |
+| af_retention_d3 | BackEnd | | RRを計測 |
+| af_server_retention_d1 | BackEnd | | |
+| af_server_retention_d3 | BackEnd | | |
+| af_server_login_tracking | BackEnd | 新しいアクセストークン作成時 | |
+| af_server_select | SDK Game, パートナー | プレイヤーがゲームに入る際に選択したサーバー | |
+| af_character_selected | SDK Game, パートナー | アカウントに既にキャラクターが存在。プレイヤーがプレイするキャラクターを選択 | |
+| af_upgrade_version_success | SDK Game | ユーザーがゲームを更新 | |

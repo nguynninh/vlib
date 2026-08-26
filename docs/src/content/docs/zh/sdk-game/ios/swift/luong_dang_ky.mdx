@@ -1,0 +1,109 @@
+---
+title: 注册流程
+description: 描述 SDK 从 RegistrationView 画面进行账户注册的流程，包含输入数据校验步骤和结果处理。
+---
+
+本文档基于实际代码，描述 SDK 的账户注册流程：
+`RegistrationView.swift`（以及打开注册画面的 `LoginViewNew.swift`）。
+
+## 总体流程图
+
+```mermaid
+%% width: 1100
+flowchart TD
+    A([Màn hình đăng nhập<br/>Người dùng bấm Đăng ký]) --> B["Mở RegistrationView"]
+    B --> C[Nhập username, mật khẩu,<br/>nhập lại mật khẩu, tick Điều khoản]
+    C --> D["btnRegisteClick()"]
+
+    D --> E{Kiểm tra dữ liệu nhập}
+    E -- Username rỗng --> E1([Báo lỗi: chưa nhập tên])
+    E -- Username < 6 ký tự --> E2([Báo lỗi: tên quá ngắn])
+    E -- Sai REGEX_CHECK_USERNAME --> E3([Báo lỗi: 6-30 ký tự, không ký tự đặc biệt])
+    E -- Mật khẩu rỗng / < 6 --> E4([Báo lỗi mật khẩu])
+    E -- Sai REGEX_CHECK_PASS_WORD --> E5([Báo lỗi: mật khẩu không hợp lệ])
+    E -- Nhập lại không khớp --> E6([Báo lỗi: mật khẩu không khớp])
+    E -- Chưa tick Điều khoản --> E7([Alert: hãy đồng ý Điều khoản và Chính sách])
+    E -- Hợp lệ --> F["runRecaptchaVisual()<br/>Hiển thị reCAPTCHA"]
+
+    F --> G{reCAPTCHA}
+    G -- Có token --> H["recapchaSuccess(token)"]
+    G -- Thất bại / hủy --> G1([recapchaError → gỡ view captcha])
+
+    H --> I["POST PATH_REGISTER_V2<br/>token, username, password, deviceId..."]
+    I --> J{Mã lỗi đăng ký}
+    J -- code != 0 --> J1([handleErrorCode<br/>Hiện thông báo lỗi])
+    J -- code = 0 --> K[Tracking sự kiện registration]
+    K --> L["doLogin() – tự động đăng nhập<br/>POST PATH_LOGIN_V2<br/>grant_type = password"]
+
+    L --> M{Mã lỗi đăng nhập}
+    M -- code = 0 --> N["getDataLogin: lưu token<br/>updatePushId + authenGame<br/>Lưu username/password<br/>Tracking login_success<br/>delegate loginSuccess + registerTimerTask"]
+    N --> O([callback CallbackRegisterSuccess<br/>Đóng màn hình → Vào game])
+    M -- code != 0 --> P([Alert lỗi → đóng màn hình])
+```
+
+## 详细说明
+
+### 1. 打开注册画面
+
+从登录画面（`LoginViewNew`）中，用户点击**注册**按钮 →
+打开 `RegistrationView`。该画面包含**用户名**、**密码**、
+**确认密码**输入框以及同意**服务条款与隐私政策**的复选框。
+
+### 2. 输入数据校验 – `btnRegisteClick()`
+
+在调用 API 之前，SDK 会依次进行以下检查（遇到任何错误都会提示并立即停止）：
+
+- 用户名不能为空。
+- 密码不能为空。
+- 用户名至少 6 个字符。
+- 密码至少 6 个字符。
+- 用户名符合 `REGEX_CHECK_USERNAME`（6–30 个字符，不含特殊字符）。
+- 密码符合 `REGEX_CHECK_PASS_WORD`。
+- 确认密码输入框不能为空。
+- 密码与确认密码必须一致。
+- 必须勾选同意服务条款与隐私政策（`isCheck`）。
+
+全部通过后 → 调用 `runRecaptchaVisual()`。
+
+### 3. reCAPTCHA 验证 – `runRecaptchaVisual()`
+
+使用 `apiKeyRecapcha` 和 `baseWebId` 显示 `RecaptchaVisual`。
+如果成功获取 token → 调用 `recapchaSuccess(token)`；如果失败/取消 →
+`recapchaError()` 移除 captcha 视图。
+
+### 4. 调用注册 API – `recapchaSuccess()`
+
+调用 `PATH_REGISTER_V2`（POST），参数包括：
+`reCaptChaVer = ios-v2`、`token`、`username`、`password`、`rePassword`、
+`deviceId`、`os`、`osVersion`，以及 `ip`（如有）。
+
+- `code = 0`：追踪 `registration` 事件（TikTok）→ 调用 `doLogin()` 进行**自动登录**。
+- `code != 0`：`handleErrorCode` 显示错误提示。
+
+### 5. 注册后自动登录 – `doLogin()`
+
+调用 `PATH_LOGIN_V2`（POST），参数为 `grant_type = password`，使用刚刚
+注册的用户名/密码。
+
+- `code = 0`：
+  - `getDataLogin()` 保存 `accessToken` / `refreshToken`。
+  - `updatePushId()`、`authenGame()`、`Utils.sayHi()`。
+  - 将用户名/密码保存到本地存储（`KeyUserName`、`KeyPassword`）。
+  - 追踪 `login_success`（类型 `Username`），追踪 TikTok `login`。
+  - 调用 delegate `loginSuccess(userInfo, accessToken, refreshToken)` 和 `registerTimerTask()`。
+  - 调用 `callback(CallbackRegisterSuccess)` 后关闭画面 → 进入游戏。
+- `code != 0`：显示错误提示后关闭画面。
+
+## 使用的 endpoint
+
+- `PATH_REGISTER_V2` – 注册账户（POST）
+- `PATH_LOGIN_V2` – 注册后自动登录（POST，`grant_type = password`）
+- `PATH_GAME_AUTH` – 登录后进行游戏认证（`authenGame`）
+
+## 说明
+
+- 注册成功后，SDK **不会要求用户重新登录**，而是自动使用刚创建的信息
+  登录，然后发出 `CallbackRegisterSuccess` 回调。
+- 用户名/密码的所有合法性条件均先在客户端进行校验，
+  reCAPTCHA 是调用注册 API 之前的必要步骤。
+
