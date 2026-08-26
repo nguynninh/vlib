@@ -1,0 +1,54 @@
+---
+title: "Features"
+description: "Key features of SDK Game: OTP authentication, forgot password, dynamic configuration, event tracking, gift redemption, and user information updates."
+sidebar:
+  order: 2
+---
+
+SDK Game provides a set of platform features to standardize account handling and tracking for games in the VTV Live ecosystem.
+
+## OTP Authentication
+
+Supports verifying users' email and phone number via OTP code, shared across registration and account information change flows within the game.
+
+## Forgot Password
+
+Provides a complete password recovery flow, allowing users to restore their account without leaving the game.
+
+## Dynamic Configuration from BE API and Firebase Remote Config
+
+The SDK allows games to receive dynamic configuration at runtime, combining:
+
+* The system's internal BE API.
+* Firebase Remote Config.
+
+As a result, configuration changes (enabling/disabling features, operational parameters...) can be applied without releasing a new game build.
+
+## Game Gift Redemption
+
+Supports the in-game gift redemption flow through a shared API, ensuring consistency when multiple games use the same gift program.
+
+## User Information Update Requirement
+
+Automatically checks and prompts users to update missing information when entering the game, ensuring complete account data for downstream operations.
+
+## Game Hub Tracking
+
+Records interaction events between users and the game hub, supporting behavior analysis and product operations.
+
+## Notification Tracking
+
+Tracks the delivery and interaction status of notifications sent to the game.
+
+## play_time Event
+
+Updates the logic for recording the `play_time` event, used to measure users' actual play time.
+
+## Shared Reference Documentation
+
+Besides platform-specific features, SDK Game provides a set of reference documentation that applies to both Android and iOS:
+
+* Integration documentation for each platform, along with links to related terms and policies.
+* API/IAP documentation used in the SDK: domain, path, parameters, and purpose.
+* Documentation describing the flow of each tracking event, along with notes on marketing events used for ad optimization.
+

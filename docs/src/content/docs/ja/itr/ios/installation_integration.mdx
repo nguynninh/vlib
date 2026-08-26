@@ -1,0 +1,289 @@
+---
+title: 02 — インストールと統合
+description: Interactive SDK を iOS アプリにインストール・統合するための環境要件と手順。
+---
+
+## 1. 環境要件
+
+| 項目 | 値 |
+|---|---|
+| プラットフォーム | iOS **15.0+**（`Podfile` の `platform :ios, '15.0'`） |
+| 言語 | Swift |
+| 配布形式 | **XCFramework**（`interactive_ios_mobile1.0.1.xcframework.zip`）、`BUILD_LIBRARY_FOR_DISTRIBUTION = YES` でビルド |
+| リンク | `use_frameworks! :linkage => :static`（静的フレームワーク） |
+| ホスト view の種類 | 任意の `UIViewController`。**2つの `UIView`** が必要: minigame オーバーレイ用と predict/lucky ボタン用 |
+
+SDK は `UIScreen.main.bounds`、`identifierForVendor`（deviceId）などの API を呼び出しますが、ネットワークアクセス以外に特別な権限宣言は不要です。
+
+---
+
+## 2. 依存関係（dependencies）
+
+SDK は transport/JSON 部分に CocoaPods を、Rx 関連は同梱された XCFramework を使用します。
+
+```ruby
+# Podfile（抜粋）
+platform :ios, '15.0'
+use_frameworks! :linkage => :static
+
+target 'ISdk' do
+  pod 'Alamofire', '5.9.0'
+  pod 'SwiftyJSON', '5.0.2'
+  pod 'Socket.IO-Client-Swift', '16.1.1'
+  pod 'Starscream', '4.0.8'
+end
+```
+
+さらに SDK は **RxSwift / RxCocoa / RxRelay**（リポジトリ内に `*.xcframework` 形式で同梱、VOD の `OverlayVod*` レイヤーおよび一部の `import RxCocoa` delegate に使用）に依存します。
+
+| ライブラリ | 役割 |
+|---|---|
+| `Alamofire` | すべての REST 呼び出し（`/api/actions`、`vip-status`、VOD シナリオ、interactive-status） |
+| `Socket.IO-Client-Swift` + `Starscream` | リアルタイム WebSocket 接続 |
+| `SwiftyJSON` | WebView からの `data`/`type` payload や一部の socket payload の解析 |
+| `RxSwift/RxCocoa/RxRelay` | VOD の use-case/repository 層（`Single<OverlayVod>`） |
+
+> ⚠️ **静的 XCFramework** で統合する場合、アプリ側の target で上記 pod を**再度宣言する必要があります**。宣言しないとリンク/実行時にシンボル不足が発生します。
+
+---
+
+## 3. SDK をプロジェクトに組み込む
+
+**方法A — XCFramework を使う**（統合アプリ側に推奨）:
+
+1. `interactive_ios_mobile*.xcframework.zip` を展開し、`ISdk.xcframework`（と各 Rx の `*.xcframework`）をアプリ target の **Frameworks, Libraries, and Embedded Content** にドラッグし、**Embed & Sign** を選択します。
+2. アプリの `Podfile` に [2章](#2-依存関係dependencies) の pod を再宣言し、`pod install` します。
+3. 必要な箇所で `import ISdk` します。
+
+**方法B — ソースからビルドする**（SDK 自体を保守する場合）: `ISdk/ISdk.xcworkspace` を開き、XCFramework を出力するには scheme `BuildSDK`、デモアプリを実行するには scheme `DemoSDKITR` を選択します。
+
+---
+
+## 4. 使用前に必須の設定
+
+**早い段階**（例えば `AppDelegate.didFinishLaunching` 内）で、あらゆる `joinRoom` より前に設定してください。
+
+```swift
+import ISdk
+
+let interactiveSetting = InteractiveSetting()
+interactiveSetting.setEnableProdEnv(enableProdEnv: Enviroment.DEV.rawValue)   // "dev" | "stg" | "prod"
+interactiveSetting.setXTenantId(xTenantId: TenantIdType.VTVprime.rawValue)    // Interactive チームから発行されるテナント
+```
+
+> ⛔ **非常に重要です。** これら2つの値は多くの箇所で**force-unwrap**（`UserDefaults.standard.string(forKey:)!`）で再取得されます。呼び忘れると SDK は次のようになります。
+> - socket に接続しない（`connectSocket()` がブロックし、エラーをログに出す）、および/または
+> - `JoinRoomData` の構築、`TelcoRepository`、`LiveLogRepository` の呼び出し時に**クラッシュ**する。
+>
+> （これはおそらくコミット `[fixbug] crash` の原因です。）
+
+| Enum | 有効な値 |
+|---|---|
+| `Enviroment` | `.DEV`（`"dev"`）、`.STG`（`"stg"`）、`.PROD`（`"prod"`） |
+| `TenantIdType` | `.vtvlive`（`"vtvlive"`）、`.onliveLiveStream`（`"onlivev2"`）、`.onliveTV`（`"onlivetv"`）、`.VTVprime`（`"VTVprime"`） |
+
+---
+
+## 5. `InteractiveControllerView` の初期化と view の設定
+
+**2つの `UIView`** を用意する必要があります。
+
+- `uiView` — プレイヤーに重ねて**minigame オーバーレイ**を表示する領域（通常は動画の 16:9 の枠に一致）。
+- `predictView` — **predict/lucky の浮動ボタン**とダイアログを配置する領域。
+
+```swift
+class PlayerViewController: UIViewController {
+
+    let interactive = InteractiveControllerView()
+
+    private let overlayContainer = UIView()   // 動画に重ねる
+    private let predictContainer = UIView()    // predict/lucky ボタンを配置
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        // ... addSubview + overlayContainer を動画枠に合わせてレイアウト ...
+
+        setupInteractive()
+    }
+
+    private func setupInteractive() {
+        // 1) ログインセッションを宣言する（joinRoom より前）
+        interactive.initAuthenToken(authenToken: accessToken, userId: userId, bjName: "")
+
+        // 2) delegate を設定する
+        interactive.overlayManagement?.setupDelegate(fanClubDelegate: self)
+        interactive.overlayManagement?.setupDelegate(interactiveLoginDelegate: self)
+        interactive.overlayManagement?.setupDelegate(interactiveViewDelegate: self)
+        interactive.overlayManagement?.setupAnswerDelegate(interactiveAnswerDelegate: self)
+        interactive.setInteractivePlayerDelegate(interactivePlayerDelegate: self)
+        interactive.setupPredictViewDelegate(interactivePredictDelegate: self)
+        interactive.setuPredictLoginDelegate(interactiveLoginDelegate: self)
+
+        // 3) 2つのホスト view を設定する
+        interactive.initOverlay(uiView: overlayContainer, predictView: predictContainer)
+
+        // 4) ルームに参加する
+        interactive.joinRoom(mediaId: mediaId, type: 1)   // 1 = LIVE、2 = VOD
+    }
+}
+```
+
+> `initOverlay(uiView:predictView:)` は predict ボタンの枠を調整するために、自動的に**画面回転**（`orientationDidChange`）の監視も登録します。
+
+---
+
+## 6. ログインセッションの宣言
+
+```swift
+// ログイン成功時
+interactive.initAuthenToken(authenToken: accessToken, userId: userId, bjName: "")
+
+// ログアウト時
+interactive.initAuthenToken(authenToken: "", userId: "", bjName: "")
+```
+
+仕組み:
+
+- `authenToken` は socket ヘッダーの `Authorization` に**原文のまま**設定されます（socket 向けに `Bearer ` を自動付与することは**ありません**）。
+- **REST**（`/api/actions`、`vip-status`）の場合: トークンが `"ey"`（JWT）で始まる場合は SDK が自動で `Bearer ` を付与し、それ以外は原文のまま送信します。
+- **Live に接続中**（かつ `mediaContentId` がある）状態で `initAuthenToken` を呼ぶと → SDK は**socket を切断し、新しいトークンを持って再びルームに参加**します。
+- `bjName` は fanclub ダイアログの表示に使われます（「〈bjName〉の FanClub である必要があります…」）。
+
+---
+
+## 7. コンテンツへの参加・離脱
+
+```swift
+// LIVE
+interactive.joinRoom(mediaId: "003c04ba-...", type: 1)   // ApiConst.TYPE_LIVE
+
+// VOD
+interactive.joinRoom(mediaId: "4357747e-...", type: 2)   // ApiConst.TYPE_VOD
+
+// ルームを離れる（再度 join できるようオブジェクトは保持）
+interactive.leaveRoom()
+
+// すべて解放する（プレイヤー画面を離れるとき）
+interactive.releaseAll()
+```
+
+- `joinRoom(type: 1)`: media が異なる場合は自動的に旧ルームを `leaveRoom()`、旧 socket を切断、`removeAllView()`、コールバックを再設定してから接続します。`emit("join-room")` は**socket が接続に成功した後**にのみ実行されます。
+- `joinRoom(type: 2)`: socket を切断し、`removeAllView()` を行い、REST で VOD シナリオを取得します。
+- `releaseAll()`: （接続中であれば）`leaveRoom()` → すべての delegate を解除 → `disconnection()`。
+
+**コンテンツにインタラクティブ要素があるか確認する**（任意、join 前に実行）:
+
+```swift
+interactive.fetchInteractiveStatus(mediaId: mediaId) { isInteractive in
+    if isInteractive { self.interactive.joinRoom(mediaId: mediaId, type: 1) }
+}
+```
+
+---
+
+## 8. VOD の統合 — 再生時間の送り込み
+
+VOD の場合、SDK は**自動的には**プレイヤーが何秒目にいるかを把握しません。アプリは毎秒 `getTimeVideo(time:)`（単位は**秒**）で送り込む必要があります。
+
+```swift
+// AVPlayer + periodic time observer の例
+let interval = CMTime(seconds: 1, preferredTimescale: 1)
+player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
+    let seconds = time.seconds
+    self?.interactive.getTimeVideo(time: seconds)
+}
+```
+
+SDK 内部の仕組み（`getTimeVideo`）:
+
+- `timeShow == Int(time)`（**秒**単位で一致）となるオーバーレイを照合し、`showInteractiveVod` を呼び出します。
+- 表示した後は、そのタイムラインを**リストから削除**し、再表示されないようにします。
+
+> ⚠️ **秒単位で正確に**照合するため、アプリの送り込み間隔が1秒より疎な場合や、ユーザーが**シークして飛ばした**場合、そのタイムポイントのオーバーレイは見逃されます。`getTimeVideo` は毎秒一定間隔で呼び出すことを推奨します。
+
+VOD オーバーレイの表示条件（`showInteractiveVod`）: `allowAnonymous == true` **または**（`!allowAnonymous && トークンあり`）。URL には `timelineId`、`tenantId`、`deviceType=IOS` が追加されます。
+
+---
+
+## 9. SDK からのイベント受信（delegate）
+
+アプリは以下の `protocol`（すべて `@objc … : AnyObject`）を実装します。詳細は [04 — API リファレンス](/ja/itr/ios/api_reference/#3-delegate-プロトコル一覧) を参照してください。
+
+```swift
+extension PlayerViewController: InteractivePlayerDelegate {
+    func getPlayerState() -> Int { player.isPlaying ? 3 : 2 }   // ckst イベントへの応答に使用
+    func showLiveView(liveView: Int) { viewersLabel.text = "\(liveView)" }  // すでに +230 済み
+}
+
+extension PlayerViewController: InteractiveLoginDelegate {
+    func showInteractiveLogin() { presentLoginScreen() }        // 未ログイン状態で回答しようとした場合
+}
+
+extension PlayerViewController: InteractivePredictDelegate {
+    func showLayoutViewPredictRoot() { predictContainer.isHidden = false }
+    func hideLayoutViewPredictRoot() { predictContainer.isHidden = true }
+    func endLayoutViewPredictRoot()  { predictContainer.removeFromSuperview() }
+}
+
+extension PlayerViewController: InteractiveAnswerDelegate {
+    func confirmDeduction() {}            // OnG 消費の確認
+    func confirmNotEnoughMoney() {}       // OnG 不足（PM402）
+    func confirmAnswerSuccess() {}        // 回答成功
+    func showSubscibeView() {}            // 課金/登録画面を開く（スペル "Subscibe" に注意）
+}
+
+extension PlayerViewController: FanClubDelegate {
+    func btnConfirmFanClub() { presentFanClubScreen() }
+}
+```
+
+`InteractiveViewDelegate`（オーバーレイの minigame の開閉時のレイアウト制御、画面の縮小など）が最も大きな delegate です。オーバーレイ表示時のプレイヤーレイアウトを制御したい場合は実装してください。不要な場合でも、必須の関数は実装する必要があります。ただし `viewForPresentDialogDedution()` にはデフォルトで `nil` を返す実装があります。
+
+---
+
+## 10. ランキング表（Leaderboard）
+
+```swift
+interactive.showChartsInteractive(
+    viewRoot: self.view,
+    mediaId: "003c04ba-...",
+    userid: "355202",
+    backgroundColorHeaderView: UIColor(hex: "139DED")   // 任意、デフォルトは #489BE6
+)
+```
+
+ダイアログは `LeaderboardView` で、`rnkbrd.onlive.vn`（PROD）/ `dev-rnkbrd.onplay.live`（DEV）から iframe を読み込み、`tag = 1202` として `viewRoot` に追加されます。
+
+---
+
+## 11. `ckst` イベントに対するプレイヤー状態
+
+サーバーが `ckst` を送信して再生/停止状態を尋ねると、SDK は `interactivePlayerDelegate.getPlayerState()` を呼び出し、再度 emit します。プレイヤー状態コード（`Int` 型）を返してください。この値はそのまま `ckst` payload の `playerStatus` フィールドに入ります。この数値の意味はアプリ側とバックエンドチームで取り決めてください。
+
+---
+
+## 12. predict/lucky ボタン — 表示制御
+
+```swift
+interactive.setHiddenInteractiveButton(true)     // 浮動ボタンの表示/非表示
+interactive.embededInteractiveContentView()      // インタラクティブコンテンツのダイアログを能動的に開く（必要な場合）
+```
+
+> 注意: predict/lucky ボタンは現行コードで**テナント `vtvlive`、`onlivetv`、`VTVprime` では無効**です（`receiveDataActionButtonPredict` が早期リターン）。それ以外のテナントのみボタンが表示されます。
+
+---
+
+## 13. 統合チェックリスト
+
+- [ ] アプリ起動時に `InteractiveSetting().setEnableProdEnv(...)` **と** `setXTenantId(...)` を呼ぶ。
+- [ ] 必要な pod（`Alamofire`、`SwiftyJSON`、`Socket.IO-Client-Swift`、`Starscream`）をすべて再宣言し、Rx の `*.xcframework` を組み込む。
+- [ ] 2つの `UIView`（オーバーレイ用 = 動画に重ねる + predict 用）を用意し、`initOverlay(uiView:predictView:)` を呼ぶ。
+- [ ] ログイン時**および**ログアウト時に `initAuthenToken(...)` を呼ぶ。
+- [ ] 新しいコンテンツの視聴を開始するたびに `joinRoom(mediaId:type:)` を呼ぶ。
+- [ ] VOD: `getTimeVideo(time:)` を**毎秒**（単位は秒）送り込む。
+- [ ] `InteractiveLoginDelegate.showInteractiveLogin()` と `InteractiveAnswerDelegate` を実装する。
+- [ ] プレイヤー画面を離れるときに `releaseAll()` を呼ぶ。
+
+---
+
+[← アーキテクチャ](/ja/itr/ios/sdk_interactive_architecture/) · [目次へ](/ja/itr/getting-started/overview/) · [次へ: 動作フロー →](/ja/itr/ios/detailed_workflow/)

@@ -1,0 +1,43 @@
+---
+title: "所用技术"
+description: "用于在 Android 和 iOS 上构建 SDK Game 的技术、语言及服务。"
+sidebar:
+  order: 3
+---
+
+SDK Game 针对各移动平台分别构建，同时共用部分 Backend 服务与第三方服务。
+
+## 概览表
+
+| 组成部分            | 技术                          | 作用                                                |
+| ---------------------- | ----------------------------------- | ------------------------------------------------------- |
+| Android 平台        | Java                                 | Android 端 SDK 的实现语言                     |
+| iOS 平台            | Objective-C / Swift                 | iOS 端 SDK 的实现语言                          |
+| 账户验证      | OIDC V2                             | 用于登录及 SDK API/IAP 的验证标准 |
+| 动态配置           | 内部 BE API                       | 为游戏提供实时配置          |
+| 动态配置           | Firebase Remote Config              | 补充动态配置来源，支持按版本区分  |
+| OTP 验证            | 内部 BE API                       | 验证用户邮箱、手机号                |
+| 事件 tracking        | BE tracking API                     | 记录 game hub、通知、play_time 等事件       |
+
+## Android 平台
+
+Android SDK 使用 **Java** 编写，通过 SDK 库直接集成到游戏项目中，并配有关于配置、集成、Backend 错误码及事件 emit/ack 流程的详细文档。
+
+## iOS 平台
+
+iOS SDK 使用 **Objective-C** 编写（同时支持 Swift），提供集成文档、tracking 指南、所使用的第三方库，以及各 SDK 版本的更新说明。
+
+## 验证方式：OIDC V2
+
+SDK 中使用的 API/IAP 均基于 **OIDC V2** 构建，确保各游戏及各 SDK 版本之间验证机制的一致性。
+
+## 动态配置
+
+动态配置由两个来源结合而成：
+
+* **内部 BE API** — 由 VTV Live Backend 团队负责运维。
+* **Firebase Remote Config** — Google 提供的服务，支持实时调整配置而无需重新发布构建版本。
+
+## 事件 tracking
+
+各类事件（game hub、通知、play_time 等）会发送至 BE tracking API，并配有描述各事件流程的文档，以及用于广告优化的 MKT 事件说明。

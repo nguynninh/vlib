@@ -57,7 +57,7 @@ https://github.com/<owner>/<repo>/releases/download/<tag>/<file-name>
 例如:
 
 ```text
-https://github.com/nguynninh/vlib-storage/releases/download/v1.0.0/photo_demo.jpg
+BASE_STORAGE/v1.0.0/photo_demo.jpg
 ```
 
 :::tip
@@ -75,7 +75,7 @@ BASE_STORAGE/<tag>/<file-name>
 构建时,一个 remark 插件会自动将 `BASE_STORAGE` 替换为环境变量中的真实值,例如:
 
 ```bash title=".env.production"
-BASE_STORAGE=https://github.com/nguynninh/vlib-storage/releases/download
+BASE_STORAGE=BASE_STORAGE
 ```
 
 :::tip

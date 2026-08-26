@@ -1,0 +1,132 @@
+---
+title: Countdown Event Flow
+description: Describes the showCountdown flow that displays a countdown event banner based on the eventCountDown configuration.
+---
+
+This document describes the `showCountdown` flow, built from the actual code: `Sdk+Countdown.swift` (display
+conditions + opening the screen) and `CountdownView.swift` (countdown clock + opening the event link).
+
+Entry point (called by the app to display the countdown event banner):
+
+```Swift
+Sdk.sharedInstance.showCountdown()
+```
+
+The event configuration is taken from `appInfo.eventCountDown` (loaded during the initialization flow, field `EVENT_COUNTDOWN`).
+
+## 1. Display condition – `showCountdown()` / `isCountdownAvailable()`
+
+```mermaid
+%% width: 1100
+flowchart TD
+    A(["showCountdown()"]) --> B{"isCountdownAvailable()?"}
+
+    subgraph AV["isCountdownAvailable()"]
+        V1{"Has eventCountDown?"} -- "No" --> VF([false])
+        V1 -- "Yes" --> V2{"Logged in?<br/>accessToken not empty"}
+        V2 -- "No" --> VF
+        V2 -- "Yes" --> V3{"uid in exclusion list?<br/>(test uid 2685822470)"}
+        V3 -- "Yes" --> VF
+        V3 -- "No" --> V4{"statusEvent == true?"}
+        V4 -- "No" --> VF
+        V4 -- "Yes" --> V5{"versionEvent empty<br/>OR contains current version?"}
+        V5 -- "No match" --> VF
+        V5 -- "Matches" --> V6{"timeEvent valid &&<br/>still in the future?"}
+        V6 -- "No" --> VF
+        V6 -- "Yes" --> VT([true])
+    end
+
+    B -- "false" --> C([Stops, not displayed])
+    B -- "true" --> D{"CountdownView already displayed?<br/>isCountdownViewDisplayed()"}
+    D -- "Currently displayed" --> C
+    D -- "Not yet" --> E{"timeEvent parseable<br/>and topViewController available?"}
+    E -- "No" --> C
+    E -- "Yes" --> F["Opens CountdownView<br/>passing title, image, linkEvent,<br/>closeEvent, gmtEvent, targetDate"]
+```
+
+## 2. `CountdownView` lifecycle
+
+```mermaid
+%% width: 1100
+flowchart TD
+    A["configUI → setupUI"] --> B["Shows/hides GMT label based on gmtEvent<br/>Shows/hides close button based on closeEvent"]
+    B --> C["setupLabels: creates a 1-second Timer<br/>→ updateCountdown()"]
+
+    C --> D{"updateCountdown:<br/>time remaining"}
+    D -- "> 0" --> E["Updates labels:<br/>days : hours : minutes : seconds (00 format)"]
+    E --> D
+    D -- "<= 0" --> F["Stops Timer<br/>Sets 00:00:00:00<br/>Auto-closes (btnClose)"]
+
+    A -. "Taps banner image" .-> G{"Has linkEvent?"}
+    G -- "Yes" --> H{"Can open external URL?<br/>canOpenURL"}
+    H -- "Yes" --> H1["Opens external browser / Safari"]
+    H -- "No" --> H2["Opens WKWebView inside the app"]
+    G -- "No" --> I([Ignored])
+
+    A -. "Taps close button (if closeEvent)" .-> J(["btnClose → removeFromSuperview"])
+```
+
+## Detailed description
+
+### `showCountdown()` – entry point (Sdk+Countdown.swift)
+
+1. Checks `isCountdownAvailable()`; stops if conditions are not met.
+
+2. Checks `isCountdownViewDisplayed()` — if the banner is already displayed, stops (avoids opening a duplicate).
+
+3. Gets `event = appInfo.eventCountDown` and parses `targetDate` from `event.timeEvent`
+(format `yyyy-MM-dd'T'HH:mm:ssZ`). Stops if missing.
+
+4. Opens `CountdownView` on `topViewController`, passing: `titleText`, `imageUrl`, `linkEvent`,
+`closeEvent`, `gmtEvent`, `targetDate`.
+
+### `isCountdownAvailable()` – display condition
+
+Returns `true` only when **all** of the following hold:
+
+- The `appInfo.eventCountDown` configuration is present.
+
+- The user is logged in (`accessToken` is not empty).
+
+- The account is **not** in the exclusion list (checks against test uid `2685822470`).
+
+- `event.statusEvent == true` (the event is enabled).
+
+- `versionEvent` is empty **or** contains the current app version (filtering by version).
+
+- `timeEvent` is parseable and **still in the future** (`timeIntervalSinceNow > 0`).
+
+### `isCountdownViewDisplayed()`
+
+Iterates over the subviews of `topViewController`; if a `CountdownView` is already present, it is considered
+displayed (no additional one is opened).
+
+### `CountdownView` – countdown clock
+
+- **`setupUI`**: shows/hides the GMT label based on `gmtEvent`, shows/hides the close button based on `closeEvent`
+(if `closeEvent == false`, manual closing is disabled).
+
+- **Countdown**: `setupLabels()` creates a `Timer` that fires every second calling `updateCountdown()`.
+
+    - Time remaining: updates the 4 labels **days : hours : minutes : seconds** (2-digit format).
+
+    - Time's up (`<= 0`): stops the timer, sets `00:00:00:00` and **auto-closes** the banner.
+
+- **Tapping the banner image** (`imageViewTapped`): if `linkEvent` is present, opens the event link —
+prefers opening the URL in an external browser (`UIApplication.open`); if that fails,
+displays a `WKWebView` inside the app.
+
+- **Close** (`btnClose`): removes the banner from the screen; `deinit` also invalidates the timer.
+
+## Notes
+
+- `showCountdown` **does not call any API** — all the data (end time, title, image, link,
+display flag) comes from the `eventCountDown` configuration already loaded during SDK initialization.
+
+- The banner auto-closes when time runs out; the user can only close it manually when `closeEvent == true`.
+
+- The event is **filtered by app version** (`versionEvent`) and by enabled/disabled status
+(`statusEvent`), so it only displays to the correct configured audience/version.
+
+- There is a duplicate-display guard (`isCountdownViewDisplayed`), making it safe to call
+`showCountdown()` multiple times.

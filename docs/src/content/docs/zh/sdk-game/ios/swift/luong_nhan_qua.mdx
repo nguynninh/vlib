@@ -1,0 +1,150 @@
+---
+title: 领取礼物流程
+description: 描述通过验证手机号/邮箱来领取礼物的流程，从 showReceiveGift 到 ZnsView 上的各种 VerifyStatus 状态。
+---
+
+本文档基于实际代码梳理领取礼物流程（验证手机号/邮箱以领取礼物）：
+`Sdk+Gift.swift`（判定状态）和 `ZnsView.swift`（选择领取礼物的界面）。
+
+入口：
+
+```Swift
+Sdk.sharedInstance.showReceiveGift()
+```
+
+`showReceiveGift()` 还会在**手机号/邮箱验证成功后**自动被调用（从
+`VerifyOTP` / `VerifyPhoneV2` / `VerifyEmailV2`），形成一个循环：验证 → 回到领取礼物。
+
+## 每个渠道（手机号 / 邮箱）的三种状态 —— `VerifyStatus`
+
+|状态|含义|`ZnsView` 上的按钮|
+|---|---|---|
+|`notYetVerified`|该渠道尚未验证|点击即**打开验证界面**（VerifyPhoneV2 / VerifyEmailV2）|
+|`verified`|已验证，**尚未领取礼物**|"领取礼物 ..." —— 可点击，用于**领取礼物**|
+|`receiveGifts`|已领取过礼物|"领取礼物 ..." —— **锁定**（灰色）|
+
+## 1. 判定状态 —— `showReceiveGift()`
+
+```mermaid
+%% width: 1100
+flowchart TD
+    A(["showReceiveGift()"]) --> B{"有 serverId & characterId？<br/>（UserDefaults）"}
+    B -- "没有" --> B1([停止])
+    B -- "有" --> C["getUserInfo()<br/>GET PATH_USER_INFO_V2"]
+
+    C --> D{"result.status == 1？"}
+    D -- "否（游客账户）" --> D1(["showTransferAccountV2()<br/>提示转换账户"])
+    D -- "是" --> E{"已验证手机号或邮箱？<br/>phoneVerified != nil || emailVerified != nil"}
+
+    E -- "两者都未验证" --> F["showReceiveGiftView<br/>phone/email = notYetVerified"]
+    E -- "至少 1 个渠道已验证" --> G["getVerifyGift()<br/>GET PATH_VERIFY_GIFT<br/>→ isPhoneGifted, isEmailGifted"]
+
+    G --> H["判定每个渠道的状态：<br/>已验证 + 已领取 → receiveGifts<br/>已验证 + 未领取 → verified<br/>未验证 → notYetVerified"]
+    H --> I["showReceiveGiftView(phoneStatus, emailStatus)"]
+    F --> I
+    I --> J(["打开 ZnsView"])
+```
+
+## 2. `ZnsView` 上的操作
+
+```mermaid
+%% width: 1100
+flowchart TD
+    A["ZnsView：2 个按钮 手机号 / 邮箱<br/>根据各渠道状态显示"] --> B{用户点击某个渠道}
+
+    B -- "notYetVerified" --> C["关闭 ZnsView<br/>打开 VerifyPhoneV2 / VerifyEmailV2<br/>先进行验证"]
+    C --> C1(["验证完成 → 再次调用 showReceiveGift()"])
+
+    B -- "receiveGifts" --> D([按钮已锁定 —— 无操作])
+
+    B -- "verified" --> E["callApiConfirm(giftType)<br/>POST PATH_RECEIVE_GIFT<br/>appId, serverId, characterId,<br/>giftType, serverName, characterLevel, vipLevel..."]
+
+    E --> F{错误码}
+    F -- "code 86" --> G["doRefreshWithAction → 重新调用 callApiConfirm"]
+    G --> E
+    F -- "code != 0" --> H([handleErrorCode → 提示错误])
+    F -- "code = 0" --> I["关闭 ZnsView<br/>showVerifyConfirm()（VerifyConfirm）"]
+    I --> J(["领取礼物成功确认界面"])
+```
+
+## 详细说明
+
+### `showReceiveGift()` —— 判定流程（Sdk+Gift.swift）
+
+1. 必须有 `serverId` 和 `characterId`（从 `UserDefaults` 读取：`KEY_SERVER_ID` /
+`KEY_SERVER_NAME`）；缺失则停止。
+
+2. 调用 `getUserInfo()`（`PATH_USER_INFO_V2`）：
+
+    - 若 `result.status != 1`（游客账户）→ `showTransferAccountV2()` 提示转换为
+    主账户，结束领取礼物流程。
+
+    - 若 `status == 1`：
+
+        - **至少已验证一个渠道**（`phoneVerified != nil` 或 `emailVerified != nil`）：
+        调用 `getVerifyGift()` 判断是否已领取礼物，然后计算各渠道状态：
+
+            - 手机号：已验证 → 若 `isPhoneGifted == true` 则为 `receiveGifts`，
+            否则为 `verified`。
+
+            - 邮箱：已验证 → 若 `isEmailGifted == true` 则为 `receiveGifts`，
+            否则为 `verified`。
+
+            - 未验证的渠道保持 `notYetVerified`。
+
+        - **两个渠道都未验证**：两者均为 `notYetVerified`。
+
+    - 用已计算的两种状态打开 `ZnsView`（`showReceiveGiftView`）。
+
+### `getVerifyGift()` —— 检查是否已领取礼物
+
+调用 `PATH_VERIFY_GIFT`（GET，附带签名 + Bearer accessToken），携带 `appId`、
+`appPackage`、`serverId`、`characterId`。返回 `isPhoneGifted`、`isEmailGifted`
+（各渠道是否已领取礼物）。
+
+### `ZnsView` —— 选择领取礼物界面
+
+显示 2 个按钮（手机号 / 邮箱），界面根据各渠道状态变化（见上表）。
+点击某个渠道时：
+
+- **`notYetVerified`**：关闭 `ZnsView`，打开 `VerifyPhoneV2` / `VerifyEmailV2`
+先进行验证。验证完成后，流程会重新调用 `showReceiveGift()` 以更新状态。
+
+- **`verified`**：调用 `callApiConfirm()` 领取礼物。
+
+- **`receiveGifts`**：按钮被锁定，无任何操作。
+
+### `callApiConfirm()` —— 领取礼物
+
+调用 `PATH_RECEIVE_GIFT`（POST，附带签名 + Bearer accessToken），携带 `appId`、
+`appPackage`、`serverId`、`characterId`、`sdkVersion`、`giftType`（`phone`/`email`）、
+`serverName`、`characterName`、`characterLevel`、`characterVipLevel`。
+
+- `code = 0`：关闭 `ZnsView` 并打开 `VerifyConfirm`（领取礼物成功确认界面）。
+
+- `code = 86`（token 过期）：`doRefreshWithAction` 刷新 token 后重新调用
+`callApiConfirm()`。
+
+- 其他错误：`handleErrorCode`。
+
+## 使用的接口
+
+- `PATH_USER_INFO_V2` —— 获取账户状态与验证信息（GET）
+
+- `PATH_VERIFY_GIFT` —— 检查各渠道是否已领取礼物（GET）
+
+- `PATH_RECEIVE_GIFT` —— 发送领取礼物请求（POST）
+
+## 备注
+
+- 前提条件：必须有 `serverId` + `characterId`（通常在 `mappingUser` /
+`payProduct` 时设置），且账户必须为主账户（`status == 1`)——游客账户会被
+引导去转换账户。
+
+- 要领取礼物，渠道（手机号/邮箱）必须**已验证**；若未验证，`ZnsView` 会引导用户
+先去验证，然后自动回到领取礼物流程。
+
+- 领取礼物相关请求使用带**签名**的请求头
+（`createHeaderFieldWithSignatureAndBearerToken`）。
+
+- 领取礼物成功以 `VerifyConfirm` 确认界面结束。

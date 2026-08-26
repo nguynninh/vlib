@@ -1,0 +1,207 @@
+---
+title: 開発者向けゲーム設定ガイド
+description: ゲーム設定情報の取得方法、Hub・Firebase Remote Configでの設定手順、設定パラメータ一覧のガイド。
+---
+
+## ゲーム設定情報の取得
+
+1. メールから設定情報を取得
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image1.png)
+
+2. バックエンドからHub上で設定済みの情報を取得
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image2.png)
+
+3. 部門責任者からすべての設定情報を取得
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image3.png)
+
+## 設定手順
+
+1. Hubでの設定
+
+    Hub上での設定が成功したら、このデータをSDKにコピーして各フィールドが正しいか確認し、他のゲームと同様にFirebase Remote Configにも設定してください。
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image4.png)
+
+    1. Global
+
+        すべての自動生成されたアプリケーションに適用され、誤りがない限り修正不要（誤りがあればBE側に修正を依頼）。デフォルト値は0
+
+    2. App
+
+        iOSを含むすべてのpackageに適用され、パラメータはappIdから取得
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image5.png)
+
+    1. Package
+
+        単一のpackageに適用され、packageIdから取得
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image6.png)
+
+    2. 設定パラメータ一覧
+
+| No. | フィールド名 | 旧プロジェクトからコピー可否 | データ型 | パラメータ要否 | フィールドの説明 |
+| --- | --- | --- | --- | --- | --- |
+| 1 | hub_api_base_url | 可 | String | 必須 | Hub Base Url |
+| 2 | authen_api_base_url | 可 | String | 必須 | Auth Base Url |
+| 3 | payment_api_base_url | 可 | String | 必須 | Payment Base Url |
+| 4 | translate_api_base_url | 可 | String | 必須 | Translate Base Url |
+| 5 | client_id | 不可 | String | 必須 | メールでBEから発行されたアプリケーションのClient Id |
+| 6 | client_secret | 不可 | String | 必須 | メールでBEから発行されたアプリケーションのClient Secret |
+| 7 | google_web_client | 不可 | String | 必須 | Google Cloudから取得するGoogle web client id（android client idではない）。keystoreのsha1と正しく紐付けないとGoogleログインができない |
+| 8 | achieved_levels | 可 | Array | 必須 | ユーザーのレベルをトラッキングするための値 |
+| 9 | achieved_vips | 可 | Array | 必須 | ユーザーのVIPをトラッキングするための値 |
+| 10 | af_dev_key | 可 | String | 必須 | appsflyerのキー |
+| 11 | scope | 可 | String | 必須 | APIのアクセス権限 |
+| 12 | app_id | 不可 | String | 必須 | appId。上記のappと同じ値 |
+| 13 | apple_client_id | 不可 | String | 任意 | Appleログインに使用する値（現在は廃止済み、無駄に記入するだけ） |
+| 14 | api_key_recapcha | 可 | String | 必須 | recaptcha v3のキー |
+| 15 | package_id | 不可 | String | 必須 | アプリケーションのPackage Id |
+| 16 | tik_tok_app_id | 不可 | String | 任意 | Tiktok app id。アプリがstoreに公開されダウンロード可能になってから設定可能 |
+| 17 | access_token_tik_tok | 不可 | String | 任意 | Tiktok accesstoken。アプリがstoreに公開されダウンロード可能になってから設定可能 |
+| 18 | multilingual | 不可 | String | 必須 | ログイン画面での言語選択の表示/非表示。1で表示、それ以外は非表示 |
+| 19 | language_list | 不可 | Array | 必須 | 多言語一覧用のデータ配列。デフォルトは1言語のみ。最初の言語がデフォルト言語になる |
+| 20 | app_code | 不可 | String | 必須 | アプリケーションのアプリ名。例: R001, T026, T028 |
+| 21 | event_countdown | 不可 | Json | 任意 | 公開予定アプリケーション向けのリリース日カウントダウン情報を含むJson |
+| 22 | version_store | 不可 | String | 必須 | レビュー提出が成功しstoreで公開された後の新バージョン情報。最新バージョンをリリースした際に更新が必要 |
+| 23 | show_floating | 可 | String | 必須 | ログイン後に表示されるフローティングボタンの表示/非表示: 0で非表示、1で表示 |
+| 24 | hidden_floating_version | 不可 | String | 必須 | storeへのレビュー提出時にフローティングボタンを非表示にするバージョン。レビュー完了後は空にして削除する必要あり |
+| 25 | reward_profile_event | 可 | Json | 必須 | prod公開前に画像を差し替える必要あり。この機能はゲーム内の受け取り機能とセットで実装する必要がある |
+
+    3. サーバーからFirebaseへのイベント送信設定
+
+        この2つのパラメータを部門責任者に更新してもらわないと、新しいイベントはFirebaseに送信できない
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image7.png)
+
+    4. 送信されたチャージリクエスト一覧に基づくチャージパッケージ設定。これは慎重に行う必要があり、誤ると弁済問題になる
+
+2. Firebaseでの設定
+
+    1. アプリケーションの設定
+
+        アクセス先: Setting -> General -> Add app -> package Idを入力
+
+        **Đấm Trưởng Phòng** アプリを作成後、Google Cloud上の設定を更新してgoogle-service.jsonの情報を補完する
+
+        jsonの確認先: https://dandar3.github.io/android/google-services-json-to-xml.html
+
+        図の通り十分な情報が必要
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image8.png)
+
+    2. サーバーからの通知設定
+
+        google-server.jsonをサンプルアプリに正しく設定すれば必ず通知を受信できる。事前にFirebaseのメッセージでテスト可能
+
+        Project Setting -> Services account
+
+        必ず1回のみ作成し、このファイルを保管すること。
+
+        AndroidとiOS両方のHub設定を作成した後、hub上のpackage設定から通知を再テストする
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image9.png)
+
+        Hub上での設定
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image10.png)
+
+3. Facebookでの設定
+
+    1. アプリの設定
+
+        アプリ設定 -> 基本情報 -> プラットフォームを追加 -> Google play
+
+        メインハッシュ:
+
+        storeで署名後にstoreからSHA1を取得し、リンクを作成してhttps://tomeko.net/online_tools/hex_to_base64.php に貼り付ける
+
+        パッケージ名: Package名
+
+        クラス名: MainActivity
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image11.png)
+
+4. サンプル設定
+
+    他のプロジェクトを参考にしてください
+
+    - package nameの変更
+    - プロジェクト名の変更
+    - string.xmlの情報の変更
+    - google-service.jsonの変更
+    - vtvlive_config_sdk_game_defaultsファイルの変更 -> hubから情報を取得
+    - sdk gameとgame trackingの2つのライブラリをダウンロードするためのキーの変更。accesstokenキーの作成 -> developer -> read-apiを行い保存
+
+5. サンプルテスト手順
+
+    1. 通常ログイン
+
+        失敗 -> Hub設定とサンプルプロジェクトのpackageおよび発行情報が正しいか確認 -> 正しければBE側にログイン設定が完了しているか確認依頼
+
+    2. 登録とパスワードを忘れた場合
+
+        失敗 -> ログを開くとpackage nameがrecaptchaに存在しないと表示 -> **Đấm Trưởng Phòng** で設定
+
+        失敗 -> BEからのエラーダイアログが表示 -> 端末やネットワークがrecaptchaによりスパム判定されている場合、別の端末や3Gネットワークを使用
+
+    3. Googleログイン
+
+        情報の認証に失敗。
+
+        原因:
+
+        -> ビルドしたアプリケーションが未署名、またはGoogle Cloud上の署名が誤っている。Apk、Google Cloud、storeの3箇所のsha1署名が一致しているか確認が必要
+
+        ! Hub上のGGログインclient IDの設定が間違っている可能性あり
+
+    4. Facebookログイン
+
+        ログインできないというエラー。
+
+        develop環境の場合:
+
+        アプリ内のFacebook情報を再確認
+
+        正しいテストアカウントでログインしているか確認
+
+        public環境の場合:
+
+        Facebookでprofile権限が付与されているか確認 -> 付与されていなければ **Đấm Trưởng Phòng** がFacebookにプロジェクトの権限を申請
+
+    5. appsflyerへのイベント送信確認
+
+        タグをappsflyerに設定してログを開き、送信時にpackage nameが存在しないというエラーが出た場合は **Đấm Trưởng Phòng**
+
+    6. 支払いの確認
+
+        支払いを可能にするには、内部テスト版をアップロードした後、storeとhubでチャージパッケージを設定する必要がある
+
+        支払いができない場合は不明なエラーが表示される
+
+        apkが正しいチャージパッケージ名を送信しているか確認。
+
+        ゲーム側が正しいチャージパッケージ名を送信しているにもかかわらずBE APIが不明なエラーを返す場合
+
+        **Đấm Trưởng Phòng** で部門責任者からPayment側にproduction環境での有効化とGoogle Cloud上のサービス有効化設定を依頼してもらう。
+
+        この設定を有効化するには最大1日かかり、それまで支払いはできない
+
+## Storeでの設定
+
+1. アプリケーションの登録
+
+    package name登録のレビューに48時間かかるため、登録は早急に行う必要がある。
+
+    サンプルプロジェクトが完成したら、以下のパスにファイルを作成
+
+![](BASE_STORAGE/v2.0.0/android_java_dev_config_image12.png)
+
+    package name登録時にstoreから取得したコードを使用
+
+    正しいkeystoreを使用してapkをビルドし、storeにアップロードしてpackage nameを登録
+
+    package nameの登録後に初めて、そのアプリケーションをstore上で作成できる

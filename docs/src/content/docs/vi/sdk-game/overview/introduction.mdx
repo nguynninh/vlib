@@ -1,0 +1,59 @@
+---
+title: "Giới thiệu"
+description: "Giới thiệu tổng quan về SDK Game: mục đích, phạm vi tích hợp, các nền tảng hỗ trợ và cấu trúc tài liệu."
+sidebar:
+  order: 1
+---
+
+## Về SDK Game
+
+**SDK Game** là bộ SDK tích hợp dành cho các game vận hành trên hệ sinh thái **VTV Live**, cung cấp sẵn các luồng đăng nhập, xác thực, tracking sự kiện và nhận cấu hình động từ hệ thống Backend.
+
+SDK giúp đội ngũ phát triển game rút ngắn thời gian tích hợp các nghiệp vụ nền tảng (tài khoản, thông báo, sự kiện marketing...) mà không cần tự xây dựng lại từ đầu trên từng dự án.
+
+## Mục đích
+
+SDK Game được xây dựng nhằm:
+
+* Chuẩn hoá luồng tích hợp tài khoản, đăng nhập và xác thực (OTP, quên mật khẩu) giữa các game.
+* Cung cấp cơ chế nhận cấu hình động từ BE API và Firebase Remote Config.
+* Hỗ trợ tracking sự kiện game hub, thông báo và các sự kiện phục vụ tối ưu MKT.
+* Cung cấp API/IAP dùng chung cho các nghiệp vụ trong game (nhận quà, cập nhật thông tin người dùng...).
+* Giảm thời gian tích hợp và đảm bảo tính nhất quán giữa các nền tảng Android và iOS.
+
+## Nền tảng hỗ trợ
+
+SDK Game hiện hỗ trợ hai nền tảng chính:
+
+```text
+SDK Game
+│
+├── Android (Java)
+└── iOS (Objective-C / Swift)
+```
+
+Mỗi nền tảng có tài liệu tích hợp, tài liệu API và tài liệu mô tả luồng sự kiện riêng, được trình bày song song để đảm bảo nội dung đồng bộ giữa hai phía.
+
+## Cấu trúc tài liệu
+
+Tài liệu SDK Game được tổ chức thành các phần chính:
+
+* **Tổng quan** — giới thiệu, tính năng và công nghệ sử dụng.
+* **Android / iOS** — hướng dẫn cấu hình, tích hợp SDK theo từng nền tảng.
+* **Tính năng SDK** — mô tả chi tiết từng tính năng: OTP, quên mật khẩu, nhận quà, cấu hình động...
+* **Tài liệu tích hợp / API / Luồng sự kiện** — tài liệu tham chiếu đầy đủ dùng trong quá trình tích hợp.
+
+## Đối tượng sử dụng
+
+Tài liệu này chủ yếu dành cho:
+
+* Developer tích hợp SDK Game vào dự án Android hoặc iOS.
+* QA kiểm thử luồng tài khoản, tracking và cấu hình động.
+* Đội ngũ vận hành/MKT cần hiểu luồng sự kiện phục vụ tối ưu quảng cáo.
+
+## Bước tiếp theo
+
+Sau khi hiểu mục đích của SDK Game, hãy tiếp tục với:
+
+* [Tính năng](/vi/sdk-game/overview/features)
+* [Công nghệ sử dụng](/vi/sdk-game/overview/tech-stack)

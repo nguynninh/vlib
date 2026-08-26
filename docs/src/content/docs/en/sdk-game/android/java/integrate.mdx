@@ -1,0 +1,741 @@
+---
+title: Guide for VTV Live Android Game SDK developers.
+description: Mandatory update notes and the list of required configuration files when integrating the VTV Live Android Game SDK.
+---
+
+## Mandatory update notes
+
+1. Google Play 16 KB compatibility requirement:
+Starting August 31, 2026, all new apps and updates to existing apps submitted to Google Play targeting Android 16 (or higher) must support 16 KB page sizes on 64-bit devices.
+
+For more details, see:
+     [https://developer.android.google.cn/guide/practices/page-sizes?hl=zh_cn#compile-16-kb-alignment](https://developer.android.google.cn/guide/practices/page-sizes?hl=zh_cn#compile-16-kb-alignment)
+
+2. All URLs/links used in the application must comply with the HTTPS standard per VTV Live policy.
+
+3. If the Unity version you are developing with is 2017.1 or later, please read.
+https://discussions.unity.com/t/unity-platform-protection-take-immediate-action-to-protect-your-games-and-apps/1688031
+
+## List of SDK configuration files
+
+Note: If you did not receive these files or have any questions, please contact the VTV Live team.
+
+1. Folders inside res:
+
+- xml/vtvlive_config_sdk_game_defaults.xml
+- drawable-hdpi, drawable-mdpi, drawable-xhdpi, drawable-xxhdpi, drawable-xxxhdpi
+
+2. strings.xml
+
+3. keysdk.txt
+
+4. iconapp folder
+
+5. keystore folder
+
+6. google-services.json
+
+7. game-example folder
+
+8. Pricelist
+
+## SDK installation
+
+SDK information:
+
+- AGP 8.9.1
+
+- JDK build 17
+
+- compileSdk 36
+
+- minSdk 24
+
+- targetSdk 36
+
+Latest stable version: 1.6.3
+
+## Gradle setup
+
+In the project's `setting.gradle` file, declare the `maven` repository:
+
+```java
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+          // add vtv live sdk game 
+        maven { url 'https://jitpack.io' }
+        maven {
+            url "https://artifacts.vtvlive.vn/repository/android_group/"
+            credentials {
+                username = "maven-read-only"
+                password = "Yew76u6MqiSPMoofQ9N"
+            }
+        }
+    }
+}
+```
+
+
+
+In the project's `build.gradle (Project)` file:
+
+```java
+plugins {
+    id 'com.android.application' version '8.9.1' apply false
+    id 'com.android.library' version '8.9.1' apply false
+    // this
+    id 'com.google.firebase.firebase-perf' version '1.4.2' apply false
+    id 'com.google.gms.google-services' version "4.4.3" apply false
+    id 'com.google.firebase.crashlytics' version "3.0.6" apply false
+}
+```
+
+Or
+
+```java
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+        jcenter()
+        flatDir {
+            dirs 'libs'
+        }
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.9.1'
+        // this
+        classpath 'com.google.firebase:perf-plugin:1.4.2'
+        classpath 'com.google.gms:google-services:4.4.3'
+        classpath 'com.google.firebase:firebase-crashlytics-gradle:3.0.6'
+    }
+}
+```
+
+
+
+In the project's `build.gradle (App)` file:
+
+```java
+plugins {
+    id 'com.android.application'
+    // this 
+    id 'com.google.firebase.firebase-perf'
+    id 'com.google.gms.google-services'
+    id 'com.google.firebase.crashlytics'
+}
+```
+
+## Adding dependencies
+
+```java
+dependencies {
+      implementation "vn.vlive.sdk:game:1.6.3"
+  }
+```
+
+## Adding AndroidX via gradle.properties
+
+```xml
+# Project-wide Gradle settings.
+# IDE (e.g. Android Studio) users:
+# Gradle settings configured through the IDE will override
+# any settings specified in this file.
+# For more details on how to configure your build environment visit
+# http://www.gradle.org/docs/current/userguide/build_environment.html
+# Specifies the JVM arguments used for the daemon process.
+# The setting is particularly useful for tweaking memory settings.
+org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+# When configured, Gradle will run in incubating parallel mode.
+# This option should only be used with decoupled projects. More details, visit
+# http://www.gradle.org/docs/current/userguide/multi_project_builds.html#sec:decoupled_projects
+# org.gradle.parallel=true
+# AndroidX package structure to make it clearer which packages are bundled with the
+# Android operating system, and which are packaged with your app's APK
+# https://developer.android.com/topic/libraries/support-library/androidx-rn
+# Enables namespacing of each library's R class so that its R class includes only the
+# resources declared in the library itself and none from the library's dependencies,
+# thereby reducing the size of the R class for that library
+
+
+// add to here
+android.useAndroidX=true
+android.nonTransitiveRClass=true
+android.defaults.buildfeatures.buildconfig=true
+android.nonFinalResIds=false
+```
+
+## Adding configuration files to the project
+
+1. Unzip the `res.zip` file, then copy and overwrite it into the project's `res` folder
+
+![guide.gif](BASE_STORAGE/v2.0.0/guide_android_java.gif)
+
+2. Copy the parameters from the `string.xml` file into your project's `string.xml` file.
+Example:
+Note: Change app_name to the name of the application
+
+```xml
+<string name="app_name">App Name</string>
+<string name="facebook_app_id">531928046216413</string>
+<string name="fb_login_protocol_scheme">fb531928046216413</string>
+<string name="facebook_client_token">55050b3d27795a5cf45bd0d9314b2009</string>
+```
+
+3. Copy google-services.json into the root of the app module in your Android project
+
+![image.png](BASE_STORAGE/v2.0.0/guide_android_java_image1.png)
+
+## Proguard requirements
+
+MANDATORY for Android apps that use Proguard. To avoid obfuscating the SDK when using Proguard, make sure the following configuration is added:
+
+
+
+```java
+-keep class vlive.sdk.game.** { *; }
+
+```
+
+## Checking the version before building the APK. (Optional)
+
+This feature helps check the Version code, Version Name, and SDK Version before building the APK, to reduce duplicate builds when uploading to the store.
+You can disable this feature in build.gradle (App), or disable the customization inside build-check-version.
+
+Copy this file into the root of the app module in your Android project:
+
+
+
+[build-check-version.gradle](BASE_STORAGE/v2.0.0/build-check-version.gradle)
+
+![](BASE_STORAGE/v2.0.0/guide_android_java_image2.png)
+
+In the project's `build.gradle (App)` file:
+
+```java
+plugins {
+    id 'com.android.application'
+    id 'com.google.firebase.firebase-perf'
+    id 'com.google.gms.google-services'
+    id 'com.google.firebase.crashlytics'
+}
+
+// this
+apply from: 'build-check-version.gradle'
+```
+
+## SDK Integration
+
+## SDK Initialization (Required)
+
+Implement the AuthenticationListener and PaymentListener callbacks in your activity.
+
+Change the environment variable:
+
+Dev  -> vLiveSdkGame.setEnvironment(EnvironmentSdk.Development);
+
+Prod -> vLiveSdkGame.setEnvironment(EnvironmentSdk.Production);
+
+```java
+public class MainActivity extends Activity implements AuthenticationListener, PaymentListener {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
+        // this config sdk game
+        VLiveSdkGame vLiveSdkGame = VLiveSdkGame.getInstance();
+        vLiveSdkGame.setEnvironment(EnvironmentSdk.Development);
+        vLiveSdkGame.setActivity(this);
+        vLiveSdkGame.setAuthenticationListener(this);
+        vLiveSdkGame.setPaymentListener(this);
+
+
+    }
+
+    @Override
+    public void onLoginSuccessful(UserInfo userInfo, String accessToken, String refreshToken, String idToken) {
+    
+    }
+
+    @Override
+    public void onLogoutSuccessful() {
+
+    }
+
+    @Override
+    public void onPayProductSuccess(String orderId,String productId) {
+
+    }
+
+    @Override
+    public void onPayProductError(String error) {
+
+    }
+}
+```
+
+2. Configuration for screen rotation
+
+```java
+@Override
+public void onConfigurationChanged(@NotNull Configuration newConfig) {
+    super.onConfigurationChanged(newConfig);
+    // Checks the orientation of the screen
+   VLiveSdkGame.getInstance().resetFloatingButton();
+}
+```
+
+3. The SDK initialization result is returned via the following function.
+
+```java
+vLiveSdkGame.setActivity(this);
+vLiveSdkGame.setAuthenticationListener(this);
+vLiveSdkGame.setPaymentListener(this);
+// this
+vLiveSdkGame.setInitStatusListener(isCreated -> {
+    if (isCreated){
+        // Initialization successful
+    } else  {
+        // Initialization failed
+    }
+});
+```
+
+## SDK Features
+
+### Authentication (Required)
+
+#### Login
+
+Function's purpose:
+
+- Opens the login interface when not logged in
+
+- Logs in when the user reopens the application
+
+- Logs out when the login session ends.
+
+You should call this function when the game's start button is pressed.
+
+```java
+VLiveSdkGame.getInstance().login(); 
+```
+
+A successful login will call onLoginSuccessful
+
+
+
+#### Logout
+
+A successful logout will call onLogoutSuccessful
+
+```java
+VLiveSdkGame.getInstance().logout();
+```
+
+
+
+### Payment (Required)
+
+Note: You cannot test payments unless your app is installed via Google Play's internal testing track.
+
+To perform payment testing, we require an AAB (Android App Bundle) build.
+
+#### List of in-app purchase (IAP) packages (Optional)
+
+This function returns a list of top-up packages similar to the Pricelist.xlsx file.
+Note: This is an optional function; call it if needed.
+
+```java
+List<ProductInfo> listProduct = VLiveSdkGame.getInstance().getListProduct();
+```
+
+ProductInfo Model
+
+```java
+String productId = productInfo.getProductId(); // vn.vplay.game.t001a.029
+String productName = productInfo.getProductName(); // 20 Ngân Phiếu
+```
+
+
+
+#### Purchase a package (Required)
+
+If you want to purchase a product, please call the following function:
+
+The input parameters can be obtained from the list above or entered manually.
+
+```java
+String productId = "vn.vplay.game.t001a.029"; 
+String characterId = "324132321";
+String serverId  = "123";
+VLiveSdkGame.getInstance().payProduct(productId,characterId,serverId);
+```
+
+
+
+### Event Tracking (Required)
+
+Note: Tracking functions serve marketing purposes and must be used according to the defined process.
+
+#### The following events must be integrated.
+
+![](BASE_STORAGE/v2.0.0/guide_android_java_image3.png)
+
+#### Event parameter details
+
+1. Tracking Patch Start (Required)
+
+Description: Should be called when the resource download process begins.
+
+Event name: af_patch_start
+
+```java
+String patchVersion = "1.1.23"; // or empty
+double patchSizeMb = 550.5; // or 0
+VLiveSdkGame.getInstance().trackingPatchStart(patchVersion,patchSizeMb);
+```
+
+2. Tracking Patch Error (Required)
+
+Description: Should be called when an error occurs while downloading resources.
+
+Event name: af_patch_error
+
+```java
+String cdnIp = "122.56.12.188"; // or empty
+String errorCode = "404_NOT_FOUND"; // or empty
+String failedUrl =  "https://cdn.game.com/patch/v120.zip"; // or empty
+VLiveSdkGame.getInstance().trackingPatchError(cdnIp, errorCode,failedUrl);
+```
+
+3. Tracking Patch Success (Required)
+
+Description: Should be called after all resources have been downloaded successfully.
+
+Event name: af_patch_success
+
+```java
+int timeDownloadSecond = 32; // or 0
+String cdnIp = "122.56.12.188"; // or empty
+double patchSizeMb = 500.5; // or 0
+VLiveSdkGame.getInstance().trackingPatchSuccess(timeDownloadSecond,cdnIp,patchSizeMb);
+```
+
+4. Tracking Extract Start (Required)
+
+Description: Should be called when the resource extraction process begins.
+
+Event name: af_extract_started
+
+```java
+int totalFiles = 400;// or 0
+double totalSizeMb = 500.5;// or 0
+VLiveSdkGame.getInstance().trackingExtractStart(totalFiles,totalSizeMb);
+```
+
+
+
+5. Tracking Extract Finished (Required)
+
+Description: Should be called after all resources have been extracted successfully.
+
+Event name: af_extract_finished
+
+```java
+int timeExtractSecond = 32; // or 0
+String resultCode = "success" // or Errror String (ex: out_of_storage)
+VLiveSdkGame.getInstance().trackingExtractFinished(timeExtractSecond,resultCode);
+```
+
+6. Tracking Show Start Game (Required)
+
+Description: Should be called after the game's start screen is displayed.
+
+Event name: af_show_start_game
+
+```java
+VLiveSdkGame.getInstance().trackingEvent(EventGameTracking.EVENT_SHOW_START_GAME);
+```
+
+7. Tracking Server Selected (Required)
+Description: Called after the user confirms a server selection and starts entering the game flow.
+Event name: af_server_select
+
+```java
+String serverName = "ServerName"; // Required Not empty, Not Null 
+String serverId = "23232"; // Required Not empty, Not Null 
+VLiveSdkGame.getInstance().trackingServerSelected(serverName,serverId);
+```
+
+8. Tracking Character Creation Start (Required)
+
+Description: Should be called when the character creation screen is shown to the user.
+
+Event name: af_char_create_start
+
+```java
+VLiveSdkGame.getInstance().trackingCharacterCreationStart();
+```
+
+9. Tracking Character Creation Error (Required)
+
+Description: Should be called when an error occurs during character creation.
+
+Event name: af_char_create_error
+
+```java
+String characterNameError = "Hao Thien"; // or empty
+String errorMessage = "NAME_DUPLICATED"; // or empty
+VLiveSdkGame.getInstance().trackingCharacterCreateError(characterNameError, errorMessage);
+```
+
+10. Tracking Character Creation Complete (Required)
+
+Description: Should be called after the character creation process completes successfully.
+
+Event name: af_char_create_success
+
+```java
+String characterName = "CharacterName"; // Required Not empty, Not Null 
+String characterId = "23232"; // Required Not empty, Not Null 
+VLiveSdkGame.getInstance().trackingCharacterCreationComplete(characterName,characterId);
+```
+
+11. Tracking Character Selected (Required)
+
+Description: Should be called after the user selects an existing character and enters the game.
+
+Event name: af_char_select
+
+```java
+String characterName = "CharacterName"; // Required Not empty, Not Null 
+String characterId = "23232"; // Required Not empty, Not Null 
+String characterLevel = "1"; // Required Not empty, Not Null 
+VLiveSdkGame.getInstance().trackingCharacterSelected(characterName,characterId,characterLevel);
+```
+
+12. Tracking Enter Game (Required)
+
+Description: Should be called after the user has selected a character and starts entering the game.
+
+Event name: af_enter_gameplay
+
+```java
+VLiveSdkGame.getInstance().trackingEvent(EventGameTracking.EVENT_GAME_ENTER);
+```
+
+13. Map User (Required)
+
+Description: Should be called after the user has selected a character and starts entering the game.
+
+Event name: af_level_achievement
+
+```java
+String characterName = "CharacterName"; // or empty
+String characterId = "23232"; // Required Not empty, Not Null 
+String characterLevel = "2"; // Required Not empty, Not Null 
+String serverName = "ServerName";// or empty
+String serverId = "324232";// Required Not empty, Not Null 
+VLiveSdkGame.getInstance().mapUser(characterName, characterId, characterLevel, serverName, serverId);
+```
+
+14. Character Level Up (Required)
+
+Description: Should be called when the user successfully levels up.
+
+Event name: af_level_achievement
+
+Event name: af_vip_achievement
+
+```java
+String characterName = "CharacterName"; // or empty
+String characterId = "23232";// Required Not empty, Not Null 
+String characterLevel = "2"; // Required Not empty, Not Null 
+String serverName = "ServerName"; // or empty
+String serverId = "324232"; // or empty
+String vip = "1"; // Required Not empty, Not Null 
+VLiveSdkGame.getInstance().levelUpUser(characterName, characterId, characterLevel, serverName, serverId,vip);
+```
+
+15. Tracking Load Map Game (Required)
+
+Description: Should be called after the map has fully finished loading.
+
+```java
+String mapId = "newbie_village"; // or empty
+int timeLoadSecond = 32; // or 0
+int fpsAtStart = 60; // or 0
+VLiveSdkGame.getInstance().trackingMapLoad(mapId, timeLoadSecond, fpsAtStart);
+```
+
+16. Custom Events
+
+Description: Used for other custom events
+
+```java
+String eventName = "Event_Name";
+VLiveSdkGame.getInstance().trackingEvent(eventName);
+
+// Or
+String eventName = "Event_Name";
+JsonObject jsonObject = new JsonObject();
+jsonObject.addProperty("stringValue", "Hello");
+jsonObject.addProperty("intValue", 42);
+VLiveSdkGame.getInstance().trackingEvent(eventName,jsonObject);
+```
+
+### Multi-language support (Optional)
+
+#### Add to `build.gradle (App)`
+
+```java
+android {
+// this
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
+}
+```
+
+#### LanguageSdk Model
+
+```java
+String languageName = LanguageSdk.CHINESE.getNameLanguage(); // 中国
+String languageId = LanguageSdk.CHINESE.getIdLanguage(); // zh
+```
+
+#### Listening for the language returned by the SDK
+
+```java
+VLiveSdkGame.getInstance().setLanguageListener(new LanguageListener() {
+    @Override
+    public void onChangeLanguage(LanguageSdk language) {
+      // Return the language set from the sdk
+    }
+
+    @Override
+    public void onGameLanguageChangeCompleted(boolean isSuccess) {
+      // Status when updating language as required by game
+    }
+});
+```
+
+#### Setting the SDK's language from the game
+
+```java
+VLiveSdkGame.getInstance().setLanguage(LanguageSdk.CHINESE);
+```
+
+The result of choosing the language from the game is returned via the function: onGameLanguageChangeCompleted
+
+#### Setting the language from the SDK
+
+When the user selects a language from the login screen
+
+![](BASE_STORAGE/v2.0.0/guide_android_java_image4.png)
+
+The language is returned via the function: onChangeLanguage
+
+### Updating your reward-claim information. (Required)
+
+To display the reward redemption interface, call
+
+Note: This function should only be used after a successful login.
+
+```java
+VLiveSdkGame.getInstance().openUpdateInfoEvent();
+```
+
+![](BASE_STORAGE/v2.0.0/guide_android_java_image5.png)
+
+
+### Optional features
+
+#### Enable/disable the Floating Button feature
+
+Call this at SDK initialization; the default is true. Pass false if you want to hide it.
+
+```java
+VLiveSdkGame vLiveSdkGame = VLiveSdkGame.getInstance();
+vLiveSdkGame.setEnvironment(EnvironmentSdk.Development);
+// this
+vLiveSdkGame.setShowFloatingButton(false);
+//
+vLiveSdkGame.setActivity(this);
+vLiveSdkGame.setAuthenticationListener(this);
+vLiveSdkGame.setPaymentListener(this);
+```
+
+![](BASE_STORAGE/v2.0.0/guide_android_java_image6.png)
+
+#### Show/hide Logo
+
+Call this at SDK initialization; the default is true. Pass false if you want to hide it.
+
+```java
+VLiveSdkGame vLiveSdkGame = VLiveSdkGame.getInstance();
+vLiveSdkGame.setEnvironment(EnvironmentSdk.Development);
+vLiveSdkGame.setActivity(this);
+vLiveSdkGame.setAuthenticationListener(this);
+vLiveSdkGame.setPaymentListener(this);
+// this
+vLiveSdkGame.setShowLogo(false);
+```
+
+![](BASE_STORAGE/v2.0.0/guide_android_java_image7.png)
+
+#### Show/hide BtnClose
+
+Call this at SDK initialization; the default is true. Pass false if you want to hide it.
+
+```java
+VLiveSdkGame vLiveSdkGame = VLiveSdkGame.getInstance();
+vLiveSdkGame.setEnvironment(EnvironmentSdk.Development);
+vLiveSdkGame.setActivity(this);
+vLiveSdkGame.setAuthenticationListener(this);
+vLiveSdkGame.setPaymentListener(this);
+// this
+vLiveSdkGame.setShowBtnClose(false);
+```
+
+![](BASE_STORAGE/v2.0.0/guide_android_java_image8.png)
+
+#### Show Google Play review prompt
+
+```java
+VLiveSdkGame.getInstance().reviewGooglePlay(null);
+```
+
+
+
+#### Show the user info interface
+
+```java
+VLiveSdkGame.getInstance().openUserInfo();
+```
+
+![](BASE_STORAGE/v2.0.0/guide_android_java_image9.png)
+
+## Other guides
+
+### Changing the app notification icon
+
+Link: https://romannurik.github.io/AndroidAssetStudio/index.html
+Unzip the `ic_stat_ic_notification.zip` file, then copy and overwrite it into the project's `res` folder
+
+![](BASE_STORAGE/v2.0.0/guide_android_java_image10.png)
+
+![](BASE_STORAGE/v2.0.0/guide_android_java_image11.png)
+
+![](BASE_STORAGE/v2.0.0/guide_android_java_image12.png)
+
+![](BASE_STORAGE/v2.0.0/guide_android_java_image13.png)

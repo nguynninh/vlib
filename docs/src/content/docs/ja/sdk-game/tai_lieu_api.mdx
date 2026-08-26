@@ -1,0 +1,42 @@
+---
+title: APIドキュメント
+description: SDK OIDC V2で使用されているIAP APIの一覧。ドメイン、パス、bearer、パラメータおよび各APIの目的を含む。
+---
+
+## SDK OIDC V2で使用されているIAP一覧
+
+| **Domain** | **Path** | **Bearer** | **Parameter body** | **Purpose** |
+| --- | --- | --- | --- | --- |
+| https://dev-app-config.vplay.vn/ | v1/remote-config/sdk-config | null | packageId | |
+| hub.vplay.vn | sdk-api/service/app-config | null | packageId | 通知登録およびログイン種別のオン/オフ取得 |
+| | sdk-api/service/hotlink | null | packageId | ホームページ情報、ファンページリンク、グループリンク、チャットリンク、ホットラインの取得 |
+| | sdk-api/news/posts | idToken | packageId, page, size | ニュース詳細情報、ニュース一覧の取得 |
+| | sdk-api/payment/GetIapProduct | idToken | packageId, platformOS | チャージ商品一覧の取得 |
+| | sdk-api/service-account-character/on-selected | idToken | packageId, platformOS, device, server, characterId, characterName, characterLevel, serverName | mappingUser |
+| | sdk-api/auth/retention-day | idToken | packageId, platformOS, appsflyerId, firebaseId | リテンションデイのトラッキング |
+| | sdk-api/auth/af-tracking | idToken | packageId, platformOS, eventname, firebaseId, userID, eventvalue | プレイ時間のトラッキング |
+| | sdk-api/auth/add-push-id | idToken | packageId, updatePushId, platformOS | Push Idの更新 |
+| | sdk-api/auth/authenticate | idToken | packageId, platformOS, deviceName, appsflyerId, firebaseId, conversionType, mediaSource, campaign, adset, channel, adid | ログイン成功後のゲーム認証(AuthenGame) |
+| id.vplay.vn | api-core/v2/oidc-service/accounts/update/password | accessToken | accessToken, oldPass, newPass, deviceId, os, osVersion, ip | パスワード変更 |
+| | api-core/v2/oidc-service/accounts/otp/phone | accessToken | accessToken, email, type, deviceId, os, osVersion, ip | 電話番号OTP送信 |
+| | api-core/v2/oidc-service/accounts/deactivate | accessToken | accessToken, ip, os, osVersion, ip | アカウント無効化 |
+| | api-core/v2/oidc-service/oauth2/token | | Provider, grant_type, scope, client_id, client_secret, deviceId, os, osVersion, ip | クイックログイン、Googleログイン、通常ログイン、refreshTokenに使用 |
+| | api-core/v2/oidc-service/auth/forgot-password | | reCaptCharVer, tokenRecaptcha, email, deviceId, os, osVersion, ip | パスワードを忘れた場合 |
+| | api-core/v2/oidc-service/auth/forgot-password/send-otp | | tokenRecaptcha, username, pass, pass2, deviceId, os, osVersion, ip | |
+| | api-core/v1/authen-service/infos/getclientip | | | IPv4アドレスの取得 |
+| | api-core/v1/authen-service/infos/getservertime | | | サーバー時刻の取得 |
+| | api-core/v2/oidc-service/auth/register | | reCaptCharVer, tokenRecaptcha, password, rePassword, client_id, username, deviceId, os, osVersion, ip | 登録 |
+| | api-core/v2/oidc-service/oauth2/token/revocation | | accessToken or refreshToken, typeToken, client_id, client_secret | ログアウト |
+| | api-core/v2/oidc-service/accounts/update/username | accessToken | accessToken, username, pass, pass2, deviceId, os, osVersion, ip | クイックアカウントをvtvliveアカウントへ変更 |
+| | api-core/v2/oidc-service/accounts/update/passport | accessToken | accessToken, passport, ip, os, osVersion, ip | パスポート情報の更新 |
+| | api-core/v2/oidc-service/accounts/update/profile | accessToken | accessToken, username, gender, birthday, address, deviceId, os, osVersion, ip | プロフィールの更新 |
+| | api-core/v2/oidc-service/oauth2/me | accessToken | | ユーザー情報の取得 |
+| | api-core/v2/oidc-service/accounts/otp/phone/confirm | accessToken | accessToken, phone, otp, deviceId, os, osVersion, ip | 電話番号OTPの確認 |
+| | api-core/v1/payment-service/gate/api/iap/confirm_oidc | accessToken | jwt-accessToken, platformOS, transId - paymentOrderId, cid - clientId, clientId - clientId, bank_code - PurchaseToken, characterId - characterId, serverId - serverId, makercode - purchase.getSkus | 支払いの確認 |
+| | api-core/v1/payment-service/gate/api/iap/initorder_oidc | accessToken | jwt-accessToken, makercode - productId, cid - clientId, clientId - clientId, characterId - characterId, serverId - serverId | 取引の初期化 |
+
+## Postman
+
+1. Android:
+
+2. IOS:

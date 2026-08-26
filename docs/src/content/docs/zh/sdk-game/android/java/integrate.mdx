@@ -1,0 +1,138 @@
+---
+title: 集成 SDK 时的检查流程
+description: 集成 SDK 时的检查步骤列表，包括游戏方提供 APK/AAB 以便在上架商店前进行审查。
+---
+
+### 本文档将根据游戏发布过程中遇到的问题持续更新
+
+注意：每次更新版本，即使是应用发布之后，都需要扫描开发方提供的 apk，以检查权限或可能存在的遗留错误。在推送到内部测试前，需要检查第 2 项针对 apk 的内容。
+
+原因：开发方可能会在未事先通知的情况下添加功能和权限，这可能影响商店的安装政策，若不加以控制将被 Google 封禁。
+
+推送到内部测试时，只允许出现支付错误或缺少事件的问题，诸如 16kb、http、后台下载、危险权限等错误绝对不允许出现，否则将收到 Google 的红色警告。
+
+### 将 sdk 集成到示例项目时。
+
+1. 登录（账户、Google（视项目而定）、Facebook）、注册、忘记密码均成功
+
+2. 事件已上报到 appflyer
+
+3. 通知测试推送成功
+
+4. Hub 上的所有参数已配置完整
+
+5. 配置已推送到 firebase remote config
+
+6. 所需的事件均已上线（发布日期倒计时）
+
+### 游戏方提供 apk 以供检查（使用 mobsf 进行检查）
+
+1. 构建版本 target api 35 及以上，支持 16kb
+
+2. 签名密钥和 package id 与提供的一致
+
+3. sdk 版本
+
+4. 登录（账户、Google（视项目而定）、Facebook）、注册、忘记密码均成功
+
+5. 通知测试推送成功
+
+6. 使用 charles 检查游戏中指向的域名是否使用 http，如有则必须要求游戏方修改
+
+7. 检查 mobsf 中提示危险的权限，如属于游戏中实际存在的功能，需了解具体是什么功能以便申报政策
+
+8. 检查是否存在不允许的后台下载，除非是下载游戏地图资源。其他下载需向用户提示下载内容及下载百分比
+
+9. 检查应用是否在某处卡住超过 3 分钟且无任何提示，如有需通知游戏方
+
+10. 检查按钮是否无响应，如有需通知游戏方
+
+11. 检查各充值套餐的 id 是否与充值列表一致
+
+12. 检查“集成 SDK”章节 2.3 TrackingEvent 中的各事件，查看日志确认这些事件是否已被调用，若尚未集成需要求游戏方集成
+
+### 游戏方提供 aab 以便上传商店时
+
+1. 创建测试用示例项目
+
+2. 配置商店的充值调用与 hub 的充值调用（需谨慎）
+
+3. 推送到内部测试
+
+4. 请 Minh 哥开启支付（需要 1 天时间，因此最好在推送 aab 前一天开启）
+
+5. 测试支付（使用专用于生产环境支付测试的账户，若使用其他账户将需要赔偿）
+
+6. 检查 mkt 上报的各事件，以及上报到 appflyer 的注册登录相关事件
+
+7. 检查其他功能事件（倒计时、Build version）
+
+8. 使用审核账户进行游戏并创建 1 级角色
+
+9. appsflyer 上必须包含以下事件列表
+
+    1. af_app_launch（sdk）
+
+    2. **af_extract_started（dev trung - 需检查）**
+
+    3. **af_extract_finished（dev trung - 需检查）**
+
+    4. **af_show_start_game（dev trung - 需检查）**
+
+    5. af_login_view（sdk）
+
+    6. af_login_start（sdk）
+
+    7. af_first_launch（sdk）
+
+    8. af_server_registration（sdk）
+
+    9. af_play_time（sdk）
+
+    10. af_registration（sdk）
+
+    11. **af_enter_gameplay（dev trung - 需检查）**
+
+    12. **af_patch_start（dev trung - 需检查）**
+
+    13. **af_patch_error（dev trung - 需检查）（若未出现错误可忽略）**
+
+    14. **af_patch_success（dev trung - 需检查）**
+
+    15. af_purchase（sdk）
+
+    16. af_payment_success（sdk）
+
+    17. af_open_payment_screen（sdk）
+
+    18. **af_level_achievement（dev trung - 需检查）**
+
+    19. **af_server_select（dev trung - 需检查）**
+
+    20. **af_char_create_start（dev trung - 需检查）**
+
+    21. **af_char_create_error（dev trung - 需检查）**
+
+    22. **af_char_create_success（dev trung - 需检查）**
+
+    23. **af_char_select（dev trung - 需检查）**
+
+    24. af_server_iap_purchase（sdk）
+
+    25. af_purchase_point_iap（sdk）
+
+    26. af_retention_d1（sdk）
+
+    27. **af_vip_achievement（dev trung - 需检查，若账号没有 vip 则无需检查）**
+
+此外还有游戏方自行添加的其他自定义事件
+
+### 准备提交审核
+
+1. 提交审核前需正确配置商店上的政策（开启应用公开/关闭的管理）
+
+2. 检查与应用描述信息相关的错误。可参考：[Android](https://vtvlivevn.sg.larksuite.com/wiki/NichwNl6hiTKnrkSE26lJxdyggL?table=tblpesOGDXb5oKYP&view=vewuCREkVn)
+
+3. 如有需要，根据预注册文档开启预注册。文档：[预注册（Pre-Order, Pre-registration）](https://vtvlivevn.sg.larksuite.com/wiki/UNrAw3pX9icQkMklXN3urnLZsUf?table=tblpesOGDXb5oKYP&view=vewuCREkVn)
+
+4. 提交商店审核

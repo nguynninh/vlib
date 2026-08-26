@@ -1,0 +1,658 @@
+---
+title: 02 — 安装与集成
+description: SDK Interactive 集成到 Android 应用所需的环境要求以及安装、集成步骤。
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+## 1. 环境要求
+
+| 项目 | 值 |
+|---|---|
+| `minSdk` | **21** |
+| SDK 的 `compileSdk` / `targetSdk` | 35 |
+| Java / Kotlin JVM target | **1.8** |
+| Kotlin plugin | 1.7.10（示例仓库使用） |
+| AGP | 8.6.1（示例 `app` 模块使用 `com.android.application` 8.6.1） |
+| NDK | **28.1.13356709**（仅在 *构建* SDK 时需要，因为包含 native 库） |
+| CMake | 3.22.1（构建 SDK 时需要） |
+| Activity 类型 | **`FragmentActivity`**（通常为 `AppCompatActivity`） |
+
+> SDK 包含 native 库 `liboverlay.so`（用于隐藏环境 URL）。以 `.aar` 文件形式集成时，
+> `.so` 已内置于 AAR 中 —— app **不需要** NDK/CMake。
+
+---
+
+## 2. 构建 AAR 文件
+
+```bash
+./gradlew :interactive:assembleRelease
+```
+
+结果位于 `interactive/build/outputs/aar/`，文件名按照
+[interactive/build.gradle](../interactive/build.gradle) 中的规则命名：
+
+```
+Interactive_<DEVICE_TYPE>_<buildType>_<构建日期>.aar
+例如：Interactive_androidmobile_release_2026-07-30.aar
+```
+
+**为 Android TV 构建**：在 `interactive/build.gradle` 中修改
+`buildConfigField("String", "DEVICE_TYPE", "\"androidtv\"")` 后重新构建。此值会影响：
+
+- socket header `os`，
+- 附加到模板 URL 的 query `os=`，
+- overlay 的 `targets` 过滤条件（`Utils.isValidTargets`），
+- tracking 中的 `platform` / `deviceClass` 字段。
+
+---
+
+## 3. 声明依赖
+
+### 方式 A — 使用源码模块（如示例仓库所示）
+
+`settings.gradle`：
+
+```gradle
+include ':interactive'
+```
+
+`app/build.gradle`：
+
+```gradle
+dependencies {
+    implementation project(":interactive")
+}
+```
+
+### 方式 B — 使用 `.aar` 文件
+
+将 AAR 复制到 `app/libs/`，然后：
+
+```gradle
+dependencies {
+    implementation fileTree(include: ['*.jar', '*.aar'], dir: 'libs')
+}
+```
+
+> ⚠️ **AAR 不携带传递依赖。** 使用方式 B 时，app **必须**重新声明
+> SDK 使用的所有库，否则运行时会出现 `NoClassDefFoundError`：
+
+```gradle
+dependencies {
+    // AndroidX / UI
+    implementation 'androidx.core:core-ktx:1.7.0'
+    implementation 'androidx.appcompat:appcompat:1.5.1'
+    implementation 'com.google.android.material:material:1.7.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+
+    // 图片（Predict / Lucky 按钮是从 CDN 加载的 GIF 图片）
+    implementation 'com.github.bumptech.glide:glide:4.12.0'
+
+    // Realtime
+    implementation("io.socket:socket.io-client:2.0.1") {
+        exclude group: 'org.json', module: 'json'
+    }
+
+    // REST + JSON
+    implementation 'com.google.code.gson:gson:2.9.1'
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+    implementation 'com.squareup.okhttp3:okhttp:4.9.3'
+    implementation 'com.squareup.okhttp3:logging-interceptor:4.9.3'
+}
+```
+
+此外 SDK 使用了 **Kotlin Coroutines**（`GlobalScope`、`Dispatchers.IO/Main`）以及
+**AndroidX Lifecycle/LiveData**。这两者通常已经通过 `androidx.appcompat` 的传递依赖引入；
+若你的项目做了裁剪或使用了严格的 R8 配置而遇到缺类错误，请额外声明：
+
+```gradle
+implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.0'
+implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.5.1'
+```
+
+### 需要的 Repository
+
+```gradle
+repositories {
+    google()
+    mavenCentral()
+    maven { url 'https://jitpack.io' }
+}
+```
+
+---
+
+## 4. `AndroidManifest.xml` 中的权限与配置
+
+```xml
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+<application
+    android:usesCleartextTraffic="true">   <!-- 仅当 DEV 环境使用 http 时需要 -->
+    <activity
+        android:name=".MainActivity"
+        android:configChanges="orientation|screenSize" />  <!-- 避免旋转时重建 Activity -->
+</application>
+```
+
+SDK 读取 `Settings.Secure.ANDROID_ID` 作为 `deviceId` —— **不需要为此声明任何权限**。
+
+---
+
+## 5. 在布局中添加 `OverlayView`
+
+`OverlayView` 必须**精确覆盖视频显示区域**（通常为 16:9 画框），并且在绘制顺序上
+**位于** player **之上**（在同一 `ConstraintLayout` 中声明在 player 之后，或使用 `elevation`）。
+
+```xml
+<androidx.constraintlayout.widget.ConstraintLayout
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- 你的 Player -->
+    <FrameLayout
+        android:id="@+id/player_container"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintDimensionRatio="H,16:9"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Overlay 叠加在 player 之上，尺寸相同 -->
+    <vn.interactive.widgets.OverlayView
+        android:id="@+id/overlay_view"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toTopOf="@id/player_container"
+        app:layout_constraintBottom_toBottomOf="@id/player_container"
+        app:layout_constraintStart_toStartOf="@id/player_container"
+        app:layout_constraintEnd_toEndOf="@id/player_container" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+```
+
+**为什么 `OverlayView` 的尺寸很重要？** overlay 是按照 `OverlayView` 自身的*百分比*来定位的
+（`metadata.size.w/h` 取值范围为 `0..1`，以及 `metadata.pos.x/y`）。若 `OverlayView` 大于
+视频画框，overlay 就会偏出画面区域。
+
+示例仓库在 `onResume` / `onConfigurationChanged` 中按 16:9 重新计算尺寸
+（参见 [MainActivity.kt:151](../app/src/main/java/com/vtvlive/example/MainActivity.kt:151)）：
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+private fun resizeContentView() {
+    contentView.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
+        override fun onPreDraw(): Boolean {
+            contentView.viewTreeObserver.removeOnPreDrawListener(this)
+            val screenWidth = contentView.width
+            val calculatedHeight = (screenWidth * 9) / 16
+            updateOverlayViewLayoutParams(screenWidth, contentView.height, calculatedHeight)
+            return true
+        }
+    })
+}
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+private void resizeContentView() {
+    contentView.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
+        @Override
+        public boolean onPreDraw() {
+            contentView.getViewTreeObserver().removeOnPreDrawListener(this);
+            int screenWidth = contentView.getWidth();
+            int calculatedHeight = (screenWidth * 9) / 16;
+            updateOverlayViewLayoutParams(screenWidth, contentView.getHeight(), calculatedHeight);
+            return true;
+        }
+    });
+}
+```
+  </TabItem>
+</Tabs>
+
+---
+
+## 6. 初始化 SDK
+
+<Tabs>
+  <TabItem label="Kotlin">
+````kotlin
+class MainActivity : AppCompatActivity(), DefaultOverlayEventListener {
+
+    private lateinit var overlayManager: OverlayManager
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+        initInteractive()
+    }
+
+    private fun initInteractive() {
+        val overlayData = OverlayData.Builder()
+            .setEnvironment(EnvInteractive.PROD)   // DEV | STG | PROD，默认 PROD
+            .setTenantId("vtvlive")                // 必填，由 Interactive 团队提供
+            .setDebug(false)                       // 可选
+            .build()
+
+        overlayManager = OverlayManager(
+            /* activity  */ this,
+            /* overlayView */ findViewById(R.id.overlay_view),
+            /* overlayData */ overlayData,
+            /* listener */ this
+        )
+    }
+}
+````
+  </TabItem>
+  <TabItem label="Java">
+```java
+public class MainActivity extends AppCompatActivity implements DefaultOverlayEventListener {
+
+    private OverlayManager overlayManager;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        initInteractive();
+    }
+
+    private void initInteractive() {
+        OverlayData overlayData = new OverlayData.Builder()
+            .setEnvironment(EnvInteractive.PROD)   // DEV | STG | PROD，默认 PROD
+            .setTenantId("vtvlive")                // 必填，由 Interactive 团队提供
+            .setDebug(false)                       // 可选
+            .build();
+
+        overlayManager = new OverlayManager(
+            /* activity  */ this,
+            /* overlayView */ findViewById(R.id.overlay_view),
+            /* overlayData */ overlayData,
+            /* listener */ this
+        );
+    }
+}
+```
+  </TabItem>
+</Tabs>
+
+构造函数**不会打开网络连接** —— 只加载配置。连接从 `joinRoom()` 才开始。
+
+---
+
+## 7. 声明登录会话
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+// 登录成功时
+overlayManager.initToken(
+    token = accessToken,   // JWT（以 "ey" 开头）或 cookie 字符串
+    userId = userId,       // 用户标识 id
+    bjName = ""            // 可选：BJ/频道名称，显示在 fanclub dialog 中
+)
+
+// 登出时
+overlayManager.initToken("", "")
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+// 登录成功时
+overlayManager.initToken(
+    accessToken,   // JWT（以 "ey" 开头）或 cookie 字符串
+    userId,        // 用户标识 id
+    ""             // 可选：BJ/频道名称，显示在 fanclub dialog 中
+);
+
+// 登出时
+overlayManager.initToken("", "");
+```
+  </TabItem>
+</Tabs>
+
+机制：
+
+- token 以 `"ey"` 开头 → SDK 会自动为 socket 与 REST 的 header 加上前缀 `Bearer `。
+- 其他 token（cookie）→ 原样发送。
+- 若在观看 **Live** 期间调用 `initToken`，SDK 会**自动重新进入房间**，以便 socket
+  携带新 token。
+- 首次进入前，请**先**调用 `initToken` 再调用 `joinRoom`。
+
+---
+
+## 8. 进入 / 离开内容
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+// LIVE
+overlayManager.joinRoom(mediaId = "003c04ba-8f7d-4663-bef0-c7a971c059b6", type = 1)
+
+// VOD
+overlayManager.joinRoom(mediaId = "4357747e-004c-4190-a3f3-4a33840a3c09", type = 2)
+
+// 退出内容 / 销毁界面
+overlayManager.releaseAll()
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+// LIVE
+overlayManager.joinRoom("003c04ba-8f7d-4663-bef0-c7a971c059b6", 1);
+
+// VOD
+overlayManager.joinRoom("4357747e-004c-4190-a3f3-4a33840a3c09", 2);
+
+// 退出内容 / 销毁界面
+overlayManager.releaseAll();
+```
+  </TabItem>
+</Tabs>
+
+- `type = 1` → LIVE（`Const.VIDEO_LIVE`），`type = 2` → VOD（`Const.VIDEO_VOD`）。
+- `joinRoom` 会自动清理上一个会话，因此切换频道只需再次调用即可。
+- `releaseAll()` 会关闭 socket（若为 Live）、销毁所有 WebView、dialog、浮动按钮以及
+  未完成的 tracking。
+
+**进入房间前先检查该内容是否支持互动**（可选）：
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+overlayManager.fetchInteractiveStatus(mediaId) { isInteractive ->
+    if (isInteractive) overlayManager.joinRoom(mediaId, type = 1)
+}
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+overlayManager.fetchInteractiveStatus(mediaId, isInteractive -> {
+    if (isInteractive) overlayManager.joinRoom(mediaId, 1);
+});
+```
+  </TabItem>
+</Tabs>
+
+---
+
+## 9. VOD 集成 — 注入播放时间
+
+对于 VOD，SDK **无法自动得知** player 当前处于第几秒。app 必须每秒注入一次：
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+private val handler = Handler(Looper.getMainLooper())
+private var seconds = 0
+
+private val tick = object : Runnable {
+    override fun run() {
+        seconds = (player.currentPosition / 1000).toInt()   // player 当前的秒数
+        overlayManager.receiveTrackingTime(seconds)         // 注入到 SDK
+        handler.postDelayed(this, 1000L)
+    }
+}
+
+// 在 joinRoom(type = 2) 之后开始
+handler.post(tick)
+
+// 离开内容时停止
+handler.removeCallbacks(tick)
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+private Handler handler = new Handler(Looper.getMainLooper());
+private int seconds = 0;
+
+private Runnable tick = new Runnable() {
+    @Override
+    public void run() {
+        seconds = (int) (player.getCurrentPosition() / 1000);   // player 当前的秒数
+        overlayManager.receiveTrackingTime(seconds);             // 注入到 SDK
+        handler.postDelayed(this, 1000L);
+    }
+};
+
+// 在 joinRoom(type = 2) 之后开始
+handler.post(tick);
+
+// 离开内容时停止
+handler.removeCallbacks(tick);
+```
+  </TabItem>
+</Tabs>
+
+- 单位为**秒**（与 `Timeline.time` 的 `"mm:ss"` 格式对应）。
+- SDK 按 overlay 时间点的**精确秒数**进行匹配（`startTimeShowOverlay == time`），因此**不能
+  漏掉节拍**：若 tick 间隔超过 1 秒，或用户快进跳过了某个时间点，该时间点的 overlay 就不会显示。
+- `receiveTrackingTime` 是类型为 `(Int) -> Unit` 的属性，像普通函数一样调用即可。
+
+---
+
+## 10. 为 SDK 提供 player 状态（可选，Live）
+
+服务器可能会发送 `ckst` 事件询问客户端当前是在播放还是暂停。若想准确回答，请注册：
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+overlayManager.addPlayerListener(object : PlayerChangeListener {
+    override suspend fun currentPosition(): Long = player.currentPosition
+
+    // first = isPlaying, second = state (1 = IDLE, 2 = BUFFERING, 3 = READY, 4 = ENDED)
+    override fun onPlayerStateChanged(): Pair<Boolean, Int> =
+        Pair(player.isPlaying, player.playbackState)
+})
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+overlayManager.addPlayerListener(new PlayerChangeListener() {
+    @Override
+    public long currentPosition() {
+        return player.getCurrentPosition();
+    }
+
+    // first = isPlaying, second = state (1 = IDLE, 2 = BUFFERING, 3 = READY, 4 = ENDED)
+    @Override
+    public Pair<Boolean, Integer> onPlayerStateChanged() {
+        return new Pair<>(player.isPlaying(), player.getPlaybackState());
+    }
+});
+```
+  </TabItem>
+</Tabs>
+
+SDK 的映射：`1 → "idle"`，`3 → "playing"/"paused"`（取决于 `isPlaying`），其余 → 空字符串。
+
+> 若希望 listener 也能绑定到 `SocketIOManagement`（该对象只有在进入 Live 房间后才存在），
+> 请在 `joinRoom` **之后**调用 `addPlayerListener`。
+
+---
+
+## 11. 接收来自 SDK 的事件
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+class MainActivity : AppCompatActivity(), DefaultOverlayEventListener {
+
+    /** overlay 要求 app 处理的动作 */
+    override fun onHandleMessage(msg: EventOverlay) {
+        when (msg) {
+            EventOverlay.NEED_LOGIN   -> showLoginScreen()   // 用户在未登录时点击回答
+            EventOverlay.NEED_PAY_ONG -> showTopUpScreen()   // 服务器返回 PM402（OnG 不足）
+            else -> Unit
+        }
+    }
+
+    /** 频道的实时观看人数（仅 Live 时有） */
+    override fun onHandleLiveViews(liveViews: Int) {
+        tvViewers.text = liveViews.toString()
+    }
+
+    /** overlay 打开/关闭统计部分 —— 如需要可用来隐藏/显示 app 的 UI */
+    override fun onShowITR(show: Boolean) { }
+
+    /**
+     * overlay 已加载完成（takeControl = true）或加载出错（webViewError = true）。
+     * overlayConfig 表明这是 popup 还是 inline、对齐上/下方式、高度比例。
+     */
+    override fun onFocusOverlay(
+        takeControl: Boolean,
+        webViewError: Boolean,
+        overlayConfig: OverlayConfig?
+    ) {
+        if (overlayConfig?.popupOverlay == true) {
+            // 例如：上移 player 控制条以免被 overlay 遮挡
+        }
+    }
+}
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+public class MainActivity extends AppCompatActivity implements DefaultOverlayEventListener {
+
+    /** overlay 要求 app 处理的动作 */
+    @Override
+    public void onHandleMessage(EventOverlay msg) {
+        switch (msg) {
+            case NEED_LOGIN:
+                showLoginScreen();   // 用户在未登录时点击回答
+                break;
+            case NEED_PAY_ONG:
+                showTopUpScreen();   // 服务器返回 PM402（OnG 不足）
+                break;
+            default:
+                break;
+        }
+    }
+
+    /** 频道的实时观看人数（仅 Live 时有） */
+    @Override
+    public void onHandleLiveViews(int liveViews) {
+        tvViewers.setText(String.valueOf(liveViews));
+    }
+
+    /** overlay 打开/关闭统计部分 —— 如需要可用来隐藏/显示 app 的 UI */
+    @Override
+    public void onShowITR(boolean show) { }
+
+    /**
+     * overlay 已加载完成（takeControl = true）或加载出错（webViewError = true）。
+     * overlayConfig 表明这是 popup 还是 inline、对齐上/下方式、高度比例。
+     */
+    @Override
+    public void onFocusOverlay(
+        boolean takeControl,
+        boolean webViewError,
+        OverlayConfig overlayConfig
+    ) {
+        if (overlayConfig != null && overlayConfig.popupOverlay) {
+            // 例如：上移 player 控制条以免被 overlay 遮挡
+        }
+    }
+}
+```
+  </TabItem>
+</Tabs>
+
+`DefaultOverlayEventListener` 只是 `OverlayEventListener` 的别名 —— 实现哪一个都可以，
+但**这 4 个函数都必须实现**。
+
+---
+
+## 12. 排行榜
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+overlayManager.showChartsInteractive(
+    mediaId = "003c04ba-8f7d-4663-bef0-c7a971c059b6",
+    userId = "355202",
+    backgroundColorHeader = "#139DED"   // 可选，header 颜色的十六进制码
+)
+
+if (overlayManager.isDialogCharShowing()) {
+    overlayManager.hideChartsInteractive()
+}
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+overlayManager.showChartsInteractive(
+    "003c04ba-8f7d-4663-bef0-c7a971c059b6",
+    "355202",
+    "#139DED"   // 可选，header 颜色的十六进制码
+);
+
+if (overlayManager.isDialogCharShowing()) {
+    overlayManager.hideChartsInteractive();
+}
+```
+  </TabItem>
+</Tabs>
+
+该 dialog 是全屏的 `DialogFragment`，会根据竖屏/横屏以及平板设备自动调整尺寸。
+
+---
+
+## 13. 处理屏幕旋转
+
+声明 `android:configChanges="orientation|screenSize"`，使 Activity **不被重建** ——
+overlay/socket 不会因此丢失。SDK 的各个 dialog 会自行处理各自的 `onConfigurationChanged`。
+
+> 注意：`OverlayManager.onConfigurationChanged` 目前是 **private** 的，app 无法直接调用。
+> 若旋转时 Activity 被重建，请重新创建 `OverlayManager` 并重新调用 `joinRoom`。
+
+---
+
+## 14. ProGuard / R8
+
+模块 `:interactive` 已附带 `consumer-rules.pro`（使用 AAR 时会自动应用到 app），保留了：
+
+- Retrofit 接口 `OverlayService`、`InteractiveStatusService`，
+- 整个 `vn.interactive.model.**`、`retrofit2.**`、`okhttp3.**`、`okio.**`、Gson 及其 annotation。
+
+若 app 开启了 `minifyEnabled true` 并遇到 JS bridge 无法被调用的问题，请补充：
+
+```proguard
+# 保留 JS interface（WebView 通过反射调用）
+-keepclassmembers class vn.interactive.callbacks.OverlayWebViewCallBack {
+    @android.webkit.JavascriptInterface <methods>;
+}
+-keepclassmembers class vn.interactive.callbacks.PostMessageListener {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
+# 保留获取环境 URL 的 native 函数
+-keepclasseswithmembernames class vn.interactive.utils.Utils {
+    native <methods>;
+}
+```
+
+---
+
+## 15. 集成检查清单
+
+- [ ] Activity 继承自 `AppCompatActivity` / `FragmentActivity`。
+- [ ] `OverlayView` 位于布局中，准确覆盖视频画框，绘制在 player **之上**。
+- [ ] 已声明 `INTERNET` + `ACCESS_NETWORK_STATE`。
+- [ ] 已声明齐全依赖（若通过 AAR 集成）。
+- [ ] `setTenantId(...)` 的值与 Interactive 团队提供的一致。
+- [ ] 登录**以及**登出时都调用了 `initToken()`。
+- [ ] 每次开始观看新内容时都调用了 `joinRoom()`。
+- [ ] VOD：具备每秒调用一次 `receiveTrackingTime()` 的循环。
+- [ ] 离开内容 / `onDestroy()` 时调用了 `releaseAll()`。
+- [ ] 已处理 `EventOverlay.NEED_LOGIN` 和 `NEED_PAY_ONG`。
+
+---

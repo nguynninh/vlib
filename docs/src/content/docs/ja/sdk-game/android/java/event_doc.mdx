@@ -1,0 +1,103 @@
+---
+title: SDKトラッキングイベントドキュメント
+description: SDKのAppsFlyerトラッキングイベントの完全な一覧、送信箇所、実装状況、付随パラメータ。
+---
+
+## 1. イベント名とパラメータ
+
+| No. | af イベント名 | 送信箇所 | 実装状況 | イベントの説明 | パラメータとその説明 | 備考 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | af_first_launch | Sdk | 完了 | アプリの初回インストール時に送信。旧first launchイベントの発火時に送信... | install_source : インストール元<br/>install_time : インストール時刻 | |
+| 2 | af_app_launch | Sdk | 完了 | sdkの初回初期化時（ゲームを開いた時） | install_id : appsFlyer Id<br/>launch_season : 現在のuuidSession<br/>device_model : 端末名<br/>os_type : ... | |
+| 3 | af_require_update | Sdk | 完了 | 現在のバージョンとhub上で最新に設定されたバージョンを比較確認 | install_id: appsFlyer Id<br/>launch_season : アプリ使用セッション<br/>current_ver : インストール中のバージョン<br/>target_ver : ... | |
+| 4 | af_upgrade_version_success | Sdk | 完了 | 現在のバージョンが以前に保存されたバージョンと異なるかチェック | パラメータなし | |
+| 5 | af_patch_start | Game | 完了 | ゲームの更新リソースのダウンロード開始前 | install_id: appsFlyer Id<br/>launch_season : アプリ使用セッション<br/>patch_version : ダウンロードするpatchバージョン<br/>size_... | |
+| 6 | af_patch_error | Game | 完了 | 更新リソースのダウンロード中のエラー | install_id: appsFlyer Id<br/>launch_season : アプリ使用セッション<br/>ip : 端末ip<br/>cdn_ip_node : ダウンロードサーバーIp ... | |
+| 7 | af_patch_success | Game | 完了 | リソースのダウンロード成功 | install_id: appsFlyer Id<br/>launch_season : アプリ使用セッション<br/>ip : 端末ip<br/>network_type : ダウンロード時のネットワーク<br/>dura... | |
+| 8 | af_extract_started | Game | 完了 | ダウンロード済みリソースの解凍開始 | install_id: appsFlyer Id<br/>launch_season : アプリ使用セッション<br/>total_files: 総ファイル数<br/>total_size... | |
+| 9 | af_extract_finished | Game | 完了 | リソースダウンロード終了 | install_id: appsFlyer Id<br/>launch_season : アプリ使用セッション<br/>result_code: 解凍成功か失敗か ... | |
+| 10 | af_show_start_game | Game | 完了 | ログインボタン付きのゲーム歓迎画面表示時 | | |
+| 11 | af_login_view | Sdk | 完了 | ログインを押した際にログイン画面が表示された時 | install_id: appsFlyer Id<br/>launch_season : アプリ使用セッション<br/>network_type: ネットワークタイプ<br/>device_model : ... | |
+| 12 | af_login_start | Sdk | 完了 | ログインを押し始めた時 | install_id: appsFlyer Id<br/>launch_season : アプリ使用セッション<br/>method: ログイン種別: vtvlive_id, google... | |
+| 13 | af_login_error | Sdk | 完了 | ログインエラー | install_id: appsFlyer Id<br/>launch_season : アプリ使用セッション<br/>method: ログイン種別: vtvlive_id, google... | |
+| 14 | af_login_success | Sdk | 完了 | ログイン成功 | install_id: appsFlyer Id<br/>launch_season : アプリ使用セッション<br/>method: ログイン種別: vtvlive_id, google... | |
+| 15 | af_register_start | Sdk | 完了 | ログイン画面で登録を押し登録画面に遷移した時 | install_id: appsFlyer Id<br/>launch_season : アプリ使用セッション<br/>method: vtvlive_id | |
+| 16 | af_login_forgotpassword | Sdk | 完了 | パスワードを忘れたを押した時 | 追加のイベント確認が必要 | |
+| 17 | af_register_success | Sdk | 完了 | 登録成功 | install_id: appsFlyer Id<br/>launch_season : アプリ使用セッション<br/>account_id: アカウントのaccount id<br/>dura... | |
+| 18 | af_login_close | Sdk | 完了 | ログイン画面のログインUIの閉じるボタンを押した時 | 追加のイベント確認が必要 | |
+| 19 | af_server_select | Game | 完了 | ログイン成功後にserverを選択しゲームを押した時 | install_id: appsFlyer Id<br/>launch_season : アプリ使用セッション<br/>account_id: アカウントId<br/>server_id: server_id | |
+| 20 | af_char_create_start | Game | 完了 | ユーザーがキャラクター作成画面に遷移した時 | install_id: appsFlyer Id<br/>launch_season : アプリ使用セッション<br/>account_id: アカウントId<br/>server_id: server_id | |
+| 21 | af_char_create_error | Game | 完了 | ユーザーのキャラクター作成でエラーが発生した時 | install_id: appsFlyer Id<br/>launch_season : アプリ使用セッション<br/>account_id: アカウントId<br/>char_id: char id er... | |
+| 22 | af_char_create_success | Game | 完了 | ユーザーのキャラクター作成が成功しゲームに入った時 | install_id: appsFlyer Id<br/>launch_season : アプリ使用セッション<br/>account_id: アカウントId<br/>server_id: sever c... | |
+| 23 | af_char_select | Game | 完了 | ユーザーが既存のキャラクターを選択しゲームに入った時 | install_id: appsFlyer Id<br/>launch_season : アプリ使用セッション<br/>account_id: アカウントId<br/>server_id: sever c... | |
+| 24 | af_enter_gameplay | Game | 完了 | ユーザーがゲームプレイを開始した時 | | |
+| 25 | af_level_achievement | Game | 完了 | ユーザーがレベルアップした時 | | |
+| 26 | af_vip_achievement | Game | 完了 | ユーザーがVIPレベルアップした時（af_level_achievementのイベントに準じてレベルアップ） | | |
+| 27 | af_logout | Sdk | 完了 | ゲームまたはユーザー操作からログアウトした時、または... | | |
+| 28 | af_open_payment_screen | Sdk | 完了 | storeの支払い画面を開いた時 | af_content_id : パッケージId | |
+| 29 | af_payment_success | Sdk | 完了 | 支払い成功後 | af_content_id : パッケージid | |
+| 30 | af_purchase | Sdk | 完了 | 支払い成功後 | af_content_id : パッケージId<br/>af_receipt_id : Order id<br/>af_order_id : Order id<br/>item_id : パッケージId<br/>item_category : ... | |
+| 31 | af_cancel_purchase | Sdk | 完了 | 支払い画面表示後にユーザーが購入をキャンセルした時 | af_content_type | |
+| 32 | af_error_purchase | Sdk | 完了 | storeで支払いエラー、またはサーバーへの支払い確認でエラーが発生した時 | af_content_id | |
+| 33 | af_play_time | Sdk | 完了 | プレイ時間のトラッキング | af_customer_id: ユーザーId | |
+| 34 | af_level_achieved_at | Sdk | 完了 | hubで設定された基準に到達した時 | | |
+| 35 | af_vip_achieved_at | Sdk | 完了 | hubで設定された基準に到達した時 | | |
+| 36 | af_complete_tutorial | Game | 完了 | ユーザーがゲームのチュートリアルを完了した時 | | |
+| 37 | af_retention_d1 | Sdk | 完了 | ユーザーのログイン後、sdkがAPIを呼び出しサーバーからイベント名を返す、s... | | |
+| 38 | af_server_retention_d1 | Sdk | 完了 | ユーザーのログイン後、sdkがAPIを呼び出しサーバーからイベント名を返す、s... | | |
+| 39 | af_registration | Sdk | 完了 | ユーザーのログイン後、sdkがAPIを呼び出しサーバーからイベント名を返す、s... | | |
+| 40 | af_server_registration | Sever | 完了 | このイベントはサーバー側が自動送信 | | |
+| 41 | af_server_list_begin | game_new | 未完了 | ユーザーがserver一覧取得処理を開始した瞬間を記録 | 新規イベント<br/>install_id: appsFlyer Id<br/>launch_season : アプリ使用セッション<br/>user_id: アカウントID<br/>device_id: ... | |
+| 42 | af_server_list_success | game_new | 未完了 | ユーザーがserver一覧の取得・表示に成功したことを記録 | 新規イベント<br/>install_id: appsFlyer Id<br/>launch_season : アプリ使用セッション<br/>user_id: アカウントID<br/>device_id: ... | |
+| 43 | af_server_list_failed | game_new | 未完了 | 次のいずれかの場合に呼び出される: リクエストがタイムアウト（q... | 新規イベント<br/>install_id: appsFlyer Id<br/>launch_season : アプリ使用セッション<br/>user_id: アカウントID<br/>device_id: ... | |
+| 44 | af_config_game | sdk_new | 完了 | ゲーム設定を取得成功時に呼び出される。渡されるパラメータは取得元がfirebase,api,localのいずれか | type:firebase,api,local | Errorは送信不可 |
+| 45 | af_147_intro | sdk_new | 完了 | 歓迎画面を開く | user_id: アカウントID、認証種別はphoneまたはemail、location、verions | |
+| 46 | af_147_verify | sdk_new | 完了 | 更新画面を開く | user_id: アカウントID | |
+| 47 | af_147_send_otp_success | sdk_new | 完了 | OTP送信成功 | user_id: アカウントID | |
+| 48 | af_147_send_otp_error | sdk_new | 完了 | OTP送信失敗 | user_id: アカウントID | |
+| 49 | af_147_otp_verify_success | sdk_new | 完了 | OTP確認成功 | user_id: アカウントID | |
+| 50 | af_147_otp_verify_error | sdk_new | 完了 | OTP確認失敗 | user_id: アカウントID | |
+| 51 | af_147_complete | sdk_new | 完了 | 完了画面へ遷移 | user_id: アカウントID | |
+| 52 | af_147_close_verify | sdk_new | 完了 | verify 147画面の閉じるボタンを押した時 | user_id: アカウントID | |
+| 53 | af_147_open_status | sdk_new | 完了 | 147のオン/オフ理由 | user_id: アカウントID, ip, is_vietnam, status, reason | |
+
+## 2. Vlive Tracking（Hub Logs Collection）への送信イベント
+
+現在、Vliveに送信されているイベントはパラメータがない、またはHub Logs Collectionドキュメントに基づくパラメータが少ない状態です。まだ適用されていない新しいイベントは追加・統一が必要です。
+
+### sdk vlive tracking gameへのイベント送信時のデフォルトパラメータ
+
+- `deviceId` : 端末識別ID
+- `deviceModel` : 端末モデル名
+- `deviceBrand` : 端末ブランド
+- `deviceFullInfoJson` : JSON形式の端末の詳細情報
+- `deviceOs` : 端末OS名（例: Android, iOS）
+- `deviceOsVersion` : 端末OSバージョン
+- `appClientId` : アプリケーションのclient ID
+- `appId` : アプリケーションID
+- `appName` : アプリケーション名
+- `appCode` : アプリケーションコード
+- `appPackage` : アプリケーションのpackage名（例: `com.example.app`）
+- `appVersion` : アプリケーションバージョン
+- `appSdkVersion` : アプリケーションのSDKバージョン
+
+`deviceFullInfoJson` には以下のパラメータが含まれます:
+
+- `width` : 画面の横幅（px）
+- `height` : 画面の縦幅（px）
+- `density_dpi` : 画面のピクセル密度（DPI）
+- `density` : 画面のスケール比率（例: 2.0, 3.0）
+- `serial` : 端末のシリアル番号
+- `model` : 端末のモデル名（例: Pixel 8, SM-A525F）
+- `id` : OSのビルドID
+- `manufacture` : 端末の製造元（Samsung, Xiaomi, Oppoなど）
+- `brand` : 端末のブランド
+- `type` : OSビルドの種類（`user`, `userdebug`, `eng`）
+- `user` : OSビルドに使用されたユーザー名
+- `base` : Androidプラットフォームの最初のバージョンコード（通常1）
+- `incremental` : OSの増分ビルドコード
+- `sdk` : Android APIレベル（例: 34）
+- `board` : 端末のボード/ハードウェア名
+- `host` : OSビルドに使用されたホスト名
+- `fingerprint` : 端末/ROMを一意に識別する文字列
+- `version_code` : ユーザーに表示されるAndroidバージョン（例: 14）

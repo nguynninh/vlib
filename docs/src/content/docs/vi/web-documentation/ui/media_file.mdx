@@ -57,7 +57,7 @@ https://github.com/<owner>/<repo>/releases/download/<tag>/<file-name>
 Ví dụ:
 
 ```text
-https://github.com/nguynninh/vlib-storage/releases/download/v1.0.0/photo_demo.jpg
+BASE_STORAGE/v1.0.0/photo_demo.jpg
 ```
 
 :::tip
@@ -75,7 +75,7 @@ BASE_STORAGE/<tag>/<file-name>
 Lúc build, một remark plugin sẽ tự động thay `BASE_STORAGE` bằng giá trị thật lấy từ biến môi trường, ví dụ:
 
 ```bash title=".env.production"
-BASE_STORAGE=https://github.com/nguynninh/vlib-storage/releases/download
+BASE_STORAGE=BASE_STORAGE
 ```
 
 :::tip

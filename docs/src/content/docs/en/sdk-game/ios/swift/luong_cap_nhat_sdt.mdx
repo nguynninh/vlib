@@ -1,0 +1,141 @@
+---
+title: Phone number update flow
+description: Describes the SDK's phone number update and OTP verification flow, covering the two screen variants VerifyPhone and VerifyPhoneV2/VerifyOTP.
+---
+
+This document describes the SDK's phone number update / verification flow, built from the actual code.
+The project currently has **two variants** of the screen:
+
+- **Option 1 – `VerifyPhone`** (a single screen combining phone number input and OTP input; title *"UPDATE PHONE NUMBER"*). Invoked via `Sdk.verifyPhone(...)`.
+- **Option 2 – `VerifyPhoneV2` → `VerifyOTP`** (the newer version, split into two screens; title *"Add phone number"*, tied to the gift-claiming flow `showReceiveGift`).
+
+Both share the same 2 endpoints: `PATH_OTP_PHONE_V2` (send OTP) and `PATH_VERIFY_OTP_PHONE_V2` (verify OTP), with the parameter `type = 0` (Verify Phone) and a header carrying a Bearer accessToken.
+
+## Entry condition – `Sdk.verifyPhone()`
+
+```mermaid
+%% width: 1100
+flowchart TD
+    A([App calls Sdk.verifyPhone]) --> B["POST PATH_USER_INFO_V2<br/>Get account status"]
+    B --> C{Error code}
+    C -- code 86 --> C1["doRefreshWithAction<br/>Refresh token → call verifyPhone again"]
+    C1 --> B
+    C -- code != 0 --> C2([callbackVerify false])
+    C -- code = 0 --> D{confirmCode = 2 or 5?}
+    D -- Yes --> E([Phone already verified<br/>callbackVerify true])
+    D -- No --> F{Account type}
+    F -- Guest / Facebook / Google / Apple --> G([Suggest switching to VtvLive ID<br/>Open ChangeAccountV2View])
+    F -- VtvLive ID account --> H["Open VerifyPhone<br/>→ Start updating phone number"]
+```
+
+Only VtvLive ID accounts that have not verified their phone number (`confirmCode` other than 2 and 5) can open the
+phone number update screen; guest/social accounts will be prompted to switch accounts first.
+
+## Option 1 – `VerifyPhone` screen
+
+```mermaid
+%% width: 1100
+flowchart TD
+    A["Open VerifyPhone<br/>Enter phone number"] --> B["btnReceiveOtpClick()"]
+    B --> C{Check phone number}
+    C -- Empty --> C1([Error: enter phone number])
+    C -- Wrong REGEX_PHONE --> C2([Error: invalid phone number])
+    C -- Valid --> D["doSendOTP()<br/>POST PATH_OTP_PHONE_V2, type = 0"]
+
+    D --> E{Error code}
+    E -- code 86 --> E1["doRefreshWithAction → resend OTP"]
+    E1 --> D
+    E -- code != 0 --> E2([handleErrorCode → show error])
+    E -- code = 0 --> F["canSendOtpAgain()<br/>Enable OTP field + resend countdown"]
+
+    F --> G[Enter OTP] --> H["btnUpdateClick()"]
+    H --> I{OTP empty?}
+    I -- Yes --> I1([Error: enter OTP])
+    I -- No --> J["POST PATH_VERIFY_OTP_PHONE_V2<br/>otp + phone + type 0"]
+
+    J --> K{Error code}
+    K -- code 86 --> K1["doRefreshWithAction → press update again"]
+    K1 --> J
+    K -- code != 0 --> K2([handleErrorCode → show error])
+    K -- code = 0 --> L["Save GlobalManager.phone<br/>Analytics conversion"]
+    L --> M([Alert: Update successful<br/>callback CallbackSuccess → close screen])
+```
+
+### Description – Option 1
+
+1. **Enter phone number & send OTP** – `btnReceiveOtpClick()` checks that the phone number is not empty and matches
+   `REGEX_PHONE`, then `doSendOTP()` calls `PATH_OTP_PHONE_V2` (`type = 0`, with a Bearer token).
+   - `code = 0`: enables the OTP input field and starts the resend countdown (`Constants.timeOutOtpAgain`).
+   - `code = 86` (token expired): `doRefreshWithAction` refreshes the token then automatically presses send again.
+   - other errors: `handleErrorCode`.
+2. **Enter OTP & update** – `btnUpdateClick()` checks that the OTP is not empty, calls
+   `PATH_VERIFY_OTP_PHONE_V2` (`otp`, `phone`, `type = 0`).
+   - `code = 0`: saves `GlobalManager.shared.phone`, records Analytics, shows the
+     "Update successful" alert, fires `callback(CallbackSuccess)` then closes the screen.
+   - `code = 86`: refreshes the token then retries.
+   - other errors: `handleErrorCode`.
+3. **Resend OTP** – when the countdown reaches 0, the "Send code" button becomes active again to call `PATH_OTP_PHONE_V2` again.
+
+## Option 2 – `VerifyPhoneV2` → `VerifyOTP`
+
+```mermaid
+%% width: 1100
+flowchart TD
+    A["Open VerifyPhoneV2<br/>Enter phone number"] --> B{"Real-time check<br/>REGEX_PHONE"}
+    B -- Not valid yet --> B1([Continue button locked])
+    B -- Valid --> C["pressContinue()<br/>POST PATH_OTP_PHONE_V2, type = 0"]
+
+    C --> D{Error code}
+    D -- code 86 --> D1["doRefreshWithAction → pressContinue again"]
+    D1 --> C
+    D -- code != 0 --> D2([handleErrorCode → show error])
+    D -- code = 0 --> E["showOTP()<br/>Opens VerifyOTP typeScreen = .phone<br/>Closes VerifyPhoneV2"]
+
+    E --> F[Enter 6-digit OTP<br/>Resend countdown] --> G["pressContinue()"]
+    G --> H["callVerifyPhone()<br/>POST PATH_VERIFY_OTP_PHONE_V2<br/>otp + phone + type 0"]
+    H --> I{Error code}
+    I -- code 86 --> I1["doRefreshWithAction → verify again"]
+    I1 --> H
+    I -- code != 0 --> I2([handleErrorCode → show error])
+    I -- code = 0 --> J["Save GlobalManager.phone<br/>Analytics conversion"]
+    J --> K([Close screen →<br/>Sdk.showReceiveGift])
+
+    F -. Press Resend .-> L["resendOTPPhone()<br/>POST PATH_OTP_PHONE_V2 → reset countdown"]
+    L -.-> F
+    E -. Press Back .-> A
+```
+
+### Description – Option 2
+
+1. **`VerifyPhoneV2`** – the phone number input field is checked in real time against `REGEX_PHONE`; if valid,
+   the "Continue" button is enabled. `pressContinue()` calls `PATH_OTP_PHONE_V2` (`type = 0`).
+   - `code = 0`: `showOTP()` opens the `VerifyOTP` screen (`typeScreen = .phone`, passing
+     `phone`, `serverId`, `characterId`) and closes the current screen.
+   - `code = 86`: refreshes the token then calls again.
+   - other errors: `handleErrorCode`.
+2. **`VerifyOTP`** – enter the 6-digit OTP, displays the masked phone number (`maskedPhoneFrom`) and a
+   countdown for "Resend". `pressContinue()` → `callVerifyPhone()` calls
+   `PATH_VERIFY_OTP_PHONE_V2` (`otp`, `phone`, `type = 0`).
+   - `code = 0`: saves `GlobalManager.shared.phone`, logs Analytics, closes the screen and
+     calls `Sdk.showReceiveGift()` (continuing the gift-claiming flow).
+   - `code = 86`: refreshes the token then retries.
+   - other errors: `handleErrorCode`.
+   - **Resend OTP**: `resendOTPPhone()` calls `PATH_OTP_PHONE_V2` again and restarts the countdown.
+   - **Back**: returns to the `VerifyPhoneV2` screen.
+
+## Endpoints used
+
+- `PATH_USER_INFO_V2` – gets the account verification status (in the `verifyPhone` entry condition step)
+- `PATH_OTP_PHONE_V2` – sends the OTP to the phone number (POST, `type = 0`)
+- `PATH_VERIFY_OTP_PHONE_V2` – verifies the OTP and updates the phone number (POST, `type = 0`)
+
+## Notes
+
+- The `type = 0` parameter means *Verify Phone*. Other values are used for email and other
+  verification types (1 = mail, 2/3 = one-time authen, 4/5 = one-time transaction).
+- Every request attaches an `accessToken` (Bearer). When `code = 86` (token expired) occurs,
+  the SDK automatically runs `doRefreshWithAction` to refresh the token, then repeats the in-progress action.
+- A successful update always records `GlobalManager.shared.phone` and calls
+  `Analytics.initiateOnDeviceConversionMeasurement(phoneNumber:)`.
+- Ending difference: Option 1 fires `callback(CallbackSuccess)` back to whatever opened the screen;
+  Option 2 forwards to `Sdk.showReceiveGift()`.

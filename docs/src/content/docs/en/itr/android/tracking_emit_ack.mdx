@@ -1,0 +1,199 @@
+---
+title: 05 — Tracking emit-ack (Overlay Lifecycle Measurement)
+description: The emit-ack tracking mechanism that measures the overlay lifecycle from server push to client receipt, rendering, and user response.
+---
+
+This mechanism answers a question from the operations side: *"Did the overlay the server pushed
+actually reach the user's device, did it render, and did the user respond?"* — measured on the
+client itself, and reported back to the server via the `emit-ack` socket event.
+
+> Enabled/disabled via the `FEATURE_TRACKING_ACK_OVERLAY` build flag in
+> [interactive/build.gradle](../interactive/build.gradle) (currently `true`).
+> All tracking classes are `internal` — the app does not interact with them directly.
+
+---
+
+## 1. Stages
+
+```mermaid
+graph LR
+    A["received<br/>SDK receives the payload from the socket"] --> B["rendered<br/>WebView finished displaying / error / timeout / canceled"]
+    B --> C["answer<br/>user taps to submit an answer"]
+    C --> D1["answer-succeeded"]
+    C --> D2["answer-failed"]
+```
+
+| Stage | Meaning | Ends the session? |
+|---|---|---|
+| `received` | A valid payload entered the SDK | No |
+| `rendered` | Finalizes the display result, with a `status` | Yes, if `status != success` |
+| `answer` | Starts submitting the answer | No |
+| `answer-succeeded` | The API returned `success = true` | Yes |
+| `answer-failed` | API error / rejection / network error | Yes |
+
+`rendered`'s `status`: `success` | `failed` | `timeout` | `cancelled`.
+
+Each stage is sent only **once** per `trackingId` (`emittedStages` is a `Set`); if `emit` throws an
+error, the stage is removed from the set so it can be retried on the next trigger.
+
+---
+
+## 2. Payload structure sent to the server
+
+```jsonc
+// emit("emit-ack", payload)
+{
+  "trackingId": "<_trackingId taken from the overlay payload>",
+  "event": "overlay",
+  "stage": "received | rendered | answer | answer-succeeded | answer-failed",
+  "deviceId": "<android-id>",
+  "clientContext": { /* see below */ }
+}
+```
+
+### `clientContext` — common fields
+
+| Field | Source |
+|---|---|
+| `profile` | `overlay.legacyIframe` or `overlay.wsInteractive` |
+| `transportMode` | `legacyIframe` / `wsInteractive` |
+| `overlayType` | `metadata.type` → `typeTimeline` → `type` |
+| `duration` | The overlay's `duration` (seconds) |
+| `sdkVersion` | `versionName.versionCode` (e.g. `1.2.18`) |
+| `platform` | `tv` if `DEVICE_TYPE` contains "tv", otherwise `android` |
+| `os` | `"Android <release>"` |
+| `deviceClass` | `tv` / `tablet` / `mobile_large` / `mobile` / `mobile_small` |
+| `viewportWidth`, `viewportHeight` | `displayMetrics` |
+
+### Per-stage fields
+
+| Stage | Additional fields |
+|---|---|
+| `received` | `emitTimestamp`, `receiveTimestamp`, `receiveLatencyMs`, `ackLatencyMs`, `timeline{received, ackSent}` |
+| `rendered` | `status`, `receiveLatencyMs`, `renderLatencyMs`, `ackLatencyMs`, `timeline{attached, renderStart, loadComplete, readyReceived, ackSent}`, `failureReason?`, `failureStep?`, `custom.cancelReason?` |
+| `answer*` | `actionType` (`answer_submit`), `actionResult` (`attempted`/`success`/`failure`), `actionLatencyMs`, `occurrenceId` (= `timelineId`), `failureReason?`, `failureStep?`, `custom{timelineId, typeTimeline, mediaId, apiMessage?, apiDescription?, error?}` |
+
+---
+
+## 3. Two profiles and timeout thresholds
+
+`EmitAckTrackingManager.resolveProfile()` examines the overlay's `src` URL:
+
+| Condition | Profile | Render timeout | `rendered` finalization trigger |
+|---|---|---|---|
+| `src` contains `?ws=1` or `&ws=1` | `overlay.wsInteractive` | **8000 ms** | Only when the web sends `LOADED_OVERLAY` (`readyReceived`) |
+| Otherwise | `overlay.legacyIframe` | **5000 ms** | `onPageFinished` **or** `LOADED_OVERLAY`, whichever comes first |
+
+This means newer templates (`ws=1`) must proactively signal that they're ready, while older
+templates only need to finish loading the page.
+
+---
+
+## 4. Measurement flow for a single overlay
+
+```mermaid
+sequenceDiagram
+    participant WS as Socket
+    participant M as EmitAckTrackingManager
+    participant V as OverlayView
+    participant T as OverlayRenderTracker
+    participant WV as WebView
+
+    WS->>M: normalizeAndIngest("overlay", raw)
+    Note over M: extracts _trackingId, _emitTimestamp<br/>creates the session, determines the profile
+    M-->>WS: emit-ack {stage: "received"}
+
+    V->>T: attach() → schedules a timeout (5s / 8s)
+    V->>T: renderStart()
+    V->>WV: loadUrl()
+
+    alt load succeeds
+        WV->>T: pageFinished() / readyReceived()
+        T->>M: signalRendered(status = success)
+        M-->>WS: emit-ack {stage: "rendered", status: "success"}
+    else load error
+        WV->>T: failed("load_error" | "http_error" | "ssl_error")
+        T->>M: signalRendered(status = failed, failureStep = "render")
+        M-->>WS: emit-ack {stage: "rendered", status: "failed"}
+    else timed out
+        T->>M: signalRendered(status = timeout, failureStep = "render")
+        M-->>WS: emit-ack {stage: "rendered", status: "timeout"}
+    else removed before rendering
+        V->>T: cancel("removed" | "cleared")
+        T->>M: signalRendered(status = cancelled)
+        M-->>WS: emit-ack {stage: "rendered", status: "cancelled"}
+    end
+```
+
+`OverlayRenderTracker` runs on `Handler(Looper.getMainLooper())`, using a `terminalSent` flag to
+ensure that only **one** terminal signal is emitted, even when a timeout and `pageFinished` happen
+close together.
+
+---
+
+## 5. Cancel reason table (`cancelReason`)
+
+This is the complete list of points where the SDK **intentionally does not display** an overlay —
+very useful when investigating "why didn't the overlay show":
+
+| `cancelReason` | Origin | Cause |
+|---|---|---|
+| `invalid_payload` | Socket / OverlayManager | Missing `mediaContentId`/`timelineId`, or the JSON could not be parsed into an `Overlay` |
+| `short_duration` | Socket (`ex-overlay`) | `duration <= 10` seconds |
+| `login_required` | OverlayManager | Tenant `vtvlive`, not logged in, overlay is not `allowAnonymous` |
+| `socket_not_connected` | OverlayManager | The socket had already dropped at the time of processing |
+| `missing_timeline_id` | OverlayManager | `timelineId` is empty |
+| `duplicate_overlay` | OverlayManager | Duplicate `timelineId` with an overlay/predict/lucky/headline already being shown |
+| `already_answered` | OverlayManager | The pref `ex_<userId\|deviceId>` already recorded this `timelineId` |
+| `target_mismatch` | WebViewManagement | `targets` doesn't contain `all` and doesn't contain the current platform |
+| `invalid_layout` | WebViewManagement / OverlayView | Could not derive `alignment` from `metadata.pos` |
+| `expired_duration` | WebViewManagement | `duration - (now - missTime) <= 0` |
+| `superseded_cache` | WebViewManagement | An old cached overlay was replaced by a newer one upon unlocking |
+| `removed`, `cleared` | OverlayView | The WebView was removed / everything was cleared |
+| `socket_disconnected`, `sdk_disconnect`, `leave_room`, `clear_all`, `destroy` | Socket / Manager | Session ended |
+
+---
+
+## 6. Tracking session memory management
+
+| Parameter | Value |
+|---|---|
+| Maximum number of sessions | **256** (beyond this, the oldest session is evicted — a `LinkedHashMap` with least-recently-used access) |
+| TTL per session | **30 minutes** |
+| Background cleanup interval | **5 minutes** (the `EmitAckTrackingCleanup` daemon thread) |
+
+A session is deleted immediately when: `rendered` has a status other than `success`,
+`answer-succeeded`, `answer-failed`, or on `finish()`/`cancelAll()` when leaving the room /
+disconnecting the socket.
+
+---
+
+## 7. Payload normalization (`TrackingPayloadNormalizer`)
+
+```mermaid
+flowchart LR
+    A["raw JSON from the socket"] --> B{"has a 'data' field?"}
+    B -->|"yes"| C["use raw.data as the payload"]
+    B -->|"no"| D["use raw as the payload"]
+    C --> E["trackingId = raw._trackingId ?? payload._trackingId"]
+    D --> E
+    E --> F["emitTimestamp = the first _emitTimestamp > 0"]
+    F --> G["reattaches _trackingId, _emitTimestamp to the payload"]
+```
+
+Thanks to this step, the rest of the SDK always works with an "unwrapped" payload, while still
+retaining the tracking metadata.
+
+---
+
+## 8. Impact on the integrating app
+
+- Tracking **does not** add any permissions and does not call a separate API — it uses the socket
+  that is already open.
+- In **VOD mode there is no tracking** (there is no socket to emit through).
+- If the app wants to disable it entirely: change `FEATURE_TRACKING_ACK_OVERLAY` to `false` and
+  rebuild the AAR.
+
+---
+
+[← API Reference](04-api-reference.md) · [Back to index](README.md) · [Next: Common Errors →](06-loi-thuong-gap.md)

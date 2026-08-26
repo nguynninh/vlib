@@ -1,0 +1,543 @@
+---
+title: 03 — 詳細な動作フロー
+description: SDK Interactive Android の各業務フローを、シーケンス図とソースコードに基づく分岐条件とともに説明します。
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+このドキュメントは、SDK の**各業務フロー**を、現行のソースコードに正確に沿ったシーケンス図と
+分岐条件とともに説明します。
+
+## フロー一覧
+
+1. [SDK の初期化](#1-sdk-の初期化)
+2. [ログイン / ログアウト](#2-ログイン--ログアウト)
+3. [LIVE ルームへの参加](#3-live-ルームへの参加)
+4. [オーバーレイの受信とルーティング（LIVE）](#4-オーバーレイの受信とルーティングlive)
+5. [オーバーレイの画面レンダリング](#5-オーバーレイの画面レンダリング)
+6. [WebView オーバーレイのライフサイクル](#6-webview-オーバーレイのライフサイクル)
+7. [質問への回答（ミニゲーム）](#7-質問への回答ミニゲーム)
+8. [予測 — Predict（`typeTimeline = 3`）](#8-予測--predicttypetimeline--3)
+9. [ラッキーホイール — Lucky（`typeTimeline = 5`）](#9-ラッキーホイール--luckytypetimeline--5)
+10. [Headline（`typeTimeline = 4`）](#10-headlinetypetimeline--4)
+11. [オーバーレイの取り消し — overlay-recall](#11-オーバーレイの取り消し--overlay-recall)
+12. [補助イベント: liveviews, fan-club, ckst](#12-補助イベント-liveviews-fan-club-ckst)
+13. [VOD フロー](#13-vod-フロー)
+14. [接続断と復旧](#14-接続断と復旧)
+15. [リソースの解放](#15-リソースの解放)
+
+## 1. SDK の初期化
+
+```mermaid
+sequenceDiagram
+    participant APP as Activity
+    participant OM as OverlayManager
+    participant U as Utils (JNI)
+    participant BR as BaseRequest
+    participant OV as OverlayView
+    participant SP as NPreferenceUtils
+
+    APP->>OM: new OverlayManager(activity, overlayView, overlayData, listener)
+    OM->>OM: deviceId = Settings.Secure.ANDROID_ID
+    OM->>OM: versionSDK = VERSION_NAME + "." + VERSION_CODE
+    OM->>U: splitEnvironmentSocket(env)
+    U-->>OM: Const.INTERACTIVE_SOCKET_URL
+    OM->>U: splitInteractive(env)
+    U-->>OM: Const.INTERACTIVE_URL
+    OM->>BR: setTenantId(overlayData.tenantId)
+    OM->>OV: addListener(overlayEventListener, this)
+    OM->>SP: init(activity)
+    Note over OM: socket は開かない、API も呼び出さない
+```
+
+このステップの後、SDK は**Idle**状態になります。環境、テナントを把握し、レンダリング先はあるものの、
+まだどのコンテンツにも紐づいていません。
+
+## 2. ログイン / ログアウト
+
+```mermaid
+flowchart TD
+    A["initToken(token, userId, bjName)"] --> B["Const.USER_COOKIE = token<br/>Const.USER_ID = userId<br/>Const.BJ_NAME = bjName"]
+    B --> C{"currentOverlay != null?<br/>(すでに joinRoom 済みか)"}
+    C -->|"未実施"| D["終了 — トークンは次回の joinRoom で使用される"]
+    C -->|"実施済み"| E["currentOverlay.userToken = token<br/>currentOverlay.userId = userId"]
+    E --> F{"LIVE 中で mediaId がある?"}
+    F -->|"ある"| G["joinRoom(mediaId, 1) — 再入室<br/>socket に新しいトークンを持たせる"]
+    F -->|"ない"| D
+```
+
+実際の意味:
+
+- **Live 視聴中のログイン** → SDK が自動的に再接続し、表示中のオーバーレイは
+  （`joinRoom` 内の `cleanUp()` で）クリアされます。
+- **ログアウト** = `initToken("", "")`。Live 中であれば匿名状態で再入室します。
+- `Authorization` ヘッダー: トークンが `"ey"` で始まる場合（JWT）→ `"Bearer <token>"`、それ以外はそのまま送信します。
+
+---
+
+## 3. LIVE ルームへの参加
+
+```mermaid
+sequenceDiagram
+    participant APP as Activity
+    participant OM as OverlayManager
+    participant WVM as OverlayWebViewManagement
+    participant SIO as SocketIOManagement
+    participant WS as Socket.IO server
+
+    APP->>OM: joinRoom(mediaId, type = 1)
+    OM->>OM: cleanUp() — 旧セッションのクリア
+    OM->>OM: currentOverlay = CurrentOverlay(mediaId, USER_COOKIE, USER_ID, isLive = true)
+    OM->>SIO: new SocketIOManagement(activity, currentOverlay, deviceId, tenantId)
+    OM->>WVM: setEmitAckTrackingManager(sio.emitAckTrackingManager)
+    OM->>OM: connectSocket() — LifecycleOwner に従って LiveData を observe
+    OM->>SIO: joinRoom(room)
+    SIO->>SIO: disconnection()（確実にクリーンにする）
+    SIO->>SIO: IO.Options: headers X-TENANT-ID, v, os, deviceId, Authorization
+    Note over SIO: transports = [websocket], reconnection = true,<br/>delay 5000ms, max 5000ms, randomization 0.4
+    SIO->>WS: connect()
+    SIO->>SIO: addEvents() — handler を登録
+    WS-->>SIO: EVENT_CONNECT
+    SIO-->>OM: SocketIOState.Connected
+    OM->>SIO: emitJoinRoom(room)
+    SIO->>WS: emit("join-room", {deviceId, mediaContentId, os, versionSDK, tenantId})
+    SIO-->>OM: SocketIOState.JoinRoomSuccess
+    OM->>WVM: temporaryUnlock() — isVisible = true, loadCaches()
+    OM->>OM: overlayView.visible()
+```
+
+覚えておくべきポイント:
+
+- `emit("join-room")` は**socket の接続が成功した後にのみ**実行され、`joinRoom()` を呼び出した瞬間には
+  実行されません。
+- `Connected` になる前は `OverlayWebViewManagement.isVisible = false` であり、早く届いたオーバーレイは
+  表示されずに**キャッシュに入る**だけです。
+- `overlayView` は `temporaryUnlock()` の時にのみ `visible()` になります。
+
+## 4. オーバーレイの受信とルーティング（LIVE）
+
+### 4.1. socket 層での事前フィルタリング
+
+```mermaid
+flowchart TD
+    A["on('overlay') または on('ex-overlay')"] --> B["emitAckTrackingManager.normalizeAndIngest()<br/>→ _trackingId, _emitTimestamp を抽出<br/>→ emit-ack ステージ 'received'"]
+    B --> C{"mediaContentId<br/>と timelineId がある?"}
+    C -->|"ない"| X1["cancel(trackingId, 'invalid_payload')"]
+    C -->|"ある"| D{"traceLock == true?"}
+    D -->|"はい"| E["emit('receive-message', payload)"]
+    D -->|"いいえ"| F
+    E --> F{"ex-overlay イベントで<br/>'duration' がある?"}
+    F -->|"あり、duration <= 10"| X2["cancel(trackingId, 'short_duration')"]
+    F -->|"それ以外"| G["missTime_&lt;timelineId&gt; = 現在時刻（秒）を保存"]
+    G --> H["postValue(SocketIOState.Overlay(json, trackingId))"]
+```
+
+### 4.2. `OverlayManager` 層での業務チェック
+
+```mermaid
+flowchart TD
+    A["SocketIOState.Overlay"] --> B{"JSON を Overlay にパース成功?"}
+    B -->|"失敗"| X1["cancel 'invalid_payload'"]
+    B -->|"成功"| C{"テナント = 'vtvlive'<br/>未ログイン<br/>かつ !allowAnonymous?"}
+    C -->|"はい"| X2["cancel 'login_required'"]
+    C -->|"いいえ"| D{"socket は接続中?"}
+    D -->|"いいえ"| X3["cancel 'socket_not_connected'"]
+    D -->|"はい"| E{"timelineId がある?"}
+    E -->|"ない"| X4["cancel 'missing_timeline_id'"]
+    E -->|"ある"| F{"typeTimeline"}
+
+    F -->|"3"| P{"predictOverlay が既に存在?"}
+    P -->|"同一 timelineId"| P1["predict データを更新<br/>cancel 'duplicate_overlay'"]
+    P -->|"異なる timelineId"| P2["clearPredictStuff() してから新規作成"]
+    P -->|"まだない"| P3["registerAnswerTrackingSession()<br/>generatePredictStuff()<br/>PredictBtnView を表示"]
+
+    F -->|"4"| H{"miniGame が開いている<br/>または headline の timelineId が重複?"}
+    H -->|"はい"| H1["cancel 'duplicate_overlay'"]
+    H -->|"いいえ"| H2["headlineData = data<br/>handleMiniGameOverlay()"]
+
+    F -->|"5"| L{"luckyData が既に存在?"}
+    L -->|"同一 timelineId"| L1["cancel 'duplicate_overlay'"]
+    L -->|"異なる"| L2["clearLuckyStuff() してから新規作成"]
+    L -->|"まだない"| L3["registerAnswerTrackingSession()<br/>genLuckyStuff() → LuckyDialog を開く"]
+
+    F -->|"0, 1, 2"| M{"miniGame の timelineId が重複?"}
+    M -->|"はい"| M1["cancel 'duplicate_overlay'"]
+    M -->|"いいえ"| N{"既に回答済み?<br/>(pref ex_&lt;userId|deviceId&gt; == timelineId)"}
+    N -->|"はい"| N1["cancel 'already_answered'"]
+    N -->|"いいえ"| N2["registerAnswerTrackingSession()<br/>turnOffPredict() + turnOffLucky()<br/>miniGameData = data<br/>handleMiniGameOverlay()"]
+```
+
+> `ex_...` キーは、ログイン済みの場合は `userId` を、未ログインだが匿名を許可するオーバーレイの場合は
+> `deviceId` を使用します。
+
+## 5. オーバーレイの画面レンダリング
+
+```mermaid
+flowchart TD
+    A["showOverlay(overlay, trackingId)"] --> B{"Utils.isValidTargets(targets)?<br/>targets に 'all' または現在の os が含まれる"}
+    B -->|"含まれない"| X1["cancel 'target_mismatch'"]
+    B -->|"含まれる"| C["setupAlignment(): pos.x/pos.y → OverlayAlignment"]
+    C --> D{"isVisible == true?"}
+    D -->|"いいえ"| CACHE["caches.add(PendingOverlay) — temporaryUnlock() を待つ"]
+    D -->|"はい"| E{"alignment != null?"}
+    E -->|"いいえ"| X2["cancel 'invalid_layout'"]
+    E -->|"はい"| F["URL を構築:<br/>+ &os=...（未指定の場合）<br/>+ &logged=false（未ログインかつ !allowAnonymous）"]
+    F --> G["remainingTime = duration - (now - missTime)"]
+    G --> H{"missTime > 0 かつ remainingTime <= 0?"}
+    H -->|"はい"| X3["cancel 'expired_duration'"]
+    H -->|"いいえ"| I["+ &duration=remainingTime<br/>+ &fanclub=false（requiredFanClub かつ未加入の場合）"]
+    I --> J{"isPopupOverlay?"}
+    J -->|"false → inline"| K["alignmentPopupOverlay = pos.y == 0 ? 'top' : 'bottom'<br/>addViewCommonCasePopupOverlayTracked()"]
+    J -->|"true → popup"| L["addViewCommonTracked(size, alignment, ...)"]
+    K --> M["overlayByTimelineId[timelineId] = webView"]
+    L --> M
+```
+
+`OverlayView` における**幾何学的制約**:
+
+- `addViewCommonTracked`: 幅/高さはパーセンテージ（`constrainPercentWidth/Height`）指定で、
+  `metadata.pos` から求まる 9 方向のいずれかに配置される。
+- `addViewCommonCasePopupOverlayTracked`: 幅は `WRAP_CONTENT`、高さはパーセンテージ指定で、
+  `alignmentPopupOverlay` に従い上/下/左/右に配置される。
+- どちらも追加前に `clearViews()` を呼び出す → **常に一つのオーバーレイ WebView のみ**存在する。
+
+---
+
+## 6. WebView オーバーレイのライフサイクル
+
+```mermaid
+sequenceDiagram
+    participant OV as OverlayView
+    participant WV as OverlayWebView
+    participant WEB as Template (CDN)
+    participant CB as OverlayWebViewCallBack
+    participant OM as OverlayManager
+    participant TRK as Tracking
+
+    OV->>TRK: renderTracker.attach()（タイムアウトを設定）
+    OV->>WV: createWebView(): JS を有効化、背景透過、<br/>addJavascriptInterface(callback, "Android")
+    OV->>TRK: renderTracker.renderStart()
+    OV->>WEB: loadUrl(src)
+    WEB-->>WV: onPageFinished
+    WV->>TRK: pageFinished() → 'rendered' を確定（legacy profile）
+    WV-->>OM: onFocusOverlay(takeControl = true, overlayConfig)
+    WEB->>CB: Android.postMessage({key: "LOADED_OVERLAY"})
+    CB->>TRK: readyReceived() → 'rendered' を確定
+    CB->>OM: handleWebViewCallBack(json, overlay)
+    OM->>WV: loadData(templateData) — window.postMessage(GET_DATA_INTERACTIVE)
+
+    Note over WEB: ユーザーが操作する
+    WEB->>CB: Android.postMessage({type: "INTERACTIVE_ACTION_REPORT", data: {...}})
+    CB->>OM: sendAction(json)
+
+    WEB->>CB: Android.postMessage({type: "INTERACTIVE_HIDE_ANALYTICS"})
+    CB->>OV: removeWebView() + onFocusOverlay(takeControl = false)
+```
+
+ページ読み込みエラー（`onReceivedError`, `onReceivedHttpError`, `onReceivedSslError`）はすべて:
+`renderTracker.failed(...)` → WebView を隠す → `onFocusOverlay(webViewError = true)` となります。
+
+## 7. 質問への回答（ミニゲーム）
+
+これは最も複雑なフローで、API 送信前に 4 段階のチェックがあります。
+
+```mermaid
+flowchart TD
+    A["Web: INTERACTIVE_ACTION_REPORT"] --> B["OverlayManager.sendAction(data)"]
+    B --> C["handleMiniGameOverlay(data) — realtimeOverLay を更新"]
+    C --> D{"オーバーレイがログインを要求?<br/>(!allowAnonymous)"}
+    D -->|"未ログイン"| X1["onHandleMessage(NEED_LOGIN) → 停止"]
+    D -->|"OK"| E{"requiredFanClub かつ<br/>Const.IS_FAN_CLUB != true?"}
+    E -->|"はい"| X2["signalAnswerFailed('fanclub_required')<br/>SuggestDialog SUGGEST_FAN_CLUB → 停止"]
+    E -->|"いいえ"| F["refreshVipStatusThen()<br/>GET /api/public/vip-status"]
+    F --> G{"Const.IS_VIP == true?"}
+    G -->|"はい"| I["回答を送信"]
+    G -->|"いいえ"| H{"betAmount > 0?"}
+    H -->|"いいえ"| I
+    H -->|"はい"| J["SuggestDialog SUGGEST_BET<br/>'N OnG を使用することに同意しますか…'"]
+    J -->|"ユーザーが同意"| I
+    J -->|"キャンセル"| X3["停止"]
+    I --> K["actionReportHandler(data, trackAnswer = true)"]
+```
+
+### 7.1. `actionReportHandler` — API 送信
+
+```mermaid
+sequenceDiagram
+    participant OM as OverlayManager
+    participant TRK as Tracking
+    participant API as POST /api/actions
+    participant WV as OverlayWebView
+    participant SP as SharedPreferences
+
+    OM->>OM: data += deviceId, os
+    OM->>OM: data.data += media = mediaId
+    OM->>OM: Live の場合: data.data += socket_id = socket.id
+    OM->>TRK: signalAnswerAttempt() → emit-ack ステージ 'answer'
+    OM->>API: POST (Authorization: Bearer <token>) body = data
+    alt success = true
+        API-->>OM: {success: true, result: {...}}
+        OM->>TRK: signalAnswerSucceeded() → ステージ 'answer-succeeded'
+        OM->>SP: ex_<userId|deviceId> = timelineId（再回答防止）
+        Note over OM,WV: VIP または賭け金がある場合のみ:<br/>triggerUpdateConfirm() → window.postMessage(UPDATE_CONFIRM)
+        OM->>WV: triggerUpdateConfirm()
+    else success = false またはネットワークエラー
+        API-->>OM: エラー / {success: false, result: {message}}
+        OM->>TRK: signalAnswerFailed(reason, step) → ステージ 'answer-failed'
+        alt result.message == "PM402"
+            OM->>OM: SuggestDialog SUGGEST_ANSWER_PAYMENT_REJECT<br/>→ onHandleMessage(NEED_PAY_ONG)
+        else それ以外
+            OM->>OM: SuggestDialog SUGGEST_ANSWER_REJECT（description 付き）
+        end
+    end
+```
+
+エラーコード → tracking 内の `failureReason` へのマッピング（`AnswerTrackingMapper`）:
+
+| `result.message` | `failureReason` | `failureStep` |
+|---|---|---|
+| `EX400` | `api_EX400` | `api_response` |
+| `TL404` | `api_TL404` | `api_response` |
+| `PM402` | `api_PM402` | `api_response` |
+| その他, `success = false` | `api_false` | `api_response` |
+| ネットワークエラー | `network_error` | `network` |
+| ボディが空 / パース不能 | `unknown_response` | `unknown_response` |
+
+### 7.2. `sendAction` 内のその他の `type`
+
+| `type` | 動作 |
+|---|---|
+| `INTERACTIVE_SHOW_ANALYTICS` | `onShowITR(true)` + `/api/actions` 経由で行動を記録 |
+| `INTERACTIVE_HIDE_ANALYTICS` | 記録、`overlay`/`miniGameData` を削除、predict と lucky を**再開**する |
+| `INTERACTIVE_OPEN_ANALYTICS` | `onShowITR(true)` + 記録（predict/lucky） |
+| `INTERACTIVE_CLOSE_ANALYTICS` | 記録（predict/lucky） |
+| `action = CLICK_ADS` + `url` あり | API を呼ばず、`onClickAdsOverlay(url)` で外部ブラウザを開く |
+
+## 8. 予測 — Predict（`typeTimeline = 3`）
+
+```mermaid
+sequenceDiagram
+    participant WS as Socket
+    participant OM as OverlayManager
+    participant BTN as PredictBtnView
+    participant DLG as PredictDialog
+    participant API as /api/actions
+
+    WS-->>OM: overlay (typeTimeline = 3)
+    OM->>BTN: フローティングボタンを作成（payload の normal/power 画像を使用、<br/>CDN 上のデフォルト画像にフォールバック）
+    OM->>DLG: PredictDialog.getInstance(payload)
+    OM->>BTN: onAttach() — ボタンを表示、5秒後に透明度を 0.5 まで下げる
+
+    Note over WS,OM: リアルタイム制御イベント "predict-timeline"
+    WS-->>OM: {type: "ACTIVE"} → activePredict() → ボタンを表示
+    WS-->>OM: {type: "INACTIVE"} → inactivePredict() → ボタンを隠す、ダイアログを閉じる
+    WS-->>OM: {type: "POWER"} → ボタンが 5 秒間 power 画像に切り替わる
+    WS-->>OM: {type: "END"} → SuggestDialog「予測は終了しました」+ 全体をクリア
+
+    BTN->>OM: ユーザーがボタンを押す
+    alt 未ログイン
+        OM-->>OM: onHandleMessage(NEED_LOGIN), ボタンを再表示
+    else ログイン済み
+        OM->>DLG: show()（全画面、背景透過）
+        DLG->>DLG: WebView が src + &u=<userId> を読み込む (+未ログインなら &logged=false)
+        DLG-->>OM: LOADED_OVERLAY → loadData()
+        DLG->>OM: INTERACTIVE_ACTION_REPORT → 回答フロー（7章参照）
+        OM->>API: POST /api/actions
+        API-->>OM: 成功 → updateConfirm()<br/>失敗 → SuggestDialog
+    end
+
+    WS-->>OM: "predict-result" → answer1/answer2 を更新 → DLG.updateResult()
+```
+
+ボタン表示を制御するフラグ:
+
+| フラグ | 意味 | 変更するのは |
+|---|---|---|
+| `isPredictOn` | 表示が許可されているか（ミニゲームが画面を占有中は無効化） | `turnOnPredict()` / `turnOffPredict()` |
+| `isPredictActive` | サーバーが操作を許可しているか | `ACTIVE` / `INACTIVE` イベント |
+| `isPredictDialogOn` | ダイアログが開いているか | `showPredictDialog()` / `hidePredictDialog()` |
+
+ボタンは `isPredictOn && isPredictActive` の場合のみ表示されます。
+
+## 9. ラッキーホイール — Lucky（`typeTimeline = 5`）
+
+構造は Predict とほぼ同じです（`LuckyBtnView` + `LuckyDialog`、`lucky-event` の socket イベントで
+`ACTIVE/INACTIVE/POWER/END` を使用）が、**一点重要な違い**があります:
+
+<Tabs>
+  <TabItem label="Kotlin">
+```kotlin
+// OverlayManager.genLuckyStuff() — 最後の行
+showLuckyDialog()
+```
+  </TabItem>
+  <TabItem label="Java">
+```java
+// OverlayManager.genLuckyStuff() — 最後の行
+showLuckyDialog();
+```
+  </TabItem>
+</Tabs>
+
+→ lucky オーバーレイは**受信したら即座に**ダイアログを自動的に開き、ユーザーのボタン押下を待ちません。
+
+API から返された結果は `UPDATE_NUMBER_LUCKY` で web に送信されます:
+
+```mermaid
+sequenceDiagram
+    participant DLG as LuckyDialog
+    participant OM as OverlayManager
+    participant API as /api/actions
+    DLG->>OM: INTERACTIVE_ACTION_REPORT
+    OM->>OM: ログイン → fanclub → VIP/賭け金 を確認
+    OM->>API: POST
+    API-->>OM: {success: true, result: {data: "..."}}
+    OM->>DLG: updateResult(data) → window.postMessage(UPDATE_NUMBER_LUCKY)
+    OM->>DLG: disable() — 再押下防止のため WebView をロック
+```
+
+---
+
+## 10. Headline（`typeTimeline = 4`）
+
+- ミニゲームと同じレンダリング経路を使用します（`handleMiniGameOverlay`）。
+- **ミニゲームが開いている場合**（`miniGameData != null`）または現在の headline と `timelineId` が
+  重複する場合はスキップされます。
+- 受け付ける `type` は `INTERACTIVE_SHOW_ANALYTICS` と `INTERACTIVE_HIDE_ANALYTICS` の 2 つのみで
+  （回答フローはありません）。
+
+## 11. オーバーレイの取り消し — overlay-recall
+
+```mermaid
+sequenceDiagram
+    participant WS as Socket
+    participant SIO as SocketIOManagement
+    participant OM as OverlayManager
+    participant WVM as OverlayWebViewManagement
+    participant OV as OverlayView
+
+    WS-->>SIO: on("overlay-recall", {timelineId})  %% ByteArray または JSONObject
+    SIO-->>OM: SocketIOState.OverlayRecall(timelineId)
+    OM->>WVM: removeByTimelineId(timelineId)
+    WVM->>OV: removeWebView(webView) — tracking を 'removed' で破棄
+    WVM->>WVM: overlayByTimelineId.remove(timelineId)
+```
+
+編集者がシステム全体で配信中のオーバーレイを削除する際に使用されます。
+
+## 12. 補助イベント: liveviews, fan-club, ckst
+
+| socket イベント | 処理 |
+|---|---|
+| `liveviews` | `OverlayLiveViews.count` をパースし、**230 を加算**して `onHandleLiveViews(count)` を呼ぶ |
+| `data`（fan-club） | `mediaId` が視聴中のメディアと一致すれば（`_` の前部分で比較）`Const.IS_FAN_CLUB` を更新、そうでなければ `false` にする |
+| `ckst` | サーバーがプレイヤー状態を問い合わせる → SDK が `ckst` を `{action: "CHECK_PLAYER_STATUS", sessionId, data: {deviceId, os, mediaContentId, playerStatus}}` で emit し返す |
+| `update-result` | `OverlayWebView.updateResult(data)` → `window.postMessage(UPDATE_DATA_INTERACTIVE)` |
+| `predict-result` | `answer1`/`answer2` を `predictOverlay` に更新し、`PredictDialog.updateResult()` を呼ぶ |
+
+> `liveViews` に 230 を加算するのは現行コードの意図的な挙動です
+> ([OverlayManager.kt:435](../interactive/src/main/java/vn/interactive/OverlayManager.kt:435)) —
+> app が生の数値を必要とする場合は、app 側で差し引く必要があります。
+
+`playerStatus` は app が `addPlayerListener(...)` を実行している場合のみ空でない値になります。
+
+---
+
+## 13. VOD フロー
+
+```mermaid
+sequenceDiagram
+    participant APP as Activity
+    participant OM as OverlayManager
+    participant API as GET /api/ctc/scenario/v2/vod/{mediaId}/{os}
+    participant WVM as OverlayWebViewManagement
+    participant OV as OverlayView
+
+    APP->>OM: joinRoom(mediaId, type = 2)
+    OM->>OM: cleanUp()<br/>isLive = false
+    OM->>WVM: isVisible = true
+    OM->>API: GetScenarioRequest(token = USER_COOKIE, mediaId, os)
+    API-->>OM: ScenarioDTO {data.timelines[]}
+    OM->>WVM: parseTimeLineListForVOD(timelines)
+    WVM->>WVM: 各 Timeline.interactive → Overlay:<br/>src + ?timelineId&tenantId&deviceType&os<br/>startTimeShowOverlay = time("mm:ss") → 秒
+
+    loop 毎秒（app が自ら実行）
+        APP->>OM: receiveTrackingTime(seconds)
+        OM->>WVM: checkShowQuestion(seconds, userToken)
+        WVM->>WVM: startTimeShowOverlay が seconds 以上で最小のオーバーレイを探す
+        alt startTimeShowOverlay == seconds
+            WVM->>WVM: !allowAnonymous かつ未ログインならスキップ
+            WVM->>WVM: missTime_<timelineId> を保存
+            WVM->>OV: showOverlay() を Main スレッドで実行
+            WVM->>WVM: 同じマイルストーンの他のオーバーレイをリストから削除
+        end
+    end
+```
+
+LIVE との違い:
+
+| | LIVE | VOD |
+|---|---|---|
+| オーバーレイのソース | Socket.IO による配信 | REST で全シナリオを事前取得 |
+| 表示トリガー | リアルタイムイベント | app が注入する `receiveTrackingTime(秒)` |
+| `socketIOManagement` | あり | **null**（socket 関連の呼び出しは安全に無視される） |
+| アクション内の `socket_id` | あり | なし |
+| emit-ack トラッキング | あり | なし（emit する socket がない） |
+| Predict / Lucky / liveviews | あり | なし |
+
+## 14. 接続断と復旧
+
+```mermaid
+stateDiagram-v2
+    [*] --> Connected
+    Connected --> Disconnected: EVENT_DISCONNECT
+    Disconnected --> Connected: 自動再接続（5秒ごと）
+
+    state Disconnected {
+        [*] --> Cleanup
+        Cleanup: emitAckTrackingManager.cancelAll("socket_disconnected") + finishAll()
+        Cleanup --> Lock
+        Lock: clearAllStuff() + temporaryLock()<br/>isVisible = false, overlayView.invisible()
+    }
+
+    state Connected {
+        [*] --> Unlock
+        Unlock: temporaryUnlock() → isVisible = true, loadCaches()
+        Unlock --> JoinRoom
+        JoinRoom: emitJoinRoom(room)
+    }
+```
+
+- **オーバーレイのキャッシュ**: `isVisible = false` のとき、新しいオーバーレイは `caches` に入ります。
+  ロック解除時、`loadCaches()` は**最後の要素のみ**を表示し、それより前の要素は
+  `superseded_cache` という理由で tracking が破棄されます。
+- **`missTime`**: 保存された時刻マイルストーンにより、接続断後に再表示されるオーバーレイは
+  経過した分だけ `duration` が差し引かれます。期限切れの場合は破棄されます（`expired_duration`）。
+- `EVENT_CONNECT_ERROR` イベント → `SocketIOState.Error` → `clearAllStuff()`。
+
+## 15. リソースの解放
+
+```mermaid
+flowchart TD
+    A["releaseAll() — または新しい joinRoom()"] --> B["cleanUp()"]
+    B --> C["clearAllStuff()"]
+    C --> C1["clearLuckyStuff(): lucky のボタン + ダイアログを破棄"]
+    C --> C2["clearPredictStuff(): predict のボタン + ダイアログを破棄"]
+    C --> C3["hideChartsInteractive()"]
+    C --> C4["overlay, miniGameData, headlineData, activeAnswerTrackingIds を削除"]
+    C --> C5["overlayView.clearViews()"]
+    C --> C6["overlayWebViewManagement.clearOverlayViews()"]
+    C --> C7["socketIOManagement.cancelAllTracking('clear_all')"]
+    B --> D["overlayWebViewManagement.onDestroy()<br/>isVisible = false, キャッシュと VOD リストを削除"]
+    B --> E["overlayView.clearViews()"]
+    B --> F{"LIVE 中?"}
+    F -->|"はい"| G["socketIOManagement.disconnection()<br/>tracking を破棄、handler を除去、socket を閉じる"]
+    F -->|"いいえ"| H["calledScenario = false"]
+```
+
+`releaseAll()` を呼び出すタイミング:
+
+- player を含む Activity の `onDestroy()`、
+- ユーザーがコンテンツから離脱するとき（player を閉じる、一覧に戻る）、
+- 別の `mediaId` に切り替える前に、**すぐに** `joinRoom()` を呼ばない場合（`joinRoom` は自動的に
+  クリアするため）。

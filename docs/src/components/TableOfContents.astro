@@ -2,6 +2,14 @@
 import TableOfContentsList from './TableOfContentsList.astro';
 
 const { toc } = Astro.locals.starlightRoute;
+const lang = Astro.currentLocale ?? 'vi';
+const labels = {
+	vi: 'Nội dung trang',
+	en: 'On this page',
+	zh: '页面内容',
+	ja: 'ページ内容',
+};
+const title = labels[lang] ?? labels.vi;
 ---
 
 {
@@ -14,7 +22,7 @@ const { toc } = Astro.locals.starlightRoute;
 				aria-expanded="false"
 				aria-controls="toc-drawer-body"
 			>
-				<span>{Astro.locals.t('tableOfContents.onThisPage')}</span>
+				<span>{title}</span>
 			</button>
 			<nav aria-labelledby="starlight__on-this-page">
 				<h2 id="starlight__on-this-page">
@@ -25,7 +33,7 @@ const { toc } = Astro.locals.starlightRoute;
 						aria-expanded="false"
 						aria-controls="toc-drawer-body">
 						<span class="toc-drawer-icon" aria-hidden="true"></span>
-						<span>{Astro.locals.t('tableOfContents.onThisPage')}</span>
+						<span>{title}</span>
 					</button>
 				</h2>
 				<div id="toc-drawer-body" class="toc-drawer-body">

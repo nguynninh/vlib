@@ -1,0 +1,390 @@
+---
+title: iOS Tracking SDK 5.3.1
+description: Guide to using the tracking functions of iTapSDK iOS 5.3.1, including event 147 and mapping user information.
+---
+
+## 1. Update event 147
+
+Used to check and display the "Event Profile" screen right after a successful login.
+
+Should be called directly in the `loginSuccess` callback of `SdkDelegate`, before entering the game screen.
+
+```objectivec
+[[Sdk sharedInstance] showOrHide147];
+```
+
+All tracking functions are called through the singleton:
+
+```objectivec
+[[SdkTracking sharedInstance] ...];
+```
+
+Required framework: `ISdkTrackier.xcframework` (already included in the list of documents required for SDK integration).
+
+## 2. Mapping User
+
+Used to attach the current character/server information to the tracking system. Should be called immediately after the player selects a server or character, and before calling other log functions related to that character.
+
+```objectivec
+-(void) mappingUser:(NSString*)characterName
+characterId:(NSString*)characterId
+characterLevel:(NSString*)characterLevel
+serverName:(NSString*)serverName
+serverId:(NSString*)serverId;
+```
+
+Parameters:
+
+| Parameter | Meaning |
+|---|---|
+| characterName | Character name |
+| characterId | Character Id |
+| characterLevel | Character level |
+| serverName | Server name |
+| serverId | Server Id |
+
+Example:
+
+```objectivec
+[[SdkTracking sharedInstance] mappingUser:@"name"
+characterId:@1
+characterLevel:@1
+serverName:@"test"
+serverId:@"1"];
+```
+
+## 3. Log Function
+
+The log functions are used to track the user's journey: opening the game → downloading/extracting resources → login/selecting a server → creating or selecting a character → entering the game → tutorial.
+
+Notes based on the original flowchart:
+
+- **Gray**: steps that occur within the Game.
+- **Yellow**: steps where the Game calls into the SDK (i.e. the log functions below).
+
+Overall declarations (no parameters):
+
+```objectivec
+-(void) logStartGameScreen;
+-(void) logEnterGamePlay;
+-(void) logStartTutorial;
+-(void) logCompleteTutorial;
+```
+
+### 3.1. logStartGameScreen
+
+Called when the "Open Start Game" screen (the starting screen, before entering the game) is opened.
+
+```objectivec
+[[SdkTracking sharedInstance] logStartGameScreen];
+```
+
+### 3.2. logEnterGamePlay
+
+Tracks the user entering the Game Play Screen after tapping the "Enter Game" button.
+
+```objectivec
+[[SdkTracking sharedInstance] logEnterGamePlay];
+```
+
+Call this right where the "Enter Game" button click is handled, before transitioning to the gameplay screen.
+
+### 3.3. Resource download
+
+#### Start downloading resources
+
+```objectivec
+// Start downloading resources
+-(void) logPatchStart:(NSNumber *_Nullable)sizeMB
+withVerrsion:(NSString *_Nullable)version
+withNetworkType:(NSString *_Nullable)networkType;
+```
+
+| Parameter | Meaning |
+|---|---|
+| sizeMB | Size of the patch file to update (shown in Mb) |
+| version | Install package version |
+| networkType | Network type (e.g. `"wifi"`) |
+
+```objectivec
+[[SdkTracking sharedInstance] logPatchStart:@"500"
+withVerrsion:@"1.0.1"
+withNetworkType:@"wifi"];
+```
+
+#### Resource download success
+
+```objectivec
+-(void) logPatchSuccess:(NSNumber *_Nullable)durationSec
+withAvgSpeedKbps:(NSNumber *_Nullable)avgSpeedKbps
+withCdnNode:(NSString *_Nullable)cdnNode;
+```
+
+| Parameter | Meaning |
+|---|---|
+| durationSec | Time from when the download started to when it finished |
+| avgSpeedKbps | Average download speed (also check whether this can be obtained when `update_type` is Store) |
+| cdnNode | CDN node used for the download |
+
+```objectivec
+[[SdkTracking sharedInstance] logPatchSuccess:@"500"
+withAvgSpeedKbps:@"450"
+withCdnNode:@"192.168.0.2"];
+```
+
+> **Note:** the original example in the source document duplicated the `avgSpeedKbps` parameter (a typo in the original document); the example above removes the duplication to match the function signature correctly.
+
+#### Resource download failure
+
+```objectivec
+// When the resource download is interrupted or fails
+-(void) logPatchError:(NSString *_Nullable)errorCode
+withRetryCount:(NSNumber *_Nullable)retryCount
+withFailedUrl:(NSString *_Nullable)failedUrl
+withCdnNode:(NSString *_Nullable)cdnNode;
+```
+
+| Parameter | Meaning |
+|---|---|
+| errorCode | Error code |
+| retryCount | Number of retries needed due to the error |
+| failedUrl | The failed URL |
+| cdnNode | The CDN node where the error occurred |
+
+```objectivec
+[[SdkTracking sharedInstance] logPatchError:@"500"
+withRetryCount:@1
+withFailedUrl:@"https://cdn.game.com/patch/v120.zip"
+withCdnNode:@"192.168.0.2"];
+```
+
+### 3.4. Resource extraction
+
+#### Start extraction
+
+Immediately after the download finishes, start extracting/installing:
+
+```objectivec
+-(void) logExtractStarted:(NSString *_Nullable)totalSizeMb
+withTotalSize:(NSString *_Nullable)totalSize;
+```
+
+| Parameter | Meaning |
+|---|---|
+| totalSizeMb | Size after extraction, in Mb |
+| totalSize | Number of files in the patch to extract (skip if not available) |
+
+```objectivec
+[[SdkTracking sharedInstance] logExtractStarted:@"500"
+withTotalSize:@"400"];
+```
+
+#### Extraction finished
+
+Once extraction is complete, ready to enter the Login screen:
+
+```objectivec
+-(void) logExtractFinished:(NSNumber *_Nullable)durationSec
+withResultCode:(NSString *_Nullable)resultCode;
+```
+
+| Parameter | Meaning |
+|---|---|
+| durationSec | Time from the start of extraction to success |
+| resultCode | Result code (`0`/`"ok"`: OK, `1`: Disk Full) |
+
+```objectivec
+[[SdkTracking sharedInstance] logExtractFinished:@100
+withResultCode:@"ok"];
+```
+
+### 3.5. Character creation
+
+#### Start character creation
+
+```objectivec
+-(void) logCharCreateStart:(NSString *_Nullable)serverId;
+```
+
+| Parameter | Meaning |
+|---|---|
+| serverId | Server Id |
+
+```objectivec
+[[SdkTracking sharedInstance] logCharCreateStart:@"100"];
+```
+
+> **Note:** you need a timer to measure the time from the start until character creation finishes (`durationSec`, used in `logCharCreateSuccess`).
+
+#### Character creation success
+
+```objectivec
+-(void) logCharCreateSuccess:(NSString *_Nullable)serverId
+withCharId:(NSString *_Nullable)charId
+withCharName:(NSString *_Nullable)charName
+withCharClass:(NSString *_Nullable)charClass
+withDurationSec:(NSNumber *_Nullable)durationSec;
+```
+
+| Parameter | Meaning |
+|---|---|
+| serverId | Server Id |
+| charId | Character Id |
+| charName | Character name |
+| charClass | Character class/id |
+| durationSec | Time from the start of character creation to success |
+
+```objectivec
+[[SdkTracking sharedInstance] logCharCreateSuccess:@"100"
+withCharId:@"1001"
+withCharName:@"test"
+withCharClass:@"1"
+withDurationSec:@5];
+```
+
+> **Note:** the example in the original document mistakenly copied parameters from the `logPatchStart` function (`withVerrsion`, `withNetworkType`), which do not match the `logCharCreateSuccess` signature. The example above has been rewritten to correctly match the function's actual parameters; you should confirm with the SDK team (VTVLive) if you need a 100% accurate cross-check.
+
+#### Character creation failure
+
+```objectivec
+-(void) logCharCreateError:(NSString *_Nullable)errorCode
+withCharName:(NSString *_Nullable)charName
+withServerId:(NSString *_Nullable)serverId;
+```
+
+| Parameter | Meaning |
+|---|---|
+| errorCode | Error code (e.g. `"NAME_DUPLICATED"`) |
+| charName | Character name |
+| serverId | Server Id |
+
+```objectivec
+[[SdkTracking sharedInstance] logCharCreateError:@"NAME_DUPLICATED"
+withCharName:@"test"
+withServerId:@"1"];
+```
+
+### 3.6. Character select
+
+After finishing server selection/character selection, call this function:
+
+```objectivec
+-(void) logCharSelect:(NSString *_Nullable)charId
+withCharacterName:(NSString *_Nonnull)characterName
+withCharLevel:(NSString *_Nullable)charLevel;
+```
+
+| Parameter | Meaning |
+|---|---|
+| charId | Character Id |
+| characterName | Character name |
+| charLevel | Character level |
+
+```objectivec
+[[SdkTracking sharedInstance] logCharSelect:@"1"
+withCharacterName:@"name"
+withCharLevel:@"1"];
+```
+
+### 3.7. Tutorial
+
+Two parameterless declarations (used to track the start/completion of the in-game tutorial):
+
+```objectivec
+[[SdkTracking sharedInstance] logStartTutorial];
+[[SdkTracking sharedInstance] logCompleteTutorial];
+```
+
+## 4. Tracking Flowchart
+
+The diagram redraws the entire flow of `SdkTracking` function calls, following the original flowchart in the document, split into 3 parts based on the game sequence.
+
+Color legend:
+
+- **Gray box**: steps that occur within the Game.
+- **Blue box (diamond)**: branch/decision point.
+- **Yellow box**: point where the Game calls into the SDK (the `SdkTracking` functions).
+
+### 4.1. Resource download & extraction
+
+```mermaid
+flowchart TD
+    A[Open Game]:::gray --> B{Need to download resources?}:::blue
+    B -- Yes --> C[Start downloading]:::gray
+    B -- No --> J[Select server and start game]:::gray
+    C --> D(logPatchStart):::yellow
+    D --> E{Download finished?}:::blue
+    E -- Error --> F[Download Error]:::gray
+    F --> G(logPatchError):::yellow
+    E -- Success --> H[Download finished]:::gray
+    H --> I(logPatchSuccess):::yellow
+    I --> K[Starting to extract resources]:::gray
+    K --> L(logExtractStarted):::yellow
+    L --> M[Finished extracting resources]:::gray
+    M --> N(logExtractFinished):::yellow
+    N --> J
+
+    classDef gray fill:#eceef1,stroke:#333,color:#000
+    classDef blue fill:#cfe2ff,stroke:#3366cc,color:#000
+    classDef yellow fill:#ffe08a,stroke:#cc9900,color:#000
+```
+
+*Figure 1 — Resource download and extraction flow*
+
+### 4.2. Login, character creation/selection
+
+```mermaid
+flowchart TD
+    A[Select server and start game]:::gray --> B[Login successful]:::gray
+    B --> C[Open Login UI]:::gray
+    C --> D[Open Start Game]:::gray
+    D --> E(logStartGameScreen):::yellow
+    E --> F{Create Character or Not?}:::blue
+    F -- Yes --> G[Starting character creation]:::gray
+    F -- No --> N[Character Selected]:::gray
+    G --> H(logCharCreateStart):::yellow
+    H --> I{Character creation successful?}:::blue
+    I -- Error --> J[Character creation error]:::gray
+    J --> K(logCharCreateError):::yellow
+    K --> G
+    I -- Success --> L[Finished creating character]:::gray
+    L --> M(logCharCreateSuccess):::yellow
+    N --> O(logCharSelect):::yellow
+    M --> P(mappingUser):::yellow
+    O --> P
+
+    classDef gray fill:#eceef1,stroke:#333,color:#000
+    classDef blue fill:#cfe2ff,stroke:#3366cc,color:#000
+    classDef yellow fill:#ffe08a,stroke:#cc9900,color:#000
+```
+
+*Figure 2 — Login, character creation or selection flow*
+
+### 4.3. Entering the game & Tutorial
+
+```mermaid
+flowchart TD
+    A(mappingUser):::yellow --> B[Enter Game]:::gray
+    B --> C[Enter Game Play Screen]:::gray
+    C --> D(logEnterGamePlay):::yellow
+    D --> E[Tutorial]:::gray
+    E --> F("logStartTutorial / logCompleteTutorial"):::yellow
+
+    classDef gray fill:#eceef1,stroke:#333,color:#000
+    classDef yellow fill:#ffe08a,stroke:#cc9900,color:#000
+```
+
+*Figure 3 — Entering the game and tutorial flow*
+
+> **Note:** the diagram was redrawn for clarity, based on the exact function names/step order from the original flowchart in the document — it does not copy the small example values shown in the original image verbatim (which had a few parameter mismatches with the actual signatures, as noted in sections 3.3 and 3.5 above).
+
+## 5. Summary of call order by game flow
+
+1. Open game → need to download an update? → `logPatchStart` → download finished: `logPatchSuccess`, or error: `logPatchError`
+2. Start extraction: `logExtractStarted` → extraction finished: `logExtractFinished`
+3. Open the start screen: `logStartGameScreen`
+4. Login/server selection successful
+5. Create a new character: `logCharCreateStart` → success: `logCharCreateSuccess`/error: `logCharCreateError` (or) select an existing character: `logCharSelect`
+6. Attach character information to tracking: `mappingUser`
+7. Tap "Enter Game": `logEnterGamePlay`
+8. During the tutorial flow: `logStartTutorial`/`logCompleteTutorial`

@@ -1,0 +1,137 @@
+---
+title: カウントダウンイベントフロー
+description: eventCountDown設定に基づきカウントダウンイベントバナーを表示するshowCountdownフローを説明します。
+---
+
+このドキュメントは `showCountdown` フローについて、実際のコード
+`Sdk+Countdown.swift`（表示条件＋画面表示）と `CountdownView.swift`（カウントダウン時計＋
+イベントリンクを開く処理）を基に説明します。
+
+エントリーポイント（アプリがカウントダウンイベントバナーを表示するために呼び出す）：
+
+```Swift
+Sdk.sharedInstance.showCountdown()
+```
+
+イベント設定は `appInfo.eventCountDown`（初期化フローで、フィールド `EVENT_COUNTDOWN` から
+読み込まれる）から取得される。
+
+## 1. 表示条件 – `showCountdown()` / `isCountdownAvailable()`
+
+```mermaid
+%% width: 1100
+flowchart TD
+    A(["showCountdown()"]) --> B{"isCountdownAvailable()？"}
+
+    subgraph AV["isCountdownAvailable()"]
+        V1{"eventCountDownがある？"} -- "なし" --> VF([false])
+        V1 -- "あり" --> V2{"ログイン済み？<br/>accessTokenが空でない"}
+        V2 -- "未ログイン" --> VF
+        V2 -- "ログイン済み" --> V3{"uidが除外リストに含まれる？<br/>（テストuid 2685822470）"}
+        V3 -- "はい" --> VF
+        V3 -- "いいえ" --> V4{"statusEvent == true？"}
+        V4 -- "いいえ" --> VF
+        V4 -- "はい" --> V5{"versionEventが空<br/>または現在バージョンを含む？"}
+        V5 -- "不一致" --> VF
+        V5 -- "一致" --> V6{"timeEventが有効 &&<br/>まだ未来の時刻？"}
+        V6 -- "いいえ" --> VF
+        V6 -- "はい" --> VT([true])
+    end
+
+    B -- "false" --> C([停止、表示しない])
+    B -- "true" --> D{"CountdownViewは既に表示中？<br/>isCountdownViewDisplayed()"}
+    D -- "表示中" --> C
+    D -- "未表示" --> E{"timeEventのパースに成功<br/>かつtopViewControllerがある？"}
+    E -- "いいえ" --> C
+    E -- "はい" --> F["CountdownViewを開く<br/>title, image, linkEvent,<br/>closeEvent, gmtEvent, targetDateを渡す"]
+```
+
+## 2. `CountdownView` のライフサイクル
+
+```mermaid
+%% width: 1100
+flowchart TD
+    A["configUI → setupUI"] --> B["gmtEventに応じてGMTラベルの表示/非表示<br/>closeEventに応じて閉じるボタンの表示/非表示"]
+    B --> C["setupLabels：1秒Timerを初期化<br/>→ updateCountdown()"]
+
+    C --> D{"updateCountdown：<br/>残り時間"}
+    D -- "> 0" --> E["ラベルを更新：<br/>日：時：分：秒（00形式）"]
+    E --> D
+    D -- "<= 0" --> F["Timerを停止<br/>00:00:00:00に設定<br/>自動的に閉じる（btnClose）"]
+
+    A -. "バナー画像をタップ" .-> G{"linkEventがある？"}
+    G -- "あり" --> H{"外部URLを開ける？<br/>canOpenURL"}
+    H -- "開ける" --> H1["外部ブラウザ / Safariで開く"]
+    H -- "開けない" --> H2["アプリ内でWKWebViewを開く"]
+    G -- "なし" --> I([スキップ])
+
+    A -. "閉じるボタンを押す（closeEventの場合）" .-> J(["btnClose → removeFromSuperview"])
+```
+
+## 詳細説明
+
+### `showCountdown()` – エントリーポイント（Sdk+Countdown.swift）
+
+1. `isCountdownAvailable()` を確認する。条件を満たさない場合は停止。
+
+2. `isCountdownViewDisplayed()` を確認する — バナーが既に表示中であれば停止する
+（重複表示を防止）。
+
+3. `event = appInfo.eventCountDown` を取得し、`event.timeEvent`
+（`yyyy-MM-dd'T'HH:mm:ssZ` 形式）から `targetDate` をパースする。取得できなければ停止。
+
+4. `CountdownView` を `topViewController` 上に開き、`titleText`、`imageUrl`、`linkEvent`、
+`closeEvent`、`gmtEvent`、`targetDate` を渡す。
+
+### `isCountdownAvailable()` – 表示条件
+
+以下の**すべて**を満たす場合のみ `true` を返す：
+
+- `appInfo.eventCountDown` の設定がある。
+
+- ログイン済み（`accessToken` が空でない）。
+
+- アカウントが除外リストに**含まれていない**（テストuid `2685822470` のチェックコード）。
+
+- `event.statusEvent == true`（イベントが有効化されている）。
+
+- `versionEvent` が空、**または**アプリの現在バージョンを含む（バージョンによるフィルタ）。
+
+- `timeEvent` がパース可能で**まだ未来の時刻である**（`timeIntervalSinceNow > 0`）。
+
+### `isCountdownViewDisplayed()`
+
+`topViewController` のサブビューを走査し、既に `CountdownView` があれば表示中とみなし
+（追加で開かない）。
+
+### `CountdownView` – カウントダウン時計
+
+- **`setupUI`**：`gmtEvent` に応じてGMTラベルの表示/非表示、`closeEvent` に応じて閉じる
+ボタンの表示/非表示（`closeEvent == false` の場合、手動で閉じることはできない）。
+
+- **カウントダウン**：`setupLabels()` が毎秒 `updateCountdown()` を呼び出す `Timer` を作成。
+
+    - 残り時間あり：**日：時：分：秒**の4つのラベルを更新（2桁形式）。
+
+    - 時間切れ（`<= 0`）：タイマーを停止し、`00:00:00:00` を設定して**自動的に**バナーを
+    閉じる。
+
+- **バナー画像をタップ**（`imageViewTapped`）：`linkEvent` があればイベントリンクを開く —
+外部ブラウザで開くことを優先（`UIApplication.open`）。開けない場合はアプリ内で
+`WKWebView` を表示する。
+
+- **閉じる**（`btnClose`）：バナーを画面から除去する。`deinit` でもタイマーを破棄する。
+
+## 備考
+
+- `showCountdown` は**APIを呼び出さない** — すべてのデータ（終了時刻、タイトル、画像、
+リンク、表示フラグ）はSDK初期化時に既に読み込まれた `eventCountDown` 設定から取得する。
+
+- バナーは時間切れで自動的に閉じる。ユーザーが手動で閉じられるのは
+`closeEvent == true` の場合のみ。
+
+- イベントは**アプリのバージョン**（`versionEvent`）と有効/無効の状態
+（`statusEvent`）でフィルタされるため、設定された対象/バージョンにのみ正しく表示される。
+
+- 重複表示防止のチェック（`isCountdownViewDisplayed`）があり、`showCountdown()` を
+複数回呼び出しても安全である。

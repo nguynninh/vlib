@@ -1,0 +1,465 @@
+---
+title: 03 — Detailed Workflow
+description: Describes each business workflow of the Interactive iOS SDK, with sequence diagrams and branching conditions based on the source code.
+---
+
+This document describes **each business workflow** of the iOS SDK, with sequence diagrams and branching
+conditions matching the current source code (`InteractiveControllerView.swift`,
+`OverlayManagementImpl.swift`, `PredictManagementImpl.swift`, `SocketIOManagementImpl.swift`).
+
+## List of workflows
+
+1. [Initialization & configuration](#1-initialization--configuration)
+2. [Login / logout](#2-login--logout)
+3. [Joining a LIVE room](#3-joining-a-live-room)
+4. [Receiving and routing overlays (LIVE)](#4-receiving-and-routing-overlays-live)
+5. [Rendering the minigame overlay](#5-rendering-the-minigame-overlay)
+6. [Answering a minigame question (login → fanclub → VIP/bet)](#6-answering-a-minigame-question)
+7. [Predict — Head-to-head (`typeTimeline = 3`)](#7-predict--head-to-head-typetimeline--3)
+8. [Lucky — Lucky number (`typeTimeline = 5`)](#8-lucky--lucky-number-typetimeline--5)
+9. [Recalling an overlay — overlay-recall](#9-recalling-an-overlay--overlay-recall)
+10. [Auxiliary events: liveviews, fanclub, ckst, update-result](#10-auxiliary-events)
+11. [VOD workflow](#11-vod-workflow)
+12. [Disconnection and recovery](#12-disconnection-and-recovery)
+13. [Releasing resources](#13-releasing-resources)
+
+---
+
+## 1. Initialization & configuration
+
+```mermaid
+sequenceDiagram
+    participant APP as App
+    participant SET as InteractiveSetting
+    participant ICV as InteractiveControllerView
+    participant SIO as SocketIOManagementImpl
+    participant OMI as OverlayManagementImpl
+
+    APP->>SET: setEnableProdEnv(env) + setXTenantId(tenant)
+    Note over SET: writes UserDefaults KEY_ENABLE_PROD_ENV, KEY_X_TENANT_ID
+    APP->>ICV: InteractiveControllerView()
+    ICV->>SIO: SocketIOManagementImpl()
+    ICV->>OMI: OverlayManagementImpl()
+    APP->>ICV: setup*Delegate(...)
+    APP->>ICV: initOverlay(uiView, predictView)
+    ICV->>OMI: initialization(overlayView: UIOverlay(overlay: uiView))
+    ICV->>ICV: registers orientationDidChange, creates PredictManagementImpl
+    Note over ICV: does NOT open the socket yet, does NOT call any API yet
+```
+
+After this step the SDK is **ready**: it knows the environment, the tenant, and has 2 views to render
+into — but no content has been attached yet.
+
+---
+
+## 2. Login / logout
+
+```mermaid
+flowchart TD
+    A["initAuthenToken(token, userId, bjName)"] --> B["saves authenToken, userId, bjName"]
+    B --> C{"is the socket connected<br/>and is there a mediaContentId?"}
+    C -->|"no"| D["Ends here — the token is used for the next joinRoom"]
+    C -->|"yes"| E["disconnection()"]
+    E --> F["joinRoom(mediaId, type: 1) — rejoins the room<br/>so the socket carries the new token"]
+```
+
+Meaning:
+
+- **Logging in while watching Live** → the SDK automatically disconnects and rejoins the room; any
+  currently displayed overlay is cleared.
+- **Logout** = `initAuthenToken("", "", "")`.
+- The token goes into the socket's `Authorization` header **as-is**; for REST, a JWT (starting with
+  `"ey"`) has a `Bearer ` prefix added.
+
+---
+
+## 3. Joining a LIVE room
+
+```mermaid
+sequenceDiagram
+    participant APP as App
+    participant ICV as InteractiveControllerView
+    participant SIO as SocketIOManagementImpl
+    participant WS as Socket.IO server
+
+    APP->>ICV: joinRoom(mediaId, type: 1)
+    ICV->>ICV: if a different media → leaveRoom() the old room
+    ICV->>SIO: if currently connected → disconnection()
+    ICV->>ICV: removeAllView(); mediaContentId = mediaId
+    ICV->>ICV: handleEventsSocket() — attaches the callback BEFORE connecting
+    ICV->>SIO: connectSocket() → connection(url, authenToken)
+    SIO->>SIO: buildSocket() — guards tenantId & env (must not be empty)
+    Note over SIO: headers x-tenant-id, v, os=iphone, deviceId, Authorization<br/>forceWebsockets, reconnectWait 5, randomization 0.4
+    SIO->>SIO: addEvents() (registers handlers)
+    SIO->>WS: socket.connect()
+    WS-->>SIO: clientEvent .connect
+    SIO-->>ICV: callback CONNECTED
+    ICV->>SIO: joinRoom(JoinRoomData(mediaContentId))
+    SIO->>WS: emit("join-room", {deviceId, mediaContentId, os, tenantId, versionSDK})
+```
+
+Key points to remember:
+
+- `emit("join-room")` **only happens after the socket connects successfully** (inside the
+  `SocketEvents.CONNECTED` branch), not immediately when `joinRoom()` is called.
+- `handleEventsSocket()` is called **before** `connectSocket()` so the `CONNECTED` event isn't missed.
+- `buildSocket()` will **stop** if `KEY_X_TENANT_ID` is empty; `connectSocket()` stops if the env or
+  tenant is empty.
+
+---
+
+## 4. Receiving and routing overlays (LIVE)
+
+### 4.1. The socket-layer pre-filter (`SocketIOManagementImpl`)
+
+```mermaid
+flowchart TD
+    A["on('overlay') or on('ex-overlay')"] --> B["senDataToServer(data)"]
+    B --> C{"does the payload have traceLock == true?"}
+    C -->|"yes"| E["emit('receive-message', binary ArrayBuffer)"]
+    C -->|"no"| F
+    E --> F["trackedOverlayPayload(): builds an OverlaySocketPayload<br/>from _trackingId, _emitTimestamp"]
+    F --> G{"has _trackingId?"}
+    G -->|"yes"| H["sendReceivedAck() → emit-ack stage 'received'"]
+    G -->|"no"| I["keeps the raw payload unchanged"]
+    H --> J["callback(OVERLAY / EX_OVERLAY, payload)"]
+    I --> J
+```
+
+### 4.2. The `InteractiveControllerView` layer (`startShowLiveOverlayWithDataReceived`)
+
+```mermaid
+flowchart TD
+    A["callback OVERLAY / EX_OVERLAY"] --> B["extracts rawData + trackingSession from OverlaySocketPayload"]
+    B --> C{"decode JSON → OverlayLive succeeds?"}
+    C -->|"no"| X1["logs error, stops"]
+    C -->|"yes"| T{"trackingSession == nil<br/>but there is a trackingId?"}
+    T -->|"yes"| T1["creates an OverlayTrackingSession + sendReceivedAck()"]
+    T -->|"no"| D
+    T1 --> D{"typeTimeline"}
+    D -->|"3 or 5"| P["Predict/Lucky:<br/>sets the button image, adds PredictManagementImpl,<br/>updates the button state per status ACTIVE/INACTIVE,<br/>setUpDataForTemplatePredict()"]
+    D -->|"other"| M["Minigame:<br/>DispatchQueue.main → showInteractive()"]
+```
+
+Inside `showInteractive()`:
+
+```mermaid
+flowchart TD
+    A["showInteractive(overlayLive)"] --> B["getInfoCompensatory(mediaId, timelineID)"]
+    B --> C{"isView == true?<br/>(not yet interacted with / frequencyLimit expired)"}
+    C -->|"false"| X1["skips it — already interacted with recently"]
+    C -->|"true"| D["MINI_GAMES = SHOW; if predict is showing → hides the predict button"]
+    D --> E{"does targets contain 'iphone' or 'all'?"}
+    E -->|"no"| X2["skips it (target_mismatch)"]
+    E -->|"yes"| F["builds Compensatory (unlockedTime = now + frequencyLimit + duration)"]
+    F --> G["appends to the URL: &fanclub=false (onlivev2 & not yet fanclub),<br/>&logged=false/true"]
+    G --> H["creates the Overlay + attaches the trackingSession"]
+    H --> I["overlayManagement.showOverlayLive(...)"]
+```
+
+> `getInfoCompensatory` reads `UserDefaults(suiteName: INTERACTIVE_<userId|DEFAULT>)` by `mediaId`:
+> if the timepoint was already interacted with and is still within `frequencyLimit`, it returns `false`
+> (won't show it again).
+
+---
+
+## 5. Rendering the minigame overlay
+
+```mermaid
+flowchart TD
+    A["showOverlayLive(overlay, ...)"] --> B["setupAlignment() + setupInteractiveView()"]
+    B --> C{"countdown > 0?"}
+    C -->|"yes"| D["timeDiff = now - ts(ms)<br/>rewrites/appends &duration = countdown - timeDiff"]
+    D --> D2{"timeDiff < 0?"}
+    D2 -->|"yes → time is up"| X1["return (doesn't show it)"]
+    D2 -->|"no"| E
+    C -->|"no"| E{"pos.alignment == nil or uiOvelay == nil?"}
+    E -->|"true"| X2["sendRenderedAck(cancelled, cancelReason=invalid_overlay_state)"]
+    E -->|"false"| F["cancelActiveOverlay('replaced_by_new_overlay'); activeOverlay = overlay"]
+    F --> G["alignment → location 0..8"]
+    G --> H["interactiveViewDelegate.locationLayoutViewRoot(location, width, height)"]
+    H --> I["uiOvelay.addIframeOverlay(url) → transparent WKWebView"]
+    I --> J["beginRenderTracking (timeout 5s)"]
+    J --> K["configurationWebView() — attaches the 'IOS' handler"]
+```
+
+**Geometry constraint**: `location` (0..8) is derived from `OverlayPosition.pos.x`/`pos.y` (each axis
+0/1/2), mapped to 9 positions (`LeftTop`…`RightBottom`). The `size.w/size.h` dimensions are **ratios**
+relative to the frame. Actual positioning is handled by the app inside
+`locationLayoutViewRoot(location:width:height:)`; the WebView is placed to cover the root frame.
+
+**Only one minigame overlay at a time**: `showOverlayLive` calls `cancelActiveOverlay` +
+`uiOvelay?.onStop()` before adding a new overlay.
+
+---
+
+## 6. Answering a minigame question
+
+Triggered when the WebView sends `IOS.postMessage({type: INTERACTIVE_ACTION_REPORT, data})`.
+There is a **Live** branch (`handleWebViewCallBack`) and a **VOD** branch (`handleWebViewCallBackVod`).
+
+```mermaid
+flowchart TD
+    A["INTERACTIVE_ACTION_REPORT"] --> B{"overlay.allowAnonymous?"}
+    B -->|"true"| N{"is there a network connection?"}
+    N -->|"yes"| SEND["sendLogIniteractive() + saveInfoCompensatory()"]
+    N -->|"no"| NET["signalAnswerNetworkFailure() + 'Check your network' dialog"]
+    B -->|"false"| C{"authenToken empty?"}
+    C -->|"empty"| LOGIN["interactiveLoginDelegate.showInteractiveLogin() → stops"]
+    C -->|"has a token"| D{"requiredFanClub?"}
+    D -->|"required & not yet fanclub"| FC["shows FanClubView 'You must be a FanClub member of <bjName>'"]
+    D -->|"met"| E{"typeTimeline == 2 and betAmount > 0?"}
+    E -->|"no"| SEND
+    E -->|"yes"| VIP["telcoRepository.isMemberVip(token)"]
+    VIP -->|"VIP == true"| FREE["didTapConfirmButton() → sends right away (free)"]
+    VIP -->|"VIP == false"| DED["DialogDeductionView 'Use N OnG to answer?'"]
+    DED -->|"confirmed"| FREE
+```
+
+### 6.1. `sendLogIniteractive` — calls the `/api/actions` API
+
+```mermaid
+sequenceDiagram
+    participant OMI as OverlayManagementImpl
+    participant TRK as OverlayTrackingSession
+    participant API as POST /api/actions
+    participant WV as WKWebView
+
+    OMI->>OMI: if action == CLICK_ADS → opens urlLinkAds in Safari, does NOT call the API
+    OMI->>OMI: data += media, socket_id, versionSDK; params += deviceId, type, os=iphone
+    OMI->>TRK: sendAnswerAttempt() → emit-ack stage 'answer'
+    OMI->>API: POST (Authorization Bearer if the token starts with 'ey', X-TENANT-ID)
+    alt success == true
+        API-->>OMI: {success: true, result}
+        OMI->>TRK: sendAnswerSucceeded() → stage 'answer-succeeded'
+        Note over OMI,WV: isReturnData branch (bet/VIP): postMessage UPDATE_CONFIRM
+        OMI->>OMI: saveInfoCompensatory()
+    else success == false / error
+        API-->>OMI: {success: false, result{message, description}} or a network error
+        OMI->>TRK: sendAnswerFailed(reason, step) → stage 'answer-failed'
+        OMI->>OMI: showDialogDedution based on result.message
+    end
+```
+
+Error code → `failureReason` mapping (`OverlayTrackingFailure.answerFailureReason`):
+
+| `result.message` | `failureReason` | `failureStep` |
+|---|---|---|
+| `EX400` | `api_EX400` | `api_response` |
+| `TL404` | `api_TL404` | `api_response` |
+| `PM402` | `api_PM402` | `api_response` |
+| other, `success == false` | `api_false` | `api_response` |
+| network error | `network_error` | `network` |
+| body couldn't be parsed | `unknown_response` | `unknown_response` |
+
+Suggested dialogs (`showDialogDedution`) based on `result.message`:
+
+| `message` | Content |
+|---|---|
+| `PM402` | "Please top up OnG" → triggers `showSubscibeView` / `NEED_PAY` |
+| `EX400` | "You have already answered this question" |
+| `answerSuccess` | "You answered the question successfully" |
+| other | "Failed to answer the question" |
+
+---
+
+## 7. Predict — Head-to-head (`typeTimeline = 3`)
+
+```mermaid
+sequenceDiagram
+    participant WS as Socket
+    participant ICV as InteractiveControllerView
+    participant PMI as PredictManagementImpl
+    participant DLG as DialogLuckyNumberView (shared)
+    participant API as /api/actions
+
+    WS-->>ICV: overlay (typeTimeline = 3)
+    ICV->>PMI: sets the button image (idle/power from the payload, falls back to CDN_PREDICT_*)
+    ICV->>PMI: addSubview the button; updates its state based on status
+    ICV->>PMI: setUpDataForTemplatePredict() → setUrlWebView + setDataForPredict
+
+    Note over WS,ICV: realtime event 'predict-timeline' (DataButtonPredict)
+    WS-->>ICV: {type: ACTIVE} → shows the button, PREDICT = SHOW
+    WS-->>ICV: {type: INACTIVE} → hides the button, removes the dialog, PREDICT = HIDE_CMS
+    WS-->>ICV: {type: POWER} → button switches to the power image, alpha 1 → 0.5 after 5s
+    WS-->>ICV: {type: END} → clears cached results, hides the button, hideLayoutViewPredictRoot, PREDICT = END
+
+    PMI->>PMI: user taps the button (didButtonClick)
+    alt authenToken empty
+        PMI->>PMI: DialogConfirmView → showInteractiveLogin()
+    else has a token
+        PMI->>DLG: embededInteractiveContentView() → loads the URL, handler 'IOS'
+        DLG->>PMI: INTERACTIVE_ACTION_REPORT → the answer flow (login/fanclub/VIP)
+        PMI->>API: POST /api/actions (isReturnData = true)
+        API-->>PMI: success → UPDATE_CONFIRM; failure → showDialogDedution
+    end
+
+    WS-->>ICV: 'predict-result' → answer1/answer2 → UPDATE_COUTER (postMessage)
+```
+
+Status flags that control the button (stored in `UserDefaults`, `TypeInteractive` constants):
+
+| Key | Meaning |
+|---|---|
+| `MINI_GAMES` | Whether a minigame is currently occupying the screen (`SHOW`/`HIDE`) |
+| `PREDICT` | Predict button state (`SHOW`/`HIDE`/`HIDE_CMS`/`END`) |
+| `POPUP_PREDICT` | Whether the predict dialog is currently open (`SHOW`/`HIDE`) |
+| `INTERACTIVE_TYPE_TIMELINE` | `3` predict, `5` lucky, `0` none |
+
+Button image: predict uses an **animated GIF** (`CDN_PREDICT_IDLE/POWER`), lucky uses a **static PNG**
+(`CDN_LUCKY_IDLE/POWER`); distinguished by the `.gif` extension.
+
+> ⚠️ The entire `predict-timeline` / `lucky-event` flow **is skipped** for tenants `vtvlive`,
+> `onlivetv`, `VTVprime` (returns early in `receiveDataActionButtonPredict`).
+
+---
+
+## 8. Lucky — Lucky number (`typeTimeline = 5`)
+
+Structurally similar to Predict (shares `DialogLuckyNumberView`), differing in:
+
+- The URL has `&u=<userId>` appended (lucky only).
+- The default images are `CDN_LUCKY_IDLE/POWER` (PNG).
+- The result returned from the API is pushed down to the web via **`UPDATE_NUMBER_LUCKY`**:
+
+```mermaid
+sequenceDiagram
+    participant DLG as DialogLuckyNumberView
+    participant PMI as PredictManagementImpl
+    participant API as /api/actions
+    DLG->>PMI: INTERACTIVE_ACTION_REPORT
+    PMI->>PMI: login → fanclub → VIP/bet
+    PMI->>API: POST (isReturnData = true)
+    API-->>PMI: {success: true, result: {data: <number>}}
+    PMI->>DLG: postMessageWhenClickPlayLucky() → window.postMessage(UPDATE_NUMBER_LUCKY)
+```
+
+---
+
+## 9. Recalling an overlay — overlay-recall
+
+```mermaid
+sequenceDiagram
+    participant WS as Socket
+    participant SIO as SocketIOManagementImpl
+    participant ICV as InteractiveControllerView
+    participant OMI as OverlayManagementImpl
+
+    WS-->>SIO: on("overlay-recall", data)  %% Data / dict / NSDictionary
+    SIO-->>ICV: callback OVERLAY_RECALL
+    ICV->>ICV: parseRecallTimelineId() (RecallData.timelineId)
+    ICV->>OMI: recallOverlay(timelineId)
+    OMI->>OMI: if activeOverlay.id == timelineId:<br/>cancelActiveOverlay('recalled'), onStop(),<br/>shrinkScreenInteractive(show:false), hideLayoutViewRoot(), showPlayerControl()
+```
+
+Used when an editor removes a currently airing overlay system-wide. Only removes it if `timelineId`
+matches the overlay currently being displayed.
+
+---
+
+## 10. Auxiliary events
+
+| Socket event | Handling |
+|---|---|
+| `liveviews` | Parses `LiveViewDto.count`, calls `showLiveView(liveView: 230 + count)` (**adds 230**) |
+| `data` (fanclub) | Decodes `FanClub`; if `mediaId` matches the part before the `_` of the currently viewed media and `isFanClub` → sets `KEY_FAN_CLUB = true`, otherwise `false` |
+| `ckst` | Decodes `CkstResponse`; retrieves `getPlayerState()` from the delegate → emits `ckst` back with `CkstData(action: "CHECK_PLAYER_STATUS", sessionId, data: Ckst{deviceId, os, mediaContentId, playerStatus, tenantId})` |
+| `update-result` | `sendMessageResultinteractive()` → `window.postMessage(UPDATE_DATA_INTERACTIVE)` |
+| `predict-result` | Updates `answer1`/`answer2`, caches into `DATA_RESULT_PREDICT`, pushes `UPDATE_COUTER` |
+| `branching` | Decodes `Branching`; based on `action` (`START/PLAY_MINIGAME/END_VIDEO_BRANCHING`) calls `BranchingSocketIODelegate` (preload / show / end the branching video) |
+
+> `liveViews + 230` is intentional behavior in the current code (`showCCU`). If the raw number is
+> needed, the app must subtract it itself.
+>
+> In the emitted `ckst` payload, the `data` field is mapped to the **JSON key `"os"`** (per
+> `CkstData`'s `CodingKeys`) — worth noting when cross-checking against the backend.
+
+---
+
+## 11. VOD workflow
+
+```mermaid
+sequenceDiagram
+    participant APP as App
+    participant ICV as InteractiveControllerView
+    participant API as GET /api/ctc/scenario/v2/vod/{mediaId}/{os}
+    participant OMI as OverlayManagementImpl
+
+    APP->>ICV: joinRoom(mediaId, type: 2)
+    ICV->>ICV: if connected → disconnection(); removeAllView()
+    ICV->>API: callApiScenarioForVod(header X-TENANT-ID)
+    API-->>ICV: VODOverlayData {data.timelines[]}
+    ICV->>ICV: convertVodInteractive(): filters showStatus == ACTIVE,<br/>sorts by timeShow (seconds)
+
+    loop every second (fed by the app)
+        APP->>ICV: getTimeVideo(time: seconds)
+        ICV->>ICV: finds a timeline with timeShow == Int(time)
+        alt matches on the exact second
+            ICV->>ICV: showInteractiveVod(): checks allowAnonymous/token
+            ICV->>ICV: appends the URL (timelineId, tenantId, deviceType=IOS)
+            ICV->>OMI: showOverlayVod(overlay, token, mediaId)
+            ICV->>ICV: removes the timeline from the list (won't show it again)
+        end
+    end
+```
+
+Differences compared to LIVE:
+
+| | LIVE | VOD |
+|---|---|---|
+| Overlay source | Pushed via Socket.IO | Entire scenario preloaded via REST |
+| Display trigger | Realtime event | `getTimeVideo(seconds)` fed by the app |
+| `socketIO` | Connected | Disconnected (all socket calls are no-ops) |
+| `socket_id` in the action | Present | Absent |
+| Tracking emit-ack | Present | **Absent** (`showOverlayVod` doesn't call `beginRenderTracking`) |
+| Predict / Lucky / liveviews / ckst | Present | Absent |
+| Display condition | Full login/fanclub/VIP check | Only `allowAnonymous` or has a token |
+
+---
+
+## 12. Disconnection and recovery
+
+```mermaid
+stateDiagram-v2
+    [*] --> Connected
+    Connected --> Disconnected: clientEvent .disconnect (stamps disconnectedAt)
+    Disconnected --> Connected: automatic reconnect (reconnectWait 5s, randomization 0.4)
+    Connected --> Error: clientEvent .error → callback ERROR (log only)
+    Disconnected --> Reconnected: clientEvent .reconnect → callback RECONNECT (logs elapsed time)
+```
+
+- The Socket.IO client reconnects automatically (`.reconnects(true)`, `reconnectWait 5`). When it
+  `.connect`s again, the `CONNECTED` callback runs → if there is a `mediaContentId`, it **emits
+  `join-room`** again.
+- `isConnected()` returns `true` both when `status == .connecting` and when `reconnects == true` — it
+  should be treated as "connected or about to be", not strictly "already connected".
+- `disconnection()` removes **all** client and app handlers, calls `disconnect()`, and sets
+  `socketManager = nil`.
+
+---
+
+## 13. Releasing resources
+
+```mermaid
+flowchart TD
+    A["releaseAll()"] --> B{"connected and has a mediaId?"}
+    B -->|"yes"| C["leaveRoom() → emit('leave-room')"]
+    B -->|"no"| D
+    C --> D["removes delegates: player, predict, login = nil"]
+    D --> E["overlayManagement.killDelegate()"]
+    E --> F["predictManagement.killDelegate()"]
+    F --> G["socketIO.disconnection()"]
+
+    H["removeAllView()"] --> H1["overlayManagement.removeAllView()<br/>cancelActiveOverlay + uiOvelay.onStop()"]
+```
+
+Call `releaseAll()` when:
+
+- Exiting the player screen (`viewWillDisappear`/`deinit`),
+- The user leaves the content,
+- Before switching to a different `mediaId` **if** `joinRoom()` isn't called right away (since
+  `joinRoom` already calls `removeAllView()` itself and handles the socket).
+
+---
+
+[← Installation & Integration](02-cai-dat-va-tich-hop.md) · [Back to index](README.md) · [Next: API Reference →](04-api-reference.md)

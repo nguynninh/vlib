@@ -1,0 +1,59 @@
+---
+title: "简介"
+description: "SDK Game 总体介绍：目的、集成范围、支持的平台以及文档结构。"
+sidebar:
+  order: 1
+---
+
+## 关于 SDK Game
+
+**SDK Game** 是面向运行在 **VTV Live** 生态系统中的各类游戏的集成 SDK，内置登录、验证、事件 tracking，以及从 Backend 系统获取动态配置等流程。
+
+该 SDK 可帮助游戏开发团队缩短基础业务（账户、通知、营销事件等）的集成时间，无需在每个项目中从零重新构建。
+
+## 目的
+
+SDK Game 的构建目标包括：
+
+* 统一各游戏之间的账户集成、登录与验证（OTP、忘记密码）流程。
+* 提供从 BE API 与 Firebase Remote Config 获取动态配置的机制。
+* 支持 game hub、通知等事件的 tracking，以及用于 MKT 优化的相关事件。
+* 提供游戏内各业务（领取礼物、更新用户信息等）通用的 API/IAP。
+* 缩短集成时间，并确保 Android 与 iOS 两个平台之间的一致性。
+
+## 支持平台
+
+SDK Game 目前支持两大主要平台：
+
+```text
+SDK Game
+│
+├── Android (Java)
+└── iOS (Objective-C / Swift)
+```
+
+每个平台都有各自的集成文档、API 文档以及事件流程说明文档，两者并行呈现以确保内容同步。
+
+## 文档结构
+
+SDK Game 文档主要分为以下部分：
+
+* **总览** — 简介、功能特性与所用技术。
+* **Android / iOS** — 按平台划分的配置与 SDK 集成指南。
+* **SDK 功能** — 详细描述各项功能：OTP、忘记密码、领取礼物、动态配置等。
+* **集成文档 / API / 事件流程** — 集成过程中使用的完整参考文档。
+
+## 适用对象
+
+本文档主要面向：
+
+* 将 SDK Game 集成到 Android 或 iOS 项目中的开发者（Developer）。
+* 测试账户、tracking 与动态配置流程的 QA。
+* 需要了解事件流程以进行广告优化的运营/MKT 团队。
+
+## 下一步
+
+在了解 SDK Game 的目的之后，请继续阅读：
+
+* [功能特性](/zh/sdk-game/overview/features)
+* [所用技术](/zh/sdk-game/overview/tech-stack)

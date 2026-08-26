@@ -1,0 +1,34 @@
+---
+title: Overview
+description: Introduction to the Interactive SDK, its ability to embed interactive overlays on top of the video player, and the starting point before diving into platform-specific integration documentation.
+---
+
+The **Interactive SDK** enables embedding interactive layers (overlays, mini-games, surveys, polls...)
+on top of the video player within your application, connecting in realtime to the Interactive server via Socket.IO
+and synchronizing interaction state between the client and backend.
+
+:::note
+This is the **Getting Started** section — the starting point before diving into the platform-specific integration documentation for Android/iOS.
+:::
+
+## Who is this documentation for?
+
+- Android/iOS engineers who need to integrate the Interactive SDK into an app that already has a player.
+- Anyone who needs to understand the overall architecture (client ⇄ Socket.IO ⇄ REST ⇄ CDN) before integrating.
+- Anyone troubleshooting issues related to the overlay, emit-ack tracking, or the login/logout flow.
+
+## Documentation structure
+
+| Section | Content |
+|---|---|
+| **Getting Started** | Overview and quick start guide (this page). |
+| **Android** | SDK architecture, installation & integration, workflow, API reference, common errors, tracking. |
+| **iOS** | Same as Android, specific to the iOS platform (Swift). |
+
+## Prerequisites before you begin
+
+- Your application already has a video player (ExoPlayer, AVPlayer, or another playback SDK).
+- You have a `FragmentActivity`/`AppCompatActivity` (Android) or the corresponding `UIViewController` (iOS) to attach the overlay to.
+- You have the connection information for the Interactive server (Socket.IO endpoint, REST API, `X-TENANT-ID`).
+
+Next, see [Quick Start](/en/itr/getting-started/quick_start) to quickly integrate the SDK into your application.

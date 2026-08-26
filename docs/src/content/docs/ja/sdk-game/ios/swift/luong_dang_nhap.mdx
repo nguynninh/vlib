@@ -1,0 +1,145 @@
+---
+title: ログインフロー
+description: Sdk.loginからCheckLoginViewおよびLoginViewNew画面までのSDKのログインフローの説明。
+---
+
+本ドキュメントは、実際のコードから作成したSDKのログインフローについて説明します。
+`Sdk+Authentication.swift`、`CheckLoginView.swift`、`LoginViewNew.swift`、`LoginWrapper.swift`。
+
+## 全体フロー図
+
+```mermaid
+%% width: 1100
+flowchart TD
+    A([Appが Sdk.login を呼び出す]) --> B{isShowLoginScreen?}
+    B -- 表示中 --> Z([スキップ])
+    B -- 未表示 --> C["showLogin()<br/>GET PATH_GAME_CHECK_MAINTAIN"]
+
+    C --> D{APIの結果}
+    D -- ネットワークエラー / code != 0 --> E["realLogin(nil)"]
+    D -- code = 0 --> F[FCM topicをsubscribe]
+    F --> G{isMaintained?}
+    G -- はい --> H([メンテナンスalertを表示<br/>フローを停止])
+    G -- いいえ --> I["realLogin(value)"]
+
+    E --> J{accessTokenと<br/>refreshTokenがあるか?}
+    I --> J
+    J -- tokenあり --> K["showCheckLoginUI<br/>CheckLoginView"]
+    J -- まだない --> L["showLoginUI<br/>LoginViewNew"]
+
+    %% ===== 自動再ログイン =====
+    K --> M["deviceLogin()<br/>GET PATH_USER_INFO_V2"]
+    M --> N{エラーコード}
+    N -- code = 0 --> O["phone/emailを保存<br/>delegate loginSuccess<br/>registerTimerTask + authenGame<br/>login_successをtracking"]
+    O --> P([画面を閉じる<br/>ログイン完了])
+    N -- code 86 / 1001 --> Q["doRefreshWithActionV2<br/>tokenを更新 → deviceLoginを再試行"]
+    Q --> M
+    N -- code 1008 --> R([セッション期限切れ<br/>logout])
+    N -- その他のエラー --> S([handleErrorCode → 閉じる])
+
+    %% ===== ユーザーが選択するログイン画面 =====
+    L --> T{ユーザーの選択}
+    T -- アカウント / パスワード --> U["doLogin()<br/>grant_type = password"]
+    T -- 今すぐプレイ --> V["btnPlayNowClick()<br/>grant_type = fast_login"]
+    T -- Google --> W["GIDSignIn → doLoginGoogle<br/>grant_type = social, provider = google"]
+    T -- Facebook --> X["FB Login → doLoginFacebook<br/>grant_type = social, provider = facebook"]
+    T -- Apple --> Y["ASAuthorization → doLoginApple<br/>grant_type = social, provider = apple"]
+    T -- 登録 --> AA([登録画面を開く])
+
+    U --> AB[POST PATH_LOGIN_V2]
+    V --> AB
+    W --> AB
+    X --> AB
+    Y --> AB
+
+    AB --> AC{エラーコード}
+    AC -- code = 0 --> AD["getDataLogin: tokenを保存<br/>updatePushId + authenGame<br/>login_successをtracking<br/>チェックしていればアカウントを保存"]
+    AD --> AE([画面を閉じる<br/>ログイン完了])
+    AC -- code != 0 --> AF([handleErrorCode<br/>エラーメッセージを表示])
+
+    %% ===== token更新（共通）=====
+    subgraph RT["doRefreshToken (セッションの更新)"]
+        RA[POST PATH_LOGIN_V2<br/>grant_type = refresh_token] --> RB{エラーコード}
+        RB -- code = 0 --> RC[新しいtokenを保存 → getUserInfo]
+        RB -- code 1008 --> RD([セッション期限切れ → logout])
+        RB -- code 1001/85/98 --> RE([forceLogout])
+    end
+```
+
+## 詳細な説明
+
+### 1. エントリーポイント – `login()` / `showLogin()`
+
+appが `Sdk.login()` を呼び出すと、SDKは画面の重複表示を避けるために
+`isShowLoginScreen` フラグをチェックします。まだ表示されていない場合、`showLogin()` が
+メンテナンスチェックAPI `PATH_GAME_CHECK_MAINTAIN`（GET）を `packageId`、`channel`、`version` で呼び出します。
+
+- APIが**エラー**の場合、または `code != 0` を返した場合 → そのまま `realLogin(nil)` を呼び出します。
+- `code = 0` の場合 → 返されたFCM topicをsubscribeし、`isMaintained` をチェックします。
+  - `isMaintained = true` → メンテナンス通知のalertを表示し、フローを**停止**します。
+  - `isMaintained = false` → `realLogin(value)` を呼び出します。
+
+### 2. 分岐 – `realLogin()`
+
+デバイスに既にtokenが保存されているかどうかに基づいて分岐します。
+
+- **`accessToken` と `refreshToken` がすでにある場合** → `showCheckLoginUI()`（`CheckLoginView` を開く）し、
+  ユーザー操作なしで自動的に再ログインします。
+- **tokenがない場合** → `showLoginUI()`（`LoginViewNew` を開く）でユーザーにログイン方法を選択させます。
+
+### 3. 自動再ログイン – `CheckLoginView.deviceLogin()`
+
+Bearer accessTokenを付けて `PATH_USER_INFO_V2`（GET）を呼び出します。
+
+- `code = 0`: `phone`/`email` を保存し、delegate `loginSuccess(userInfo, accessToken, refreshToken)` を呼び出し、
+  `registerTimerTask()`、`authenGame()`、`updatePushId()` を実行し、`login_success`（タイプ `Refresh`）をtrackingします。
+- `code = 86` または `1001`: `doRefreshWithActionV2` を呼び出してtokenを更新してから `deviceLogin()` を**再試行**します。
+- `code = 1008`: セッション期限切れ → `Sdk.logout()`。
+- その他のエラー: `handleErrorCode` がメッセージを表示してから画面を閉じます。
+
+### 4. ログイン画面 – `LoginViewNew`
+
+ユーザーはいずれかの方法を選択します。すべて共通のendpoint `PATH_LOGIN_V2`（POST）を呼び出します。
+
+| 方法 | 処理関数 | `grant_type` | 備考 |
+|---|---|---|---|
+| アカウント / パスワード | `doLogin()` | `password` | アカウント記憶オプションあり（パスワードはAES-256で暗号化） |
+| 今すぐプレイ | `btnPlayNowClick()` | `fast_login` | ランダムな `nonce` を追加 |
+| Google | `doLoginGoogle()` | `social` | `provider = google`、tokenは `GIDSignIn` から取得 |
+| Facebook | `doLoginFacebook()` | `social` | `provider = facebook` / `facebook_limited` |
+| Apple | `doLoginApple()` | `social` | `provider = apple`、`ASAuthorization` 経由 |
+| 登録 | `btnRegisterClick()` | – | 登録画面を開く |
+
+Apple / Facebook / Googleのsocialボタンは、設定で有効になっている場合のみ表示され
+（`enableAppleLogin`、`enableFacebookLogin`、`enableGoogleLogin`）、ボタンの順序は
+ユーザーの直近のログイン方法に応じて並び替えられます。
+
+`PATH_LOGIN_V2` が返す結果:
+
+- `code = 0`: `getDataLogin()` がtokenを保存し、`updatePushId()`、`authenGame()` を呼び出し、
+  `login_success` をtrackingし、ユーザーが「記憶する」にチェックしていればアカウントを保存してから画面を閉じます。
+- `code != 0`: `handleErrorCode` が対応するエラーメッセージを表示します。
+
+### 5. セッションの更新 – `doRefreshToken()`
+
+token期限切れ時に共通で使用されます: `grant_type = refresh_token` で `PATH_LOGIN_V2` を呼び出します。
+
+- `code = 0`: 新しいtokenを保存してから `getUserInfo()` を呼び出します。
+- `code = 1008`: セッション期限切れの通知を表示 → `logout()`。
+- `code = 1001 / 85 / 98`: `forceLogout()`。
+
+## 使用するendpoint
+
+- `PATH_GAME_CHECK_MAINTAIN` – メンテナンスチェック（GET）
+- `PATH_LOGIN_V2` – ログイン / token更新（POST、`grant_type` で区別）
+- `PATH_USER_INFO_V2` – ユーザー情報を取得（GET）
+- `PATH_GAME_AUTH` – ログイン後のゲーム認証（`authenGame`）
+- `PATH_LOGOUT` – ログアウト
+
+## 重要なエラーコード
+
+- `CODE_0` – 成功
+- `CODE_86`、`CODE_1001` – tokenの更新が必要（refreshしてから繰り返す）
+- `CODE_1008` – ログインセッションの期限切れ → logout
+- `CODE_1001 / 85 / 98` – 強制ログアウト（`forceLogout`）
+
