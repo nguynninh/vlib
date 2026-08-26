@@ -1,0 +1,1205 @@
+---
+
+title: "表格"
+description: "在 MDX 中使用表格的指南,涵盖从基础语法到对齐方式、高级内容、代码、链接,以及技术文档中表格排版的相关规则。"
+---
+
+Table 是编写技术文档时最重要的组成部分之一。
+
+与其用大段文字描述多条结构相同的信息,不如使用 table 把它们并排展示,方便读者快速比较。
+
+例如,与其这样写:
+
+:::note
+TypeScript 用于前端。Java 用于 Android。Swift 用于 iOS。
+:::
+
+不如这样写:
+
+| Platform | Language   |
+| -------- | ---------- |
+| Web      | TypeScript |
+| Android  | Kotlin     |
+| iOS      | Swift      |
+
+当文档需要呈现以下内容时,这种方式尤其有用:
+
+* 比较多个选项。
+* 属性列表。
+* API parameters。
+* Configuration options。
+* Environment variables。
+* HTTP status codes。
+* Supported platforms。
+* Feature comparison。
+* Version compatibility。
+* Database fields。
+* CLI commands。
+* Keyboard shortcuts。
+
+---
+
+## 1. 基础 Table 语法
+
+一个最简单的 Markdown Table 由以下部分组成:
+
+1. Header row。
+2. Separator row。
+3. 一行或多行 data row。
+
+**代码**
+
+```mdx showLineNumbers title="基础 Table"
+| Name | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | Unique identifier |
+| `name` | `string` | User name |
+| `email` | `string` | User email |
+```
+
+**演示**
+
+| Name    | Type     | Description       |
+| ------- | -------- | ------------------ |
+| `id`    | `string` | Unique identifier  |
+| `name`  | `string` | User name          |
+| `email` | `string` | User email         |
+
+这一行:
+
+```md
+| --- | --- | --- |
+```
+
+用来分隔 header 和内容。
+
+`---` 的数量并不重要,只要这一行是一个有效的分隔行即可。
+
+例如:
+
+```md
+| Name | Type |
+| - | - |
+| id | string |
+```
+
+仍然可以被渲染成 table。
+
+不过,建议使用 `---`,这样源代码更易读。
+
+---
+
+## 2. Table 的 Header
+
+Header 是 table 的第一行,用来说明每个 column 的含义。
+
+例如:
+
+**代码**
+
+```mdx showLineNumbers title="带 Header 的 Table"
+| Property | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | `string` | Yes | User identifier |
+| `name` | `string` | Yes | User name |
+| `avatar` | `string` | No | Avatar URL |
+```
+
+**演示**
+
+| Property | Type     | Required | Description     |
+| -------- | -------- | -------- | ---------------- |
+| `id`     | `string` | Yes      | User identifier   |
+| `name`   | `string` | Yes      | User name         |
+| `avatar` | `string` | No       | Avatar URL        |
+
+Header 应当简洁易懂。
+
+不建议这样写:
+
+| This is the property name of the object | This is the data type of the property | Is this property required? |
+| ----------------------------------------- | -------------------------------------- | ---------------------------- |
+
+建议这样写:
+
+| Property | Type | Required |
+| -------- | ---- | -------- |
+
+Header 越短,table 就越容易被快速浏览。
+
+---
+
+## 3. Column 的数量
+
+每一行应当拥有相同数量的 column。
+
+**代码**
+
+```mdx showLineNumbers title="Column 数量"
+| Name | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | Identifier |
+| `name` | `string` | User name |
+| `email` | `string` | Email |
+```
+
+**演示**
+
+| Name    | Type     | Description |
+| ------- | -------- | ------------ |
+| `id`    | `string` | Identifier   |
+| `name`  | `string` | User name    |
+| `email` | `string` | Email        |
+
+不应该创建 column 数量不一致的 table:
+
+```md
+| Name | Type | Description |
+| --- | --- | --- |
+| id | string |
+| name | string | User name | Extra |
+```
+
+一些 Markdown renderer 可能会尝试自动修正这种结构,但不同 parser 之间的处理结果可能不一样。
+
+因此,请确保每一行都拥有正确数量的 column。
+
+:::caution[注意]
+row 中 column 数量比 header 少或多,是手动复制粘贴或编辑 table 时非常容易犯的错误。提交之前,请检查每一行 `|` 的数量。
+:::
+
+---
+
+## 4. 单列 Table
+
+Markdown Table 也可以只有一个 column。
+
+**代码**
+
+```mdx showLineNumbers title="单列"
+| Supported Format |
+| --- |
+| Markdown |
+| MDX |
+| HTML |
+```
+
+**演示**
+
+| Supported Format |
+| ------------------ |
+| Markdown            |
+| MDX                 |
+| HTML                |
+
+不过,如果只是一个简单的列表,Markdown list 通常更合适:
+
+```md
+- Markdown
+- MDX
+- HTML
+```
+
+只有当数据确实具有表格意义时,才应该使用单列 table。
+
+---
+
+## 5. 多列 Table
+
+table 可以拥有多个 column。
+
+**代码**
+
+```mdx showLineNumbers title="多列"
+| Platform | Language | Version | Framework | Framework Version | UI Toolkit | Package Manager | Build Tool | IDE | OS | Min OS | Target OS | Architecture | State Management | Networking | Database | Cache | Testing | Unit Test | UI Test | Linting | Formatting | Documentation | CI/CD | Repository | Branch | Environment | Deployment | Distribution | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Web | TypeScript | 5.x | React | 19.x | Tailwind CSS | npm | Vite | VS Code | macOS / Linux / Windows | Chrome 120+ | Modern Browsers | Feature-based | Zustand | Axios | PostgreSQL | Redis | Vitest | Jest | Playwright | ESLint | Prettier | MDX | GitHub Actions | GitHub | main | dev / staging / prod | Vercel | Web | Active |
+| Android | Kotlin | 2.1.x | Android SDK | API 36 | Jetpack Compose | Gradle | Gradle | Android Studio | macOS / Linux / Windows | Android 8 | Android 16 | Clean Architecture | ViewModel | Retrofit | Room | DataStore | JUnit | JUnit | Compose Test | ktlint | ktfmt | Dokka | GitHub Actions | GitHub | main | dev / staging / prod | Google Play | APK / AAB | Active |
+| iOS | Swift | 6.x | SwiftUI | iOS 18 | SwiftUI | Swift Package Manager | Xcode Build | Xcode | macOS | iOS 16 | iOS 18 | Clean Architecture | Observation | URLSession | SwiftData | NSCache | XCTest | XCTest | XCUITest | SwiftLint | SwiftFormat | DocC | GitHub Actions | GitHub | main | dev / staging / prod | App Store | IPA | Active |
+```
+
+**演示**
+
+| Platform | Language | Version | Framework | Framework Version | UI Toolkit | Package Manager | Build Tool | IDE | OS | Min OS | Target OS | Architecture | State Management | Networking | Database | Cache | Testing | Unit Test | UI Test | Linting | Formatting | Documentation | CI/CD | Repository | Branch | Environment | Deployment | Distribution | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Web | TypeScript | 5.x | React | 19.x | Tailwind CSS | npm | Vite | VS Code | macOS / Linux / Windows | Chrome 120+ | Modern Browsers | Feature-based | Zustand | Axios | PostgreSQL | Redis | Vitest | Jest | Playwright | ESLint | Prettier | MDX | GitHub Actions | GitHub | main | dev / staging / prod | Vercel | Web | Active |
+| Android | Kotlin | 2.1.x | Android SDK | API 36 | Jetpack Compose | Gradle | Gradle | Android Studio | macOS / Linux / Windows | Android 8 | Android 16 | Clean Architecture | ViewModel | Retrofit | Room | DataStore | JUnit | JUnit | Compose Test | ktlint | ktfmt | Dokka | GitHub Actions | GitHub | main | dev / staging / prod | Google Play | APK / AAB | Active |
+| iOS | Swift | 6.x | SwiftUI | iOS 18 | SwiftUI | Swift Package Manager | Xcode Build | Xcode | macOS | iOS 16 | iOS 18 | Clean Architecture | Observation | URLSession | SwiftData | NSCache | XCTest | XCTest | XCUITest | SwiftLint | SwiftFormat | DocC | GitHub Actions | GitHub | main | dev / staging / prod | App Store | IPA | Active |
+
+多列 table 非常适合需要比较 platform 或 technology stack 的文档页面。
+
+不过,如果 column 数量过多,table 在小屏幕上会变得难以阅读。
+
+---
+
+## 6. Column 对齐方式
+
+Markdown Table 支持使用 `:` 来实现左对齐、右对齐和居中对齐。
+
+### 左对齐
+
+```md
+| Name | Type |
+| :--- | :--- |
+| id | string |
+```
+
+### 居中对齐
+
+```md
+| Name | Type |
+| :---: | :---: |
+| id | string |
+```
+
+### 右对齐
+
+```md
+| Name | Type |
+| ---: | ---: |
+| Price | 100 |
+```
+
+三种方式可以组合使用。
+
+**代码**
+
+```mdx showLineNumbers title="Column Alignment"
+| Property | Type | Required | Default |
+| :--- | :---: | :---: | ---: |
+| `id` | `string` | Yes | - |
+| `limit` | `number` | No | 20 |
+| `enabled` | `boolean` | No | true |
+```
+
+**演示**
+
+| Property  |    Type   | Required | Default |
+| :-------- | :-------: | :------: | ------: |
+| `id`      |  `string` |    Yes   |       - |
+| `limit`   |  `number` |    No    |      20 |
+| `enabled` | `boolean` |    No    |    true |
+
+### Column 宽度
+
+标准 Markdown Table **没有语法可以为某个 column 声明固定宽度**,即使是 `:---` 或 `---:` 也只能控制 alignment,不能控制 width。
+
+```md
+| Name | Description |
+| --- | --- |
+| id | Unique identifier |
+```
+
+浏览器实际渲染的宽度,是根据该 column 中最长的内容自动计算的,与分隔行中写了多少个 `-` 无关。
+
+:::caution[注意]
+以为给某个 column 写更多 `-`(例如 `----------`)就能让它在渲染时变得更宽,是一个常见的误解。这只会让源代码更易读,不会影响实际的显示效果。
+:::
+
+在本文档中,如果确实需要控制 width(例如避免某个 column 过窄或过宽),可以在该 column 的 header 中加入 `[width=...]` 或 `[w=...]`。
+
+:::danger[常见错误]
+只能使用方括号语法 `[width=...]` 或 `[w=...]`。不要使用 `{width=...}`、`<width=...>` 或其他变体,因为 MDX 可能会把 `{...}` 理解为 JSX expression,从而导致页面构建失败。
+:::
+
+例如,将第一个 column 固定为 `200px` 宽,其余 column 由浏览器自动计算:
+
+```mdx showLineNumbers title="用 Markdown Table 强制指定 width"
+| Name [width=200px] | Description |
+| --- | --- |
+| `id` | Unique identifier |
+```
+
+**演示**
+
+| Name [width=200px] | Description |
+| --- | --- |
+| `id` | Unique identifier |
+
+`[width=...]` 部分只用于渲染布局,不会显示在 header 中。这种方式仍应有节制地使用,因为过多的固定宽度会让 table 在移动端变得难以阅读。
+
+---
+
+## 7. 什么时候应该左对齐、居中或右对齐?
+
+不应该随意选择对齐方式。
+
+一个简单的规则:
+
+| 内容        | Alignment |
+| ----------- | --------- |
+| Text        | Left      |
+| Description | Left      |
+| 代码        | Left      |
+| Status      | Center    |
+| Boolean     | Center    |
+| Number      | Right     |
+| Price       | Right     |
+| Percentage  | Right     |
+
+例如:
+
+**代码**
+
+```mdx showLineNumbers title="实际的 Alignment"
+| Property | Type | Required | Default |
+| :--- | :--- | :---: | ---: |
+| `name` | `string` | Yes | - |
+| `enabled` | `boolean` | No | `true` |
+| `limit` | `number` | No | `20` |
+| `timeout` | `number` | No | `5000` |
+```
+
+**演示**
+
+| Property  | Type      | Required | Default |
+| :-------- | :-------- | :------: | ------: |
+| `name`    | `string`  |    Yes   |       - |
+| `enabled` | `boolean` |    No    |  `true` |
+| `limit`   | `number`  |    No    |    `20` |
+| `timeout` | `number`  |    No    |  `5000` |
+
+---
+
+## 8. Table 中的内联代码
+
+在技术文档中,最常见的 table 用法之一,就是把内联代码放进 cell 里。
+
+**代码**
+
+```mdx showLineNumbers title="内联代码"
+| Property | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | Unique identifier |
+| `createdAt` | `Date` | Creation timestamp |
+| `isActive` | `boolean` | Whether the user is active |
+```
+
+**演示**
+
+| Property    | Type      | Description                 |
+| ----------- | --------- | ----------------------------- |
+| `id`        | `string`  | Unique identifier              |
+| `createdAt` | `Date`    | Creation timestamp             |
+| `isActive`  | `boolean` | Whether the user is active     |
+
+对于技术文档,以下内容应当使用内联代码:
+
+* Variable name。
+* Function name。
+* Class name。
+* File name。
+* Command。
+* API parameter。
+* Environment variable。
+* Type。
+* HTTP method。
+* URL path。
+
+例如:
+
+```md
+`DATABASE_URL`
+`npm run dev`
+`UserRepository`
+`POST`
+`/api/users`
+```
+
+---
+
+## 9. 粗体与斜体
+
+table 支持常见的 Markdown 格式。
+
+**代码**
+
+```mdx showLineNumbers title="Text Formatting"
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Authentication** | **Supported** | OAuth2 authentication |
+| *Analytics* | Planned | Usage analytics |
+| ~~Legacy API~~ | Deprecated | Use the new API instead |
+```
+
+**演示**
+
+| Feature            | Status        | Description              |
+| ------------------ | ------------- | --------------------------- |
+| **Authentication** | **Supported** | OAuth2 authentication        |
+| *Analytics*        | Planned       | Usage analytics              |
+| ~~Legacy API~~     | Deprecated    | Use the new API instead      |
+
+不应该在 table 中滥用粗体。如果所有内容都加粗,就不再有 hierarchy 了。
+
+---
+
+## 10. Table 中的链接
+
+你可以在 table 中放置 Markdown link。
+
+**代码**
+
+```mdx showLineNumbers title="Table 中的链接"
+| Resource | Description |
+| --- | --- |
+| [MDX](https://mdxjs.com/) | JSX for Markdown |
+| [Astro](https://astro.build/) | Web framework |
+| [Mermaid](https://mermaid.js.org/) | Diagram generation |
+```
+
+**演示**
+
+| Resource                           | Description         |
+| ------------------------------------ | --------------------- |
+| [MDX](https://mdxjs.com/)            | JSX for Markdown       |
+| [Astro](https://astro.build/)        | Web framework          |
+| [Mermaid](https://mermaid.js.org/)   | Diagram generation     |
+
+在内部文档中,链接到同一个项目里的其他页面也非常有用:
+
+```md
+| Component | Documentation |
+| --- | --- |
+| Code Block | [Code Blocks](/internal/web-documentation/ui/code_block) |
+| Table | [Table](/internal/web-documentation/ui/table) |
+| Mermaid | [Mermaid](/internal/web-documentation/ui/mermaid) |
+```
+
+---
+
+## 11. 表情符号与符号
+
+table 可以包含 Unicode、表情符号,以及常见的符号。
+
+**代码**
+
+```mdx showLineNumbers title="Status Table"
+| Feature | Status |
+| --- | --- |
+| Authentication | ✅ Supported |
+| Payment | ⚠️ Beta |
+| Legacy API | ❌ Deprecated |
+```
+
+**演示**
+
+| Feature        | Status       |
+| -------------- | -------------- |
+| Authentication | ✅ Supported   |
+| Payment        | ⚠️ Beta       |
+| Legacy API     | ❌ Deprecated  |
+
+不过,如果文档有自己的 design system,应该统一 status 的显示方式,而不是随意使用表情符号。
+
+---
+
+## 12. 包含空值的 Table
+
+并不是每个 cell 都必须有数据。
+
+**代码**
+
+```mdx showLineNumbers title="Empty Cell"
+| Property | Required | Default |
+| --- | :---: | --- |
+| `id` | Yes | - |
+| `name` | Yes | - |
+| `avatar` | No | |
+```
+
+**演示**
+
+| Property | Required | Default |
+| -------- | :------: | ------- |
+| `id`     |    Yes   | -       |
+| `name`   |    Yes   | -       |
+| `avatar` |    No    |         |
+
+在技术文档中,应当使用统一的符号,例如 `-` 或 `N/A`,而不是使用多种不同形式的空值。
+
+例如:
+
+| Property  | Default |
+| --------- | ------- |
+| `name`    | `-`     |
+| `avatar`  | `-`     |
+| `timeout` | `5000`  |
+
+---
+
+## 13. 包含多行文本的 Table
+
+cell 可以包含相当长的文本。
+
+**代码**
+
+```mdx showLineNumbers title="Long Description"
+| Property | Description |
+| --- | --- |
+| `timeout` | Determines how long the client waits for a response before the request is considered failed. |
+| `retry` | Determines whether the request should automatically be retried after a temporary network failure. |
+```
+
+**演示**
+
+| Property  | Description                                                                                        |
+| --------- | ----------------------------------------------------------------------------------------------------- |
+| `timeout` | Determines how long the client waits for a response before the request is considered failed.          |
+| `retry`   | Determines whether the request should automatically be retried after a temporary network failure.     |
+
+不过,如果 description 过长,table 可能会变得难以阅读。
+
+这时应当考虑把详细说明移到 table 之外。
+
+例如:
+
+| Property  | Type      | Required |
+| --------- | --------- | -------- |
+| `timeout` | `number`  | No       |
+| `retry`   | `boolean` | No       |
+
+table 之后:
+
+> `timeout` determines how long the client waits for a response before the request fails.
+
+这种方式通常更容易阅读。
+
+---
+
+## 14. 带内联代码的 Table
+
+table 通常用来 document API parameters。
+
+**代码**
+
+```mdx showLineNumbers title="API Parameters"
+| Parameter | Type | Required | Description |
+| --- | --- | :---: | --- |
+| `page` | `number` | No | Page number |
+| `limit` | `number` | No | Number of records |
+| `sort` | `string` | No | Sort field |
+| `order` | `"asc" \| "desc"` | No | Sort direction |
+```
+
+**演示**
+
+| Parameter | Type              | Required | Description        |
+| --------- | ------------------- | :------: | --------------------- |
+| `page`    | `number`            |    No    | Page number            |
+| `limit`   | `number`            |    No    | Number of records      |
+| `sort`    | `string`            |    No    | Sort field             |
+| `order`   | `"asc" \| "desc"`   |    No    | Sort direction         |
+
+这是 API documentation 中非常常见的一种模式。
+
+---
+
+## 15. HTTP Status Code 的 Table
+
+table 在 document HTTP API 时特别有用。
+
+**代码**
+
+```mdx showLineNumbers title="HTTP Status Codes"
+| Status | Meaning | Description |
+| ---: | --- | --- |
+| `200` | OK | Request completed successfully |
+| `201` | Created | Resource was created |
+| `400` | Bad Request | Invalid request |
+| `401` | Unauthorized | Authentication required |
+| `403` | Forbidden | Access denied |
+| `404` | Not Found | Resource does not exist |
+| `500` | Internal Server Error | Unexpected server error |
+```
+
+**演示**
+
+| Status | Meaning               | Description                     |
+| -----: | ----------------------- | ---------------------------------- |
+|  `200` | OK                      | Request completed successfully      |
+|  `201` | Created                 | Resource was created                |
+|  `400` | Bad Request             | Invalid request                     |
+|  `401` | Unauthorized            | Authentication required             |
+|  `403` | Forbidden               | Access denied                       |
+|  `404` | Not Found               | Resource does not exist             |
+|  `500` | Internal Server Error  | Unexpected server error             |
+
+这里 status code 是右对齐,因为它是数值型数据。
+
+---
+
+## 16. Environment Variables 的 Table
+
+table 同样非常适合用来 document environment variables。
+
+**代码**
+
+```mdx showLineNumbers title="Environment Variables"
+| Variable | Required | Example | Description |
+| --- | :---: | --- | --- |
+| `DATABASE_URL` | Yes | `postgres://...` | PostgreSQL connection string |
+| `REDIS_URL` | No | `redis://...` | Redis connection string |
+| `API_URL` | Yes | `https://api.example.com` | Backend API URL |
+| `DEBUG` | No | `true` | Enables debug logging |
+```
+
+**演示**
+
+| Variable       | Required | Example                     | Description                     |
+| ---------------- | :------: | ----------------------------- | ---------------------------------- |
+| `DATABASE_URL`   |    Yes   | `postgres://...`               | PostgreSQL connection string        |
+| `REDIS_URL`      |    No    | `redis://...`                  | Redis connection string             |
+| `API_URL`        |    Yes   | `https://api.example.com`      | Backend API URL                     |
+| `DEBUG`          |    No    | `true`                         | Enables debug logging               |
+
+---
+
+## 17. Feature Comparison 的 Table
+
+另一个使用场景是比较 feature。
+
+**代码**
+
+```mdx showLineNumbers title="Feature Comparison"
+| Feature | Web | Android | iOS |
+| --- | :---: | :---: | :---: |
+| Authentication | ✅ | ✅ | ✅ |
+| Push Notification | ✅ | ✅ | ✅ |
+| Offline Mode | ❌ | ✅ | ✅ |
+| Dark Mode | ✅ | ✅ | ✅ |
+```
+
+**演示**
+
+| Feature           | Web | Android | iOS |
+| ------------------- | :-: | :-----: | :-: |
+| Authentication      |  ✅  |    ✅    |  ✅  |
+| Push Notification   |  ✅  |    ✅    |  ✅  |
+| Offline Mode        |  ❌  |    ✅    |  ✅  |
+| Dark Mode           |  ✅  |    ✅    |  ✅  |
+
+boolean 或 status 的 column 通常应该居中对齐。
+
+---
+
+## 18. Keyboard Shortcut 的 Table
+
+**代码**
+
+```mdx showLineNumbers title="Keyboard Shortcuts"
+| Shortcut | Action | Platform |
+| --- | --- | --- |
+| `⌘ + K` | Open command menu | macOS |
+| `Ctrl + K` | Open command menu | Windows / Linux |
+| `⌘ + S` | Save | macOS |
+| `Ctrl + S` | Save | Windows / Linux |
+```
+
+**演示**
+
+| Shortcut   | Action            | Platform          |
+| ------------ | ------------------- | -------------------- |
+| `⌘ + K`      | Open command menu    | macOS                 |
+| `Ctrl + K`   | Open command menu    | Windows / Linux       |
+| `⌘ + S`      | Save                  | macOS                 |
+| `Ctrl + S`   | Save                  | Windows / Linux       |
+
+---
+
+## 19. Version Compatibility 的 Table
+
+当文档需要覆盖多个 version 时,这是一个非常有用的模式。
+
+**代码**
+
+```mdx showLineNumbers title="Version Compatibility"
+| Feature | v1 | v2 | v3 |
+| --- | :---: | :---: | :---: |
+| Authentication | ✅ | ✅ | ✅ |
+| OAuth | ❌ | ✅ | ✅ |
+| WebSocket | ❌ | ❌ | ✅ |
+| Legacy API | ✅ | ⚠️ | ❌ |
+```
+
+**演示**
+
+| Feature        |  v1 |  v2 |  v3 |
+| ---------------- | :-: | :-: | :-: |
+| Authentication   |  ✅  |  ✅  |  ✅  |
+| OAuth            |  ❌  |  ✅  |  ✅  |
+| WebSocket        |  ❌  |  ❌  |  ✅  |
+| Legacy API       |  ✅  |  ⚠️ |  ❌  |
+
+---
+
+## 20. 内容中包含 `|` 符号的 Table
+
+一个常见的问题是,cell 的内容中包含 `|` 字符。
+
+以 TypeScript 的 union type 为例:
+
+```ts
+"asc" | "desc"
+```
+
+如果直接这样写:
+
+```md
+| Type |
+| --- |
+| `"asc" | "desc"` |
+```
+
+`|` 字符可能会被 Markdown parser 误认为是 table 的分隔符。
+
+:::danger
+忘记转义 `|` 会导致 table 结构解析错误——通常表现为 column 错位,或者破坏下方整个 table。这类问题很难被发现,因为源代码看起来仍然是有效的,只有渲染后才会暴露出来。
+:::
+
+安全的方式是进行转义:
+
+**代码**
+
+```mdx showLineNumbers title="Escape Pipe Character"
+| Parameter | Type |
+| --- | --- |
+| `order` | `"asc" \| "desc"` |
+```
+
+**演示**
+
+| Parameter | Type               |
+| ----------- | -------------------- |
+| `order`     | `"asc" \| "desc"`    |
+
+当需要让 `|` 字符作为 cell 内容出现时,应写成:
+
+```md
+\|
+```
+
+---
+
+## 21. 包含 HTML 的 Table
+
+根据 parser 和配置的不同,MDX/Markdown 环境可能支持 HTML。
+
+例如:
+
+```md
+| Name | Description |
+| --- | --- |
+| **API** | Backend API |
+```
+
+在没有特殊原因的情况下,通常应当优先使用 Markdown 语法而不是 HTML。
+
+不应该只为了实现某种样式,就把一个简单的 Markdown Table 改造成 HTML `<table>`。
+
+如果需要自定义行为或复杂结构,请考虑单独创建一个 component。
+
+---
+
+## 22. Table 在移动端的响应式表现
+
+对于文档网站来说,这是一个非常重要的问题。
+
+一个列数较多的 table:
+
+| Property  | Type      | Required | Default | Description       | Example |
+| --------- | --------- | -------- | ------- | -------------------- | ------- |
+| `timeout` | `number`  | No       | `5000`  | Request timeout      | `3000`  |
+| `retry`   | `boolean` | No       | `false` | Retry request        | `true`  |
+
+在移动端屏幕上可能会超出屏幕宽度。
+
+不应该强行把所有 column 压缩到文字都难以阅读的程度。
+
+一种常见的做法是让 table 支持横向滚动。
+
+CSS 示例:
+
+```css
+table {
+    width: 100%;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+}
+```
+
+如果你的文档系统已经有处理 responsive table 的 CSS,就不需要为每个 table 单独添加 wrapper。
+
+:::caution[注意]
+如果不实际测试,列数较多的 table 在移动端很容易溢出或破坏布局。不要只在桌面端查看效果,就假设它在小屏幕上也没问题。
+:::
+
+需要在以下环境中检查 table 的表现:
+
+* Desktop。
+* Tablet。
+* Mobile。
+* Dark mode。
+* 浏览器高倍缩放。
+
+---
+
+## 23. 不要创建过宽的 Table
+
+column 过多的 table,通常意味着 information architecture 不够好。
+
+例如:
+
+| Name | Type | Required | Default | Description | Example | Version | Platform | Notes | Status |
+| ---- | ---- | -------- | ------- | ------------- | ------- | ------- | -------- | ----- | ------ |
+
+这个 table 可以容纳非常多的信息,但读者会很难跟上。
+
+可以拆分为:
+
+### Parameters
+
+| Name      | Type      | Required | Default |
+| --------- | --------- | -------- | ------- |
+| `timeout` | `number`  | No       | `5000`  |
+| `retry`   | `boolean` | No       | `false` |
+
+### Compatibility
+
+| Version | Platform | Status    |
+| ------- | -------- | --------- |
+| v1      | Web      | Supported |
+| v2      | Web      | Supported |
+
+### Description
+
+在下方各个小节中详细解释每个 parameter。
+
+把信息拆分成多个较小的 table,通常比一个巨大的 table 更好。
+
+---
+
+## 24. Table 不能替代 Heading
+
+不应该用 table 来替代文档的 heading 结构。
+
+不好的写法:
+
+| Section        | Content |
+| -------------- | ------- |
+| Authentication | ...     |
+| Configuration  | ...     |
+| Deployment     | ...     |
+
+如果这是文档本身的结构,应当使用:
+
+```md
+## Authentication
+
+## Configuration
+
+## Deployment
+```
+
+table 应该用于**结构化数据**,而不是用来为整个页面创建 layout。
+
+---
+
+## 25. 不要用 Table 来做 Layout
+
+Markdown Table 不是一个 layout system。
+
+不应该这样做:
+
+```md
+| Left Content | Right Content |
+| --- | --- |
+| Text... | Text... |
+```
+
+仅仅为了在页面上实现两栏 layout 而使用它。
+
+如果需要 layout:
+
+* Use CSS。
+* Use component。
+* Use grid/flex。
+* Use MDX component。
+
+table 应当代表**tabular data**。
+
+:::caution[注意]
+用 table 来做 layout,是从其他地方(Word、Notion、Confluence)迁移内容时非常常见的一种反模式。应该把这类 table 转换成 component 或 CSS layout,而不是原样保留。
+:::
+
+---
+
+## 26. 什么时候应该使用 Markdown Table?
+
+Markdown Table 适合以下场景:
+
+* 数据具有清晰的行和列。
+* 各个 row 拥有相同的结构。
+* 读者需要进行比较。
+* 不需要交互。
+* 不需要 sorting。
+* 不需要 filtering。
+* 不需要 pagination。
+* 不需要复杂的 nested component。
+
+非常合适的例子:
+
+```md
+| Property | Type | Required |
+| --- | --- | :---: |
+| `id` | `string` | Yes |
+| `name` | `string` | Yes |
+```
+
+---
+
+## 27. 什么时候不应该使用 Markdown Table?
+
+如果 table 需要:
+
+* Sorting。
+* Filtering。
+* Pagination。
+* Search。
+* Checkbox。
+* Button。
+* Dropdown。
+* Expand/collapse。
+* Nested component。
+* Dynamic data。
+* API data。
+* Custom interaction。
+
+那么 Markdown Table 就不再是理想的选择。
+
+这时应该创建 component。
+
+例如:
+
+```mdx
+<DataTable
+    data={users}
+    sortable
+    searchable
+/>
+```
+
+这种方式更适合 MDX,因为 MDX 允许把 Markdown 和 component 结合起来使用。
+
+---
+
+## 28. 技术文档中编写 Table 的规则
+
+一个好的 table 应当遵循一些简单的原则。
+
+### 保持 header 简短
+
+好的写法:
+
+| Property | Type | Required |
+| -------- | ---- | -------- |
+
+不好的写法:
+
+| The name of the property | The type of this property | Whether the property is required or not |
+| --------------------------- | ---------------------------- | ------------------------------------------ |
+
+### technical identifier 使用内联代码
+
+好的写法:
+
+| Property | Type     |
+| -------- | -------- |
+| `userId` | `string` |
+
+而不是:
+
+| Property | Type   |
+| -------- | ------ |
+| userId   | string |
+
+### status 居中对齐
+
+| Feature | Status |
+| ------- | :----: |
+| Login   |    ✅   |
+
+### 数字右对齐
+
+| Requests |   |
+| -------: | - |
+|     1000 |   |
+
+### 不要塞入过多信息
+
+如果 table 变得过宽,应当拆分成多个 table。
+
+### 不要用 table 做 layout
+
+table 是数据,不是 CSS layout。
+
+---
+
+## 29. 一个完整的 API Documentation Table 示例
+
+以下是一个更接近技术文档实际使用方式的示例。
+
+**代码**
+
+```mdx showLineNumbers title="API Parameters"
+| Parameter | Type | Required | Default | Description |
+| :--- | :---: | :---: | :---: | :--- |
+| `page` | `number` | No | `1` | Page number. Must be greater than `0`. |
+| `limit` | `number` | No | `20` | Number of records returned per page. |
+| `sort` | `string` | No | `createdAt` | Field used to sort the result. |
+| `order` | `"asc" \| "desc"` | No | `"desc"` | Sort direction. |
+| `search` | `string` | No | `-` | Search keyword. |
+```
+
+**演示**
+
+| Parameter |        Type       | Required |   Default   | Description                              |
+| :---------- | :------------------: | :--------: | :-----------: | :------------------------------------------ |
+| `page`      |      `number`        |    No      |     `1`       | Page number. Must be greater than `0`.       |
+| `limit`     |      `number`        |    No      |     `20`      | Number of records returned per page.         |
+| `sort`      |      `string`        |    No      | `createdAt`   | Field used to sort the result.               |
+| `order`     | `"asc" \| "desc"`    |    No      |   `"desc"`    | Sort direction.                              |
+| `search`    |      `string`        |    No      |     `-`       | Search keyword.                              |
+
+这是 API documentation 中应当经常使用的一种模式:**Parameter → Type → Required → Default → Description**。
+
+---
+
+## 30. Table 与 Code Block 结合使用
+
+table 不一定要包含全部信息。
+
+一个好的模式是:先用 table 展示概览,再用 code block 说明细节。
+
+**代码**
+
+```mdx showLineNumbers title="Overview"
+| Property | Type | Required |
+| --- | --- | :---: |
+| `host` | `string` | Yes |
+| `port` | `number` | No |
+| `secure` | `boolean` | No |
+```
+
+**演示**
+
+| Property | Type      | Required |
+| -------- | --------- | :------: |
+| `host`   | `string`  |    Yes   |
+| `port`   | `number`  |    No    |
+| `secure` | `boolean` |    No    |
+
+然后:
+
+````mdx showLineNumbers title="Configuration"
+```ts
+const config = {
+    host: "localhost",
+    port: 3000,
+    secure: false,
+};
+```
+````
+
+这种方式能让读者在深入实现细节之前,先快速获得一个 overview。
+
+---
+
+## 31. 编写 Table 之前的检查清单
+
+在创建 table 之前,先问问自己:
+
+* 数据是否真的具有行/列的形式?
+* 读者是否需要比较各个 row?
+* header 是否简短明确?
+* 各个 row 的 column 数量是否一致?
+* 哪些 column 应该左对齐?
+* 哪些 column 应该居中对齐?
+* 哪些 column 应该右对齐?
+* technical identifiers 是否已经使用了内联代码?
+* table 是否过宽?
+* 在移动端能否正常阅读?
+* 是否需要 component 而不是 Markdown Table?
+
+如果答案是肯定的,Markdown Table 通常就是一个合适的选择。
+
+---
+
+## 32. 使用 `^^` 合并 Row (Rowspan)
+
+标准 Markdown Table **不支持 rowspan**——没有原生语法可以让一个 cell 跨越多个 row。
+
+在本文档中,当一行开头的 cell 内容恰好是两个字符 `^^` 时,会被解析为"与上方同一 column 的 cell 合并",而不是留空。
+
+:::danger[常见错误]
+只能在需要向上合并的 cell 中使用完全等于 `^^` 的内容。不要在同一个 cell 中添加空格或其他字符(例如 `^^ `、`^^abc`),否则该 cell 会被当作普通文本,而不是合并标记。
+:::
+
+**源代码**
+
+```mdx showLineNumbers title="使用 ^^ 实现 Rowspan"
+| 功能 | 子功能 | 状态 |
+| --- | --- | --- |
+| 登录 | Vlive 账号 | 已完成 |
+| ^^ | Google | 已完成 |
+| ^^ | Facebook | 已完成 |
+```
+
+**预览**
+
+| 功能 | 子功能 | 状态 |
+| --- | --- | --- |
+| 登录 | Vlive 账号 | 已完成 |
+| ^^ | Google | 已完成 |
+| ^^ | Facebook | 已完成 |
+
+渲染出的 HTML 是一个单独的 `登录` cell,其 `rowspan` 等于下方同一 column 中连续使用 `^^` 的 row 数量,这些 `^^` cell 本身不再存在于各自的 row 中。
+
+使用时需要注意:
+
+* `^^` 只会与**正上方**的 cell 合并,不能跨越已经被其他值中断的 row。
+* `^^` 可以用于任意 column,不局限于第一个 column。
+* 不要在数据的第一个 row(紧跟 header 之后)使用 `^^`,因为上方没有可以合并的 cell。
+* 只应在 row 之间确实属于同一逻辑分组时使用(例如同一个父功能下的多个子功能),不要用它来"修补"与其无关的 table 显示问题。
+
+---
+
+## 小结
+
+MDX 中的 table 实际上使用的就是 Markdown Table 语法,对于常规场景不需要专门的 component。
+
+基本结构:
+
+```mdx showLineNumbers title="Basic Table"
+| Column 1 | Column 2 | Column 3 |
+| --- | --- | --- |
+| Value | Value | Value |
+| Value | Value | Value |
+```
+
+最重要的原则:
+
+1. **Header 必须清晰明确。**
+2. **每一行的 column 数量应当保持一致。**
+3. **Text 通常左对齐。**
+4. **Status/boolean 通常居中对齐。**
+5. **Number 通常右对齐。**
+6. **属性名、type、command 和 API parameter 应当使用内联代码。**
+7. **过宽的 table 应当拆分,或支持 horizontal scrolling。**
+8. **不要用 table 来做 layout。**
+9. **需要复杂 interaction 的数据不要用 Markdown Table。**
+10. **在技术文档中,应当优先选择简短、结构化、易于扫读的 table。**
+
+一个好的 table,并不是包含信息最多的那种,而是能让读者**最快找到所需信息**的那种。

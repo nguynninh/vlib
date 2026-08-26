@@ -22,6 +22,16 @@ export default defineConfig({
 	server: {
 		port: process.env.PORT ? Number(process.env.PORT) : 4321,
 	},
+	redirects: {
+		'/vi': '/vi/sdk-game/overview/introduction',
+		'/en': '/en/sdk-game/overview/introduction',
+		'/zh': '/zh/sdk-game/overview/introduction',
+		'/ja': '/ja/sdk-game/overview/introduction',
+		'/vi/internal/web-documentation': '/vi/internal/web-documentation/overview/introduction',
+		'/en/internal/web-documentation': '/en/internal/web-documentation/overview/introduction',
+		'/zh/internal/web-documentation': '/zh/internal/web-documentation/overview/introduction',
+		'/ja/internal/web-documentation': '/ja/internal/web-documentation/overview/introduction',
+	},
 	markdown: {
 		processor: unified({
 			remarkPlugins: [remarkMediaOptions, remarkTableColumnWidths, remarkTableRowSpan],
@@ -41,6 +51,7 @@ export default defineConfig({
 				replacesTitle: true,
 			},
 			components: {
+				Head: './src/components/Head.astro',
 				Header: './src/components/Header.astro',
 				SiteTitle: './src/components/SiteTitle.astro',
 				PageTitle: './src/components/PageTitle.astro',
@@ -148,27 +159,29 @@ export default defineConfig({
 					translations: { en: 'Changelog', zh: '更新日志', ja: '変更履歴' },
 					link: '/itr/changelog',
 				},
-				// Web Documentation
-				{
-					label: 'Tổng quan',
-					translations: { en: 'Overview', zh: '概述', ja: '概要' },
-					items: [{ autogenerate: { directory: 'web-documentation/overview' } }],
-				},
-				{
-					label: 'Giao diện',
-					translations: { en: 'UI', zh: '界面', ja: 'UI' },
-					items: [{ autogenerate: { directory: 'web-documentation/ui' } }],
-				},
-				{
-					label: 'Nhật ký thay đổi',
-					translations: { en: 'Changelog', zh: '更新日志', ja: '変更履歴' },
-					link: '/web-documentation/changelog',
-				},
 				// Về chúng tôi
 				{
 					label: 'Về chúng tôi',
 					translations: { en: 'About us', zh: '关于我们', ja: '私たちについて' },
 					link: '/chung-toi',
+				},
+
+				// Web Documentation (internal — kept last so its pages never
+				// chain into the public sidebar's prev/next pagination).
+				{
+					label: 'Tổng quan',
+					translations: { en: 'Overview', zh: '概述', ja: '概要' },
+					items: [{ autogenerate: { directory: 'internal/web-documentation/overview' } }],
+				},
+				{
+					label: 'Giao diện',
+					translations: { en: 'UI', zh: '界面', ja: 'UI' },
+					items: [{ autogenerate: { directory: 'internal/web-documentation/ui' } }],
+				},
+				{
+					label: 'Nhật ký thay đổi',
+					translations: { en: 'Changelog', zh: '更新日志', ja: '変更履歴' },
+					link: '/internal/web-documentation/changelog',
 				},
 			],
 		}),

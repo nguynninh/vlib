@@ -95,13 +95,15 @@ mobile-starlight-toc {
 	color: var(--sl-color-gray-2);
 }
 
-.top-nav .nav-item:hover,
-.top-nav .nav-item.active {
-	color: var(--sl-color-text-accent);
-}
+@media (min-width: 50rem) {
+	.top-nav .nav-item:hover,
+	.top-nav .nav-item.active {
+		color: var(--sl-color-text-accent);
+	}
 
-.top-nav .nav-item.active::after {
-	background: var(--sl-color-text-accent);
+	.top-nav .nav-item.active::after {
+		background: var(--sl-color-text-accent);
+	}
 }
 
 .compact-toc {
