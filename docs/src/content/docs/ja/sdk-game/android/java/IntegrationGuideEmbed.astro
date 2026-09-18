@@ -1,0 +1,117 @@
+---
+---
+
+<div class="not-content" style="margin: 0 -1.5rem;">
+	<iframe
+		id="sdk-guide-frame"
+		src="/embeds/sdk-game/android/java/integration_guide.html?lang=ja"
+		title="Android SDK（Java）統合ガイド"
+		style="display: block; width: 100%; height: 92vh; min-height: 640px; border: 0;"
+	></iframe>
+</div>
+
+<script is:inline>
+	(function () {
+		var frame = document.getElementById('sdk-guide-frame');
+		if (!frame) return;
+
+		function currentTheme() {
+			return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+		}
+
+		function sendTheme() {
+			if (!frame.contentWindow) return;
+			frame.contentWindow.postMessage({ source: 'vtvlive-docs', type: 'theme', theme: currentTheme() }, window.location.origin);
+		}
+
+		function sendSection() {
+			if (!frame.contentWindow) return;
+			var section = window.location.hash.replace('#', '');
+			if (!section) return;
+			frame.contentWindow.postMessage({ source: 'vtvlive-docs', type: 'section', section: section }, window.location.origin);
+		}
+
+		var pagination = null;
+
+		function ensurePagination() {
+			if (pagination) return pagination;
+			var prevA = document.querySelector('.pagination-links a[rel="prev"]');
+			var nextA = document.querySelector('.pagination-links a[rel="next"]');
+			if (!prevA && !nextA) return null;
+			pagination = {
+				prev: prevA,
+				next: nextA,
+				fallback: {
+					prev: prevA && { href: prevA.getAttribute('href'), title: prevA.querySelector('.link-title')?.textContent },
+					next: nextA && { href: nextA.getAttribute('href'), title: nextA.querySelector('.link-title')?.textContent },
+				},
+			};
+			return pagination;
+		}
+
+		function updatePaginationLink(anchor, fallback, step) {
+			if (!anchor) return;
+			var titleEl = anchor.querySelector('.link-title');
+			if (step) {
+				anchor.setAttribute('href', window.location.pathname + '#' + step.hash);
+				if (titleEl) titleEl.textContent = step.title;
+			} else if (fallback) {
+				anchor.setAttribute('href', fallback.href);
+				if (titleEl) titleEl.textContent = fallback.title;
+			}
+		}
+
+		function updatePagination(data) {
+			var p = ensurePagination();
+			if (!p) return;
+			updatePaginationLink(p.prev, p.fallback.prev, data.prev);
+			updatePaginationLink(p.next, p.fallback.next, data.next);
+		}
+
+		function highlightSidebar() {
+			var path = window.location.pathname.replace(/\/$/, '');
+			var hash = window.location.hash.replace('#', '') || 'install:requirements';
+			var links = document.querySelectorAll('nav.sidebar a[href]');
+			links.forEach(function (a) {
+				var href = a.getAttribute('href') || '';
+				var parts = href.split('#');
+				var hrefPath = parts[0].replace(/\/$/, '');
+				if (hrefPath !== path) return;
+				var hrefHash = parts[1] || '';
+				if (hrefHash === hash) {
+					a.setAttribute('aria-current', 'page');
+				} else if (hrefHash) {
+					a.removeAttribute('aria-current');
+				}
+			});
+		}
+
+		frame.addEventListener('load', function () {
+			sendTheme();
+			sendSection();
+		});
+
+		window.addEventListener('hashchange', function () {
+			sendSection();
+			highlightSidebar();
+		});
+
+		window.addEventListener('message', function (event) {
+			if (event.origin !== window.location.origin) return;
+			if (!event.data || event.data.source !== 'vtvlive-embed') return;
+			if (event.data.type === 'ready') {
+				sendTheme();
+				sendSection();
+			} else if (event.data.type === 'progress') {
+				updatePagination(event.data);
+			}
+		});
+
+		highlightSidebar();
+
+		new MutationObserver(sendTheme).observe(document.documentElement, {
+			attributes: true,
+			attributeFilter: ['data-theme'],
+		});
+	})();
+</script>
