@@ -57,6 +57,10 @@
       --lightbox-scrim: rgba(2, 7, 14, .86);
       --lightbox-media-bg: #080e17;
       --lightbox-console-bg: #050b13;
+      --console-bg: #050b14;
+      --log-info: var(--blue);
+      --log-success: var(--success);
+      --log-warn: var(--amber);
       --lightbox-console-border: #233750;
       --lightbox-close-bg: rgba(10, 20, 36, .82);
       --lightbox-close-border: rgba(255, 255, 255, .16);
@@ -106,6 +110,10 @@
       --lightbox-scrim: rgba(241, 245, 249, .92);
       --lightbox-media-bg: #eef1f5;
       --lightbox-console-bg: #f6f8fa;
+      --console-bg: #f6f8fa;
+      --log-info: #0969da;
+      --log-success: #1a7f37;
+      --log-warn: #9a6700;
       --lightbox-console-border: #d0d7de;
       --lightbox-close-bg: rgba(255, 255, 255, .85);
       --lightbox-close-border: rgba(15, 23, 42, .16);
@@ -219,13 +227,13 @@
     .tap { position: absolute; width: 22px; height: 22px; border: 1px solid rgba(255,255,255,.85); border-radius: 50%; animation: tap 2.8s infinite; }
     .preview-caption { position: absolute; z-index: 3; bottom: 13px; left: 50%; transform: translateX(-50%); width: max-content; max-width: 90%; padding: 5px 10px; border-radius: 999px; background: rgba(5,13,25,.78); color: #a8bad0; font-size: 9px; text-align: center; backdrop-filter: blur(7px); }
 
-    .console { min-height: 0; display: flex; flex-direction: column; border-top: 1px solid var(--line); background: #050b14; }
+    .console { min-height: 0; display: flex; flex-direction: column; border-top: 1px solid var(--line); background: var(--console-bg); }
     .console-head { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-bottom: 1px solid var(--line); color: var(--dark-muted); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
     .console-head b { color: var(--dark-text); }
     .clear-log { margin-left: auto; border: 0; background: transparent; color: var(--dark-muted); cursor: pointer; }
     .console-body { flex: 1; overflow: auto; padding: 11px 14px; font: 10px/1.65 "SFMono-Regular", Consolas, monospace; scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) transparent; }
     .log-line { display: grid; grid-template-columns: 58px 12px 1fr; color: var(--dark-muted-2); animation: logIn .24s ease both; }
-    .log-line .time { color: var(--dark-muted); } .log-line .level { color: var(--blue); font-weight: 900; } .log-line.success .level { color: var(--success); } .log-line.warn .level { color: var(--amber); }
+    .log-line .time { color: var(--dark-muted); } .log-line .level { color: var(--log-info); font-weight: 900; } .log-line.success .level { color: var(--log-success); } .log-line.warn .level { color: var(--log-warn); }
     .console-empty { color: var(--dark-muted); }
 
     .mobile-tabs { display: none; }
