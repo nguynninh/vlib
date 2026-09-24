@@ -164,7 +164,7 @@ export default defineConfig({
 								{ label: 'Hướng dẫn tích hợp', translations: { en: 'Integration guide', zh: '集成指南', ja: '統合ガイド' }, link: '/sdk-game/ios/objective_c/integration_guide' },
 								{ label: 'Nhật ký phát hành', translations: { en: 'Release notes', zh: '发布说明', ja: 'リリースノート' }, link: '/sdk-game/ios/objective_c/release_notes' },
 								{ label: 'Cập nhật SDK 5.0.0', translations: { en: 'Update SDK 5.0.0', zh: '更新 SDK 5.0.0', ja: 'SDK 5.0.0 更新' }, link: '/sdk-game/ios/objective_c/update_sdk_5_0_0' },
-								{ label: 'Sửa lỗi SDK 5.1.0', translations: { en: 'Fix SDK 5.1.0', zh: '修复 SDK 5.1.0', ja: 'SDK 5.1.0 修正' }, link: '/sdk-game/ios/objective_c/error_fixbug' },
+								{ label: 'Cập nhật SDK 5.1.0', translations: { en: 'Update SDK 5.1.0', zh: '更新 SDK 5.1.0', ja: 'SDK 5.1.0 更新' }, link: '/sdk-game/ios/objective_c/error_fixbug' },
 								{ label: 'Cập nhật SDK 5.1.4', translations: { en: 'Update SDK 5.1.4', zh: '更新 SDK 5.1.4', ja: 'SDK 5.1.4 更新' }, link: '/sdk-game/ios/objective_c/update_sdk_5_1_4' },
 								{ label: 'Cập nhật SDK 5.3.1', translations: { en: 'Update SDK 5.3.1', zh: '更新 SDK 5.3.1', ja: 'SDK 5.3.1 更新' }, link: '/sdk-game/ios/objective_c/update_sdk_5_3_1' },
 								{ label: 'Thư viện bên thứ ba', translations: { en: 'Third-party libraries', zh: '第三方库', ja: 'サードパーティライブラリ' }, link: '/sdk-game/ios/objective_c/third_party_libraries' },
